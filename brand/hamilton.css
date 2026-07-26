@@ -1,0 +1,83 @@
+/* Hamilton Exteriors signer-page theme.
+   Overrides DocuSeal's daisyUI "docuseal" theme + the signer surfaces only.
+   Palette is taken from hamilton-exteriors.com src/styles/global.css. */
+
+@font-face {
+  font-family: 'Hamilton Display';
+  src: url('https://hamilton-exteriors.com/fonts/the-bold-font-700.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
+:root, [data-theme='docuseal'] {
+  /* daisyUI tokens: "H S% L%" consumed via hsl(var(--x)) */
+  --p:  152 46% 27%;   /* primary  = Hamilton green rgb(37,99,70)  */
+  --pf: 152 54% 20%;   /* primary focus                            */
+  --pc: 0 0% 100%;     /* text on primary                          */
+  --s:  152 54% 11%;   /* secondary = deep green rgb(13,43,29)     */
+  --sf: 152 54% 8%;
+  --sc: 0 0% 100%;
+  --a:  86 47% 88%;    /* accent   = light green rgb(227,239,211)  */
+  --af: 86 40% 80%;
+  --ac: 152 54% 11%;
+  --n:  152 54% 11%;   /* neutral: the big CONTINUE button         */
+  --nf: 152 54% 8%;
+  --nc: 0 0% 100%;
+  --b1: 40 29% 94%;    /* base = Hamilton cream rgb(244,241,235)   */
+  --b2: 39 20% 90%;
+  --b3: 39 11% 74%;
+  --bc: 0 0% 10%;      /* base content = charcoal                  */
+  --in: 152 46% 27%;
+  --su: 152 46% 27%;
+  --er: 0 72% 51%;
+  --rounded-btn: 0.5rem;
+  --hamilton-green: rgb(37, 99, 70);
+  --hamilton-deep: rgb(13, 43, 29);
+  --hamilton-cream: rgb(244, 241, 235);
+  --hamilton-line: rgb(196, 191, 182);
+}
+
+body {
+  font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--hamilton-cream);
+  color: rgb(26, 26, 26);
+}
+
+/* --- Header: logo lockup + document title -------------------------------- */
+.hx-header {
+  display: flex; align-items: center; justify-content: center;
+  padding: 18px 16px 14px;
+}
+.hx-header img { height: 46px; width: auto; display: block; border-radius: 3px; }
+
+h1, .hx-doc-title {
+  font-family: 'Hamilton Display', 'DM Sans', system-ui, sans-serif;
+  letter-spacing: .01em;
+  color: var(--hamilton-deep);
+}
+
+/* --- Field markers: DocuSeal ships pink; Hamilton uses a green wash ------- */
+[class*='bg-red-'], .field-area, .submitter-field {
+  background-color: rgba(37, 99, 70, .10) !important;
+}
+.field-area:hover, .submitter-field:hover {
+  background-color: rgba(37, 99, 70, .18) !important;
+}
+[class*='border-red-'] { border-color: var(--hamilton-green) !important; }
+[class*='text-red-']:not(.hx-error) { color: var(--hamilton-green) !important; }
+
+/* Active/required outline reads as brand, not alarm */
+.--active, [data-active='true'] { outline-color: var(--hamilton-green) !important; }
+
+/* --- Document surface ---------------------------------------------------- */
+.page-container, .document-page, [class*='shadow'] img {
+  border: 1px solid var(--hamilton-line);
+  border-radius: 4px;
+}
+
+/* --- Footer -------------------------------------------------------------- */
+.hx-footer {
+  text-align: center; padding: 20px 16px 28px;
+  font-size: 12px; line-height: 1.5; color: rgb(104, 104, 105);
+}
+.hx-footer a { color: var(--hamilton-green); text-decoration: underline; }
+.hx-footer .hx-entity { display: block; font-weight: 600; color: var(--hamilton-deep); }

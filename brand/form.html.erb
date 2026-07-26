@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html data-theme="docuseal" lang="<%= I18n.locale %>">
+  <head>
+    <%= render 'layouts/head_tags' %>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <%= csrf_meta_tags %>
+    <% if ENV['ROLLBAR_CLIENT_TOKEN'] %>
+      <meta name="rollbar-token" content="<%= ENV.fetch('ROLLBAR_CLIENT_TOKEN', nil) %>">
+      <%= javascript_pack_tag 'rollbar', 'form', defer: true %>
+    <% else %>
+      <%= javascript_pack_tag 'form', defer: true %>
+    <% end %>
+    <%= stylesheet_pack_tag 'form', media: 'all' %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap">
+    <%# Hamilton brand layer, loaded last so it wins over the packed theme %>
+    <style><%= Rails.root.join('app/assets/hamilton.css').read.html_safe %></style>
+  </head>
+  <body>
+    <%= yield %>
+  </body>
+</html>
