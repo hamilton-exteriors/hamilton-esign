@@ -26,12 +26,25 @@ export const HIRE_PACKET = {
     { key: 'safety-roster',  title: 'Safety Training Roster' },
   ],
   es: [
-    { key: 'agreement',      title: 'Contrato de Empleo (Voluntad de las Partes)' },
-    { key: 'wage-notice',    title: 'Aviso de Salario - Codigo Laboral 2810.5' },
-    { key: 'acknowledgment', title: 'New Hire Policy Acknowledgment' },
-    { key: 'safety-roster',  title: 'Safety Training Roster' },
+    { key: 'agreement',   title: 'Contrato de Empleo (Voluntad de las Partes)' },
+    { key: 'wage-notice', title: 'Aviso de Salario - Codigo Laboral 2810.5' },
+    // No Spanish version of the acknowledgment or the roster exists yet. They
+    // are deliberately ABSENT here rather than falling back to English: the
+    // acknowledgment makes the worker initial 14 separate receipts and attest
+    // that everything was provided in a language he understands, and the roster
+    // carries the CCR 1670 fall-protection certification. Handing either to a
+    // Spanish speaker in English produces a signature asserting the opposite of
+    // what actually happened.
+    // TODO: write policy-acknowledgment-es.md and safety-training-roster-es.md.
   ],
 };
+
+/** Templates that exist only in English. Sending one to a non-English speaker
+ *  is a refusal, not a silent fallback. */
+const ENGLISH_ONLY = new Set([
+  'New Hire Policy Acknowledgment',
+  'Safety Training Roster',
+]);
 
 const api = (path, init = {}) => fetch(`${SEC.url}${path}`, {
   ...init,
@@ -48,6 +61,12 @@ export async function templateByName(name) {
 /** Returns { worker: url, hamilton: url|null } with ?lang= already applied. */
 export async function createSigningRequest(templateName, worker) {
   const lang = LANGS[worker.language] || 'en';
+  if (lang !== 'en' && ENGLISH_ONLY.has(templateName)) {
+    throw new Error(
+      `refusing to send "${templateName}" to a ${lang}-speaking worker: no ${lang} version exists. ` +
+      `This document asks the signer to attest it was provided in a language they understand, ` +
+      `so sending it in English would make the signature itself false.`);
+  }
   const tpl = await templateByName(templateName);
   const roles = (tpl.submitters || []).map(s => s.name);
 

@@ -77,11 +77,73 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
       const head = table && table.querySelector('thead tr, tr');
       const th = head && head.children[idx];
       const label = norm(th && th.textContent);
-      if (/initial/.test(label)) { el.dataset.type = 'initials'; el.dataset.name = `Initials r${tr.rowIndex}`; }
+      if (/initial/.test(label)) {
+        el.dataset.type = 'initials';
+        // Name the initial after WHAT is being acknowledged, not the row number.
+        // The signer is attesting to receiving a specific document; a prompt
+        // reading "Initials r2" asks them to initial 14 legal receipts blind.
+        const cells = Array.from(tr.children).filter(c => c !== td);
+        const item = cells
+          .map(c => c.textContent.trim().replace(/\s+/g, ' '))
+          .filter(t => t && !/^\d+$/.test(t))       // drop the row-number column
+          .sort((a, b) => b.length - a.length)[0];  // the description is the longest cell
+        el.dataset.name = item ? item.slice(0, 70) : `Initials r${tr.rowIndex}`;
+      }
       else if (/date|fecha/.test(label)) { el.dataset.type = 'date'; }
       else if (/signature|firma/.test(label)) { el.dataset.type = 'signature'; }
       else if (label) { el.dataset.name = (th.textContent.trim() + ' r' + tr.rowIndex).slice(0, 60); }
+
+      // Label/value tables ("Effective date | ____") put the label in the row's
+      // FIRST cell, not a column header. Without this the signer's very first
+      // prompt reads "Field 1". In a 2-column table the row label always beats
+      // whatever prose happened to precede the blank inside the cell.
+      const twoCol = tr.children.length === 2;
+      if (twoCol || /^Field \d+$/.test(el.dataset.name || '')) {
+        const first = tr.children[0];
+        const text = first && first !== td ? first.textContent.trim().replace(/\s+/g, ' ') : '';
+        if (text && text.length <= 48 && !/^_+$/.test(text)) {
+          el.dataset.name = text;
+          if (/date|fecha/i.test(text)) el.dataset.type = 'date';
+          else if (/signature|firma/i.test(text)) el.dataset.type = 'signature';
+        }
+      }
     }
+    // Outside tables: fall back to the nearest preceding bold run or heading.
+    if (/^Field \d+$/.test(el.dataset.name || '')) {
+      let n = el.previousSibling, hops = 0, found = '';
+      while (n && hops++ < 4) {
+        const t = (n.textContent || '').trim().replace(/\s+/g, ' ');
+        if (t && t.length <= 48) { found = t.replace(/[:•\-\s]+$/, ''); break; }
+        n = n.previousSibling;
+      }
+      if (found) {
+        el.dataset.name = found;
+        if (/date|fecha/i.test(found)) el.dataset.type = 'date';
+      }
+    }
+  }
+
+  // Ownership was decided in build-docs from the PROSE label, before the DOM
+  // pass renames the field from its table row. So "Carrier name" was still an
+  // unrecognised fragment when ownership was set, and every workers-comp field
+  // landed on the Worker — an unanswerable hard stop on the wage notice. Same
+  // for the roster's Trainer fields, where a trainee signing "Trainer
+  // signature" manufactures a worthless Cal/OSHA 1670 record.
+  // Re-decide ownership here, against the FINAL label.
+  // Spanish too. The ES wage notice names these "Nombre de la aseguradora" /
+  // "Número de póliza", which an English-only pattern misses entirely — so
+  // Diego, the one worker who actually gets the Spanish document, would have
+  // been the only one still facing the unanswerable carrier fields.
+  const EMPLOYER_FILL = new RegExp([
+    'carrier', 'policy\\s*(no|number)', 'payday', 'pay period', 'workers?\\s*comp',
+    'trainer', 'competent person', 'administrator',
+    'aseguradora', 'p[oó]liza', 'd[ií]a de pago', 'per[ií]odo de pago',
+    'capacitador', 'instructor', 'persona competente',
+  ].join('|'), 'i');
+  for (const el of document.querySelectorAll('.ds')) {
+    const name = el.dataset.name || '';
+    const labelShaped = name.length < 40 && !/[.!?]$/.test(name);
+    if (labelShaped && EMPLOYER_FILL.test(name)) el.dataset.owner = 'employer';
   }
 
   // Measure, page-relative + normalised
