@@ -1,0 +1,35 @@
+<%
+  # The root page. A signer should never reach it: the logo is no longer a link
+  # and every link we send is a /s/<slug>. But a mistyped or truncated URL lands
+  # here, and upstream renders "DocuSeal v3.1.5" plus open-source marketing copy
+  # under Hamilton's own logo, which is a competitor's product page wearing our
+  # mark, shown to someone who was trying to sign an employment document.
+  # So: say who this is, give them a way to reach a human, and nothing else.
+  #
+  # Two ERB traps, both hit while writing this file:
+  #  1. a multi-line ternary inside an output tag is a Ruby syntax error and
+  #     500s the entire page, so strings are assigned first;
+  #  2. an ERB comment cannot contain a closing tag delimiter or the comment
+  #     ends early and the rest of the prose renders as visible text. Hence a
+  #     plain Ruby block with # comments rather than the <%# ... form.
+  es = I18n.locale.to_s.start_with?('es')
+  heading = es ? 'Firma de documentos de Hamilton Exteriors' : 'Hamilton Exteriors document signing'
+  body = if es
+    'Esta página no es para firmar. Si tienes que firmar algo, usa el enlace que Alex te mandó por WhatsApp.'
+  else
+    'There is nothing to sign on this page. If you need to sign something, use the link Alex sent you on WhatsApp.'
+  end
+  call_label = es ? 'Llamar al' : 'Call'
+%>
+<section class="flex items-center justify-center">
+  <div class="py-10 mx-auto max-w-xl px-4">
+    <div class="text-center">
+      <div class="relative flex flex-col items-center">
+        <%= render 'shared/logo', height: 88 %>
+      </div>
+      <h1 class="mt-6 mb-2 text-xl font-semibold" style="color:rgb(13,43,29)"><%= heading %></h1>
+      <p class="mb-6" style="color:rgb(74,74,76)"><%= body %></p>
+      <p><a href="tel:+16509773241" class="hx-phone"><%= call_label %> (650) 977-3241</a></p>
+    </div>
+  </div>
+</section>

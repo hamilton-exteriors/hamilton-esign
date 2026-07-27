@@ -24,6 +24,12 @@ COPY brand/_start_form_logo.html.erb  /app/app/views/start_form/_docuseal_logo.h
 # fonts.googleapis.com, so an external font stylesheet never loads at all.
 COPY brand/fonts/                  /app/public/fonts/
 
+# shared/_title hardcodes the literal "DocuSeal", surviving the PRODUCT_NAME rewrite.
+COPY brand/_title.html.erb         /app/app/views/shared/_title.html.erb
+
+# Root page: upstream is a DocuSeal product page under Hamilton's logo.
+COPY brand/_landing.html.erb       /app/app/views/pages/landing.html.erb
+
 # Browser tab: title, meta and favicons.
 COPY brand/_head_tags.html.erb     /app/app/views/layouts/_head_tags.html.erb
 COPY brand/_meta.html.erb          /app/app/views/shared/_meta.html.erb

@@ -1,0 +1,7 @@
+<%
+  # Upstream hardcodes the literal string "DocuSeal" here, so it survives the
+  # PRODUCT_NAME constant rewrite. This partial sits beside the logo in the
+  # header, which means the wordmark image and the competitor's name render side
+  # by side. The logo already says who this is; the text is redundant either way.
+%>
+<%= render 'shared/logo', height: 30 %>
