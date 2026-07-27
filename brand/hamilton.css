@@ -286,12 +286,50 @@ dialog button.w-6.h-6::after {
   transform: translate(-50%, -50%);
 }
 
-/* The reason box is optional, and at h-40 plus the modal's own top margin it
-   pushed the actual question and both answers down the screen. Enough room to
-   type a sentence, not enough to dominate a confirmation. */
+/* The reason box at h-40 plus the modal's own top margin pushed the actual
+   question and both answers down the screen. Enough room to type a sentence,
+   not enough to dominate a confirmation. The Hamilton _decline_form override
+   already drops h-40 and the inline 200px; this stays as the backstop that
+   still applies if that overlay ever fails to load. */
 dialog textarea[name='reason'] {
   height: 6.5rem !important;
 }
+
+/* The modal now says what declining actually does, so that sentence is body
+   copy the worker is meant to read, not fine print under the field. */
+.hx-decline-note {
+  margin: 4px 0 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--hx-ink);
+  text-wrap: pretty;
+}
+.hx-decline-label {
+  padding-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--hx-deep);
+}
+
+/* The way back. Backing out used to be a 24px glyph or an invisible backdrop,
+   with no labelled option anywhere; this is quiet but it is a real 44px target
+   that says what it does. Sits BELOW the destructive action deliberately, so
+   the bottom of the modal, where a thumb lands by habit, is the safe one. */
+.hx-decline-back { display: flex; justify-content: center; margin-top: 10px; }
+.hx-decline-back button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--hx-green);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.hx-decline-back button:hover { background: rgba(37, 99, 70, .07); }
 
 /* Disabled primary button: upstream renders the label at 1.47:1, effectively
    invisible, so a blocked signer cannot read what the button says. */

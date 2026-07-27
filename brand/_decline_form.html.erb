@@ -1,0 +1,53 @@
+<%#
+  Hamilton override of submit_form/_decline_form.
+
+  Upstream asks "Notify the sender with the reason you declined", which names a
+  side effect and never states the consequence. Nothing on the screen told a
+  worker that this refuses to sign his employment agreement. The far more common
+  intent behind tapping Decline is "I have a question", and upstream offered no
+  way to act on that: the only exits were a 24px glyph and an invisible backdrop.
+
+  So this partial states what declining does, says plainly that it is not a
+  pause, points a worker with a question at Alex, and adds a labelled way back.
+
+  Deliberately NOT discouraging. A worker is entitled to decline, and copy that
+  pressured him out of it would be worse than the vague copy it replaced. Every
+  sentence here is a fact about what the button does.
+
+  Localised through I18n.locale rather than hardcoded, because ?lang=es must not
+  land a Spanish signer on an English modal. Upstream's t(:decline) is reused for
+  the header triggers, the modal title AND this button, so it cannot be
+  redefined; these strings are local to the partial instead.
+
+  Ruby stays on its own <% %> lines: a multi-line ternary inside <%= %> is a
+  syntax error and takes the whole page to a 500.
+%>
+<%
+  es = I18n.locale.to_s.downcase.start_with?('es')
+
+  consequence = if es
+    'Rechazar le avisa a Hamilton que no vas a firmar este documento. No lo pausa ni lo guarda para después. Si solo tienes una pregunta, cierra esta ventana y llama o escríbele a Alex. Tu enlace sigue funcionando.'
+  else
+    'Declining tells Hamilton you will not sign this document. It does not pause it or save it for later. If you only have a question, close this box and call or message Alex. Your link keeps working.'
+  end
+
+  reason_label = es ? 'Motivo (obligatorio)' : 'Reason (required)'
+  reason_hint  = es ? 'Dile a Alex por qué no vas a firmar' : 'Tell Alex why you are not signing this'
+  decline_cta  = es ? 'Rechazar la firma' : 'Decline to sign'
+  back_cta     = es ? 'Volver a firmar' : 'Go back to signing'
+%>
+<p class="hx-decline-note"><%= consequence %></p>
+<%= form_for '', url: submit_form_decline_index_path(submitter.slug), method: :post do |f| %>
+  <div class="form-control mt-4">
+    <label class="label justify-start hx-decline-label" for="reason"><%= reason_label %></label>
+    <%= f.text_area :reason, required: true, class: 'base-input w-full py-2', dir: 'auto', placeholder: reason_hint, rows: '4' %>
+  </div>
+  <toggle-submit dir="auto" class="form-control mt-4">
+    <%= f.button button_title(title: decline_cta), class: 'base-button' %>
+  </toggle-submit>
+<% end %>
+<%# Nested forms are invalid, so the way back lives outside the decline form.
+    method="dialog" closes the modal with no request, same as the × glyph. %>
+<form method="dialog" class="hx-decline-back">
+  <button type="submit"><%= back_cta %></button>
+</form>

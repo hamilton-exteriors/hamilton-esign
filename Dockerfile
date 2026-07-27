@@ -27,6 +27,12 @@ COPY brand/fonts/                  /app/public/fonts/
 # shared/_title hardcodes the literal "DocuSeal", surviving the PRODUCT_NAME rewrite.
 COPY brand/_title.html.erb         /app/app/views/shared/_title.html.erb
 
+# Decline modal. Upstream's copy ("Notify the sender with the reason you
+# declined") names a side effect and never says that this refuses to sign, and
+# the only ways out were a 24px glyph and an invisible backdrop. The override
+# states the consequence, in the signer's language, and adds a labelled way back.
+COPY brand/_decline_form.html.erb  /app/app/views/submit_form/_decline_form.html.erb
+
 # Root page: upstream is a DocuSeal product page under Hamilton's logo.
 COPY brand/_landing.html.erb       /app/app/views/pages/landing.html.erb
 
