@@ -135,9 +135,72 @@ export async function sendWhatsApp(to, body, rwPath) {
   return { status: r.status, body: (await r.text()).slice(0, 200) };
 }
 
+/** Push the signed PDF itself back to the worker over WhatsApp.
+ *
+ * Labor Code §432 entitles an employee to a copy of anything they sign, and
+ * the wage notice itself carries a field reading "Copy given to Employee on".
+ * DocuSeal's own download link expires 30 minutes after signing and is never
+ * emailed anywhere, since no worker email is collected — so without this the
+ * worker who just signed his employment agreement walks away with nothing.
+ *
+ * Gated on the SUBMISSION being completed, not just the worker's own part: on
+ * a two-party document the PDF only carries both signatures once Hamilton has
+ * countersigned, and sending an incomplete PDF as "here is your signed copy"
+ * would be worse than sending nothing. */
+export async function deliverSignedCopy(submissionId, worker, rwPath) {
+  const sub = await (await api(`/api/submissions/${submissionId}`)).json();
+  const subs = sub.submitters || [];
+  const pending = subs.filter(s => !s.completed_at);
+  if (pending.length) {
+    return { sent: false, reason: `not fully signed yet: waiting on ${pending.map(s => s.name).join(', ')}` };
+  }
+  const docs = await (await api(`/api/submissions/${submissionId}/documents`)).json();
+  if (!docs.documents?.length) return { sent: false, reason: 'no documents on this submission' };
+
+  const lang = LANGS[worker.language] || 'en';
+  const date = (sub.completed_at || '').slice(0, 10) || 'signed';
+  const results = [];
+  for (const doc of docs.documents) {
+    const filename = `${sub.template?.name || doc.name} - ${worker.name} - ${date}.pdf`.replace(/[\\/:*?"<>|]/g, '');
+    const caption = lang === 'es'
+      ? 'Aquí está tu copia firmada, para tus archivos.'
+      : "Here's your signed copy, for your records.";
+    const res = await sendDocument(worker.phone, doc.url, filename, caption, rwPath);
+    results.push({ filename, status: res.status, ok: res.status === 200 });
+  }
+  return { sent: results.every(r => r.ok), results };
+}
+
+async function sendDocument(to, link, filename, caption, rwPath) {
+  const V = JSON.parse(readFileSync(rwPath, 'utf8'));
+  const r = await fetch(`https://${V.RAILWAY_PUBLIC_DOMAIN}/internal/whatsapp/send-document`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${V.PLATFORM_INTERNAL_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to, link, filename, caption }),
+  });
+  return { status: r.status, body: (await r.text()).slice(0, 200) };
+}
+
 // --- CLI ---------------------------------------------------------------------
-// node send-signing-link.mjs "<template name>" <name> <phone> <en|es> [--send <rw.json>]
-if (process.argv[2]) {
+if (process.argv[2] === 'countersign') {
+  // node send-signing-link.mjs countersign <submissionId> [--send <rw.json>]
+  const submissionId = process.argv[3];
+  const sendIdx = process.argv.indexOf('--send');
+  const c = await countersignLink(submissionId);
+  if (!c.ready) { console.log(`not ready: ${c.reason}`); process.exit(0); }
+  console.log(`countersign link: ${c.link}`);
+  if (sendIdx > 0) {
+    const to = process.argv[4];
+    const res = await sendWhatsApp(to, `Signed and ready for your countersignature: ${c.link}`, process.argv[sendIdx + 1]);
+    console.log(`sent to Alex -> HTTP ${res.status}`);
+  }
+} else if (process.argv[2] === 'deliver') {
+  // node send-signing-link.mjs deliver <submissionId> <name> <phone> <en|es> <rw.json>
+  const [, , , submissionId, name, phone, language, rwPath] = process.argv;
+  const r = await deliverSignedCopy(submissionId, { name, phone, language }, rwPath);
+  console.log(r.sent ? `delivered: ${r.results.map(x => x.filename).join(', ')}` : `not sent: ${r.reason || JSON.stringify(r.results)}`);
+} else if (process.argv[2]) {
+  // node send-signing-link.mjs "<template name>" <name> <phone> <en|es> [--send <rw.json>]
   const [, , tplName, name, phone, language] = process.argv;
   const sendIdx = process.argv.indexOf('--send');
   const worker = { name, phone, language: language || 'en' };
@@ -146,7 +209,7 @@ if (process.argv[2]) {
   console.log(`template : ${req.template}`);
   console.log(`lang     : ${req.lang}`);
   console.log(`worker   : ${req.worker}`);
-  if (req.hamilton) console.log(`hamilton : ${req.hamilton}`);
+  console.log(`submission: ${req.submissionId}`);
   console.log(`\nmessage to ${phone}:\n${msg}\n`);
   if (sendIdx > 0) {
     const res = await sendWhatsApp(phone, msg, process.argv[sendIdx + 1]);

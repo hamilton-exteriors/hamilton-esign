@@ -72,3 +72,18 @@ Spanish document wrapped in an English interface. On a Labor Code 2810.5 notice
 that defeats the point of producing the Spanish version. The parameter is
 `lang`, not `locale`, and the account locale setting does not affect the signer
 page. The countersigner link stays English regardless of the worker's language.
+
+## Delivering the signed copy back to the worker
+
+Labor Code 432 entitles an employee to a copy of anything they sign, and
+DocuSeal never emails one (no worker email is collected) and its own download
+link expires 30 minutes after signing. `deliverSignedCopy()` pushes the PDF
+back over WhatsApp instead, via `/internal/whatsapp/send-document`.
+
+Gated on the whole SUBMISSION being completed, not just the worker's part —
+on a two-party document the PDF only carries both signatures once Hamilton has
+countersigned, and a "here is your signed copy" message attached to an
+incomplete PDF would be worse than no message.
+
+    node pipeline/send-signing-link.mjs countersign <submissionId> [--send <rw.json> <alex-phone>]
+    node pipeline/send-signing-link.mjs deliver <submissionId> "<worker name>" <phone> <en|es> <rw.json>
