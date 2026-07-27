@@ -27,3 +27,36 @@ Palette matches `hamilton-exteriors.com` (`src/styles/global.css`): primary
     docker build -t hamilton-esign .
 
 Deployed on Railway (project `backoffice`, service `docuseal`).
+
+## Document pipeline (`pipeline/`)
+
+Markdown source of truth lives in
+`~/.claude/skills/onboard-worker/references/documents/`. Nothing is authored in
+DocuSeal's builder — edit the markdown and re-run.
+
+    node pipeline/build-docs.mjs        # md -> print HTML, blanks -> measurable spans
+    node pipeline/measure.mjs           # paginate, type + own each field, emit PDF + coords
+    node pipeline/build-templates.mjs   # create DocuSeal templates via the admin endpoints
+    node pipeline/file-to-drive.mjs sweep   # file completed submissions into Drive
+
+Why coordinates instead of DocuSeal's `{{field}}` text tags: tag auto-detection is
+not available on free self-hosted (an uploaded PDF containing tags yields
+`fields: null`). Fields are measured in a real browser at Letter @96dpi and
+normalised, so they land exactly on the printed rules.
+
+**Field ownership** is derived from the markdown: `**Employee**` opens the
+worker's block, a standalone `ABR Quality Resources...` heading opens Hamilton's
+countersignature block. Documents become two-party submissions.
+
+**Drive routing is a legal requirement.** I-9 and anything medical must sit in
+physically separate files from the personnel file:
+
+    Hamilton Employee Records/
+      Employees/<Name>/{Personnel,I-9,Medical}/
+      Safety/{Programs,Training Rosters/<Name>}/
+
+The sweep is idempotent by filename, so a re-run or duplicate event never
+produces a second copy of a signed employment record.
+
+Credentials are read from `~/.claude/.hamilton-secrets/docuseal.json` and the
+Workspace service account; none are stored in this repo.
