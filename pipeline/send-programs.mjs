@@ -19,6 +19,7 @@
 // plan at the worksite, so sending each worker his own copy is the substance of
 // the requirement, not paperwork about it.
 import { readFileSync } from 'node:fs';
+import { loadRw, safeName, driveQuote } from './safe.mjs';
 
 const SEC = JSON.parse(readFileSync('C:/Users/admin/.claude/.hamilton-secrets/docuseal.json', 'utf8'));
 const api = (p) => fetch(`${SEC.url}${p}`, { headers: { 'X-Auth-Token': SEC.apiKey } }).then(r => r.json());
@@ -74,7 +75,7 @@ export async function sendPrograms(worker, rwPath) {
       `${unsigned.map(u => u.title).join('; ')}. An unsigned, undated program reads to an ` +
       `inspector as no program, so a worker must not initial receipt of it.` };
   }
-  const rw = JSON.parse(readFileSync(rwPath, 'utf8'));
+  const rw = loadRw(rwPath);
   const intro = lang === 'es'
     ? 'Aquí están los programas de seguridad de Hamilton. Guárdalos en tu teléfono.'
     : "Here are Hamilton's safety programs. Keep these on your phone.";

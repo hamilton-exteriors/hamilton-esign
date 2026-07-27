@@ -4,6 +4,7 @@
 // medical fact must live in physically separate files from the personnel file.
 // Mixing them is its own violation, independent of what the documents say.
 import { readFileSync } from 'node:fs';
+import { loadRw, safeName, driveQuote } from './safe.mjs';
 import { createRequire } from 'node:module';
 const require = createRequire('C:/Users/admin/AppData/Roaming/npm/node_modules/');
 const { google } = require('googleapis');
@@ -36,7 +37,7 @@ async function drive() {
   return google.drive({ version: 'v3', auth });
 }
 
-const esc = (s) => s.replace(/'/g, "\\'");
+const esc = driveQuote;
 
 async function folder(d, name, parentId) {
   const q = [`name='${esc(name)}'`, "mimeType='application/vnd.google-apps.folder'",
@@ -77,12 +78,12 @@ export async function fileSubmission(submissionId) {
   const bucket = bucketFor(tplName);
   // the signer, not the countersigner, names the file
   const signer = (sub.submitters || []).find(s => /worker|employee/i.test(s.role || '')) || (sub.submitters || [])[0];
-  const person = (signer?.name || 'Unassigned').replace(/[\\/:*?"<>|]/g, '').trim();
+  const person = safeName(signer?.name, 'Unassigned');
 
   const out = [];
   for (const doc of docs.documents || []) {
     const parent = await destination(d, bucket, person);
-    const filename = `${tplName} - ${person} - ${(sub.completed_at || '').slice(0, 10) || 'draft'}.pdf`;
+    const filename = `${safeName(tplName, 'Document')} - ${person} - ${(sub.completed_at || '').slice(0, 10) || 'draft'}.pdf`;
     // Idempotency: a re-run or a duplicate webhook must not create a second copy
     // of a signed employment record.
     const dupe = await d.files.list({

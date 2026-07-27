@@ -134,6 +134,13 @@ export async function advance(state, rwPath, { dryRun = true } = {}) {
   const docs = HIRE_PACKET[lang];
   const t = copy[lang];
   const last = state.sent[state.sent.length - 1];
+  // Unhardened this threw "Cannot read properties of undefined (reading
+  // 'submissionId')" on a packet with nothing sent yet, which reads like a code
+  // bug rather than the ordinary state it is.
+  if (!last) {
+    return { action: 'nothing-sent', state,
+      reason: 'no documents have been sent to this worker yet; run start first' };
+  }
 
   if (!await workerDone(last.submissionId)) {
     return { action: 'wait', on: `${last.i} of ${docs.length}: ${last.title}` };

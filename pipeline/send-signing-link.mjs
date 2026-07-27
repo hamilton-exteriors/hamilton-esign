@@ -11,6 +11,7 @@
 // 2. Hired workers are contacted on WhatsApp, never Indeed, and the copy is
 //    written as Alex in the first person with no sign-off.
 import { readFileSync } from 'node:fs';
+import { loadRw, safeName, getJson } from './safe.mjs';
 
 const SEC = JSON.parse(readFileSync('C:/Users/admin/.claude/.hamilton-secrets/docuseal.json', 'utf8'));
 
@@ -186,7 +187,11 @@ export async function createSigningRequest(templateName, worker) {
 /** Release the countersign link, but only once the worker has genuinely
  *  completed. Returns null (and says why) if they have not. */
 export async function countersignLink(submissionId) {
-  const sub = await (await api(`/api/submissions/${submissionId}`)).json();
+  // getJson, not a bare fetch: a nonexistent id used to fall through to
+  // "this document has no countersigner", which is a wrong ANSWER rather than an
+  // error and could let someone conclude a document needs no countersignature.
+  const sub = await getJson(`${SEC.url}/api/submissions/${submissionId}`,
+    { 'X-Auth-Token': SEC.apiKey }, `submission ${submissionId}`);
   const subs = sub.submitters || [];
   const w = subs.find(s => /worker/i.test(s.role || ''));
   const h = subs.find(s => /hamilton/i.test(s.role || ''));
@@ -206,7 +211,7 @@ export function message(worker, link, docTitle) {
 }
 
 export async function sendWhatsApp(to, body, rwPath) {
-  const V = JSON.parse(readFileSync(rwPath, 'utf8'));
+  const V = loadRw(rwPath);
   const r = await fetch(`https://${V.RAILWAY_PUBLIC_DOMAIN}/internal/whatsapp/send-text`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${V.PLATFORM_INTERNAL_TOKEN}`, 'Content-Type': 'application/json' },
@@ -228,8 +233,12 @@ export async function sendWhatsApp(to, body, rwPath) {
  * countersigned, and sending an incomplete PDF as "here is your signed copy"
  * would be worse than sending nothing. */
 export async function deliverSignedCopy(submissionId, worker, rwPath) {
-  const sub = await (await api(`/api/submissions/${submissionId}`)).json();
+  const sub = await getJson(`${SEC.url}/api/submissions/${submissionId}`,
+    { 'X-Auth-Token': SEC.apiKey }, `submission ${submissionId}`);
   const subs = sub.submitters || [];
+  // "no submitters" and "not fully signed" are different facts; a submission
+  // with none is a broken record, not a document waiting on someone.
+  if (!subs.length) return { sent: false, reason: `submission ${submissionId} has no submitters` };
   const pending = subs.filter(s => !s.completed_at);
   if (pending.length) {
     return { sent: false, reason: `not fully signed yet: waiting on ${pending.map(s => s.name).join(', ')}` };
@@ -241,7 +250,9 @@ export async function deliverSignedCopy(submissionId, worker, rwPath) {
   const date = (sub.completed_at || '').slice(0, 10) || 'signed';
   const results = [];
   for (const doc of docs.documents) {
-    const filename = `${sub.template?.name || doc.name} - ${worker.name} - ${date}.pdf`.replace(/[\\/:*?"<>|]/g, '');
+    // safeName, not the raw name: "Ana Maria / Marie" produced a broken filename
+    // and "///" produced an empty one.
+    const filename = `${safeName(sub.template?.name || doc.name, 'Document')} - ${safeName(worker.name)} - ${date}.pdf`;
     const caption = lang === 'es'
       ? 'Aquí está tu copia firmada, para tus archivos.'
       : "Here's your signed copy, for your records.";
@@ -252,7 +263,7 @@ export async function deliverSignedCopy(submissionId, worker, rwPath) {
 }
 
 async function sendDocument(to, link, filename, caption, rwPath) {
-  const V = JSON.parse(readFileSync(rwPath, 'utf8'));
+  const V = loadRw(rwPath);
   const r = await fetch(`https://${V.RAILWAY_PUBLIC_DOMAIN}/internal/whatsapp/send-document`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${V.PLATFORM_INTERNAL_TOKEN}`, 'Content-Type': 'application/json' },

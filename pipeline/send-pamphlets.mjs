@@ -13,6 +13,7 @@
 // CRD) on 2026-07-27. Do not add an entry without checking it the same way —
 // a dead link in this list recreates the exact problem it was written to fix.
 import { readFileSync } from 'node:fs';
+import { loadRw, safeName, driveQuote } from './safe.mjs';
 
 /** Acknowledgment Section A rows 3-10, in the order they appear on the sheet. */
 export const PAMPHLETS = {
@@ -40,7 +41,7 @@ export const PAMPHLETS = {
   ],
 };
 
-const wa = (rwPath) => JSON.parse(readFileSync(rwPath, 'utf8'));
+const wa = (rwPath) => loadRw(rwPath);
 
 async function post(rw, path, body) {
   const r = await fetch(`https://${rw.RAILWAY_PUBLIC_DOMAIN}/internal/whatsapp/${path}`, {
