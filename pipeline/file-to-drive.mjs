@@ -110,7 +110,12 @@ export async function fileSubmission(submissionId) {
 export async function sweep() {
   const hdr = { 'X-Auth-Token': SEC.apiKey };
   const list = await (await fetch(`${SEC.url}/api/submissions?limit=100`, { headers: hdr })).json();
-  const done = (list.data || []).filter(s => s.completed_at || s.status === 'completed');
+  // DELETE on a submission ARCHIVES it — archived rows keep status "completed"
+  // and still come back from the list endpoint, so without this filter deleted
+  // test data gets re-filed into the employee records on the next sweep.
+  const done = (list.data || [])
+    .filter(s => !s.archived_at)
+    .filter(s => s.completed_at || s.status === 'completed');
   const results = [];
   for (const s of done) {
     try { results.push(...await fileSubmission(s.id)); }
