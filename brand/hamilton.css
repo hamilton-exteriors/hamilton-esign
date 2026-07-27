@@ -199,6 +199,27 @@ nav[aria-label='Form progress'] button {
   border: 0 !important; border-radius: 999px;
 }
 
+/* ------------------------------------------------- completion attribution --
+   The JS bundle renders its own "Powered by DocuSeal - open source documents
+   software" link to docuseal.com on the screen the signer lands on right after
+   completing. That is a competitor link on Hamilton's completion page, and it
+   is separate from the AGPL notice in our footer, which already credits
+   DocuSeal and offers the source. Hide the duplicate, keep the obligation. */
+a[href^="https://www.docuseal.com"],
+a[href^="https://docuseal.com"] {
+  display: none !important;
+}
+a[href*="github.com/docusealco"] { display: inline !important; }
+
+/* Disabled primary button: upstream renders the label at 1.47:1, effectively
+   invisible, so a blocked signer cannot read what the button says. */
+.btn:disabled, .btn[disabled], button:disabled {
+  background-color: rgb(214, 210, 202) !important;
+  color: rgb(74, 74, 76) !important;      /* 4.9:1 on the disabled fill */
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+
 /* ---------------------------------------------------------------- footer -- */
 .hx-footer {
   text-align: center; padding: 20px 16px 28px;

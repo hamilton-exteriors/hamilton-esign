@@ -9,16 +9,20 @@ const URL_ = SEC.url;
 // Per-hire docs are signed by the worker; company programs are signed once by the employer.
 const COMPANY = new Set(['iipp', 'heat-illness-prevention-plan', 'heat-illness-prevention-plan-es',
   'fall-protection-program', 'code-of-safe-practices']);
+// The title is the signer's page heading and browser tab, so it must match the
+// heading printed on the document itself — a worker should not be told he is
+// opening one thing and then shown another. Accents are part of the name;
+// stripping them to stay ASCII is not a simplification, it is a misspelling.
 const TITLES = {
   'employment-agreement': 'Employment Agreement (At-Will)',
-  'employment-agreement-es': 'Contrato de Empleo (Voluntad de las Partes)',
+  'employment-agreement-es': 'Contrato de Empleo (Empleo a Voluntad)',
   'wage-notice-2810-5': 'Wage Notice - Labor Code 2810.5',
-  'wage-notice-2810-5-es': 'Aviso de Salario - Codigo Laboral 2810.5',
+  'wage-notice-2810-5-es': 'Aviso de Salario - Código Laboral 2810.5',
   'policy-acknowledgment': 'New Hire Policy Acknowledgment',
   'safety-training-roster': 'Safety Training Roster',
   'iipp': 'Injury and Illness Prevention Program (IIPP)',
   'heat-illness-prevention-plan': 'Heat Illness Prevention Plan',
-  'heat-illness-prevention-plan-es': 'Plan de Prevencion de Enfermedades por Calor',
+  'heat-illness-prevention-plan-es': 'Plan de Prevención de Enfermedades por Calor',
   'fall-protection-program': 'Fall Protection Program',
   'code-of-safe-practices': 'Code of Safe Practices',
 };

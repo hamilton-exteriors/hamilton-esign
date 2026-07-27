@@ -26,8 +26,8 @@ export const HIRE_PACKET = {
     { key: 'safety-roster',  title: 'Safety Training Roster' },
   ],
   es: [
-    { key: 'agreement',   title: 'Contrato de Empleo (Voluntad de las Partes)' },
-    { key: 'wage-notice', title: 'Aviso de Salario - Codigo Laboral 2810.5' },
+    { key: 'agreement',   title: 'Contrato de Empleo (Empleo a Voluntad)' },
+    { key: 'wage-notice', title: 'Aviso de Salario - Código Laboral 2810.5' },
     // No Spanish version of the acknowledgment or the roster exists yet. They
     // are deliberately ABSENT here rather than falling back to English: the
     // acknowledgment makes the worker initial 14 separate receipts and attest
@@ -86,13 +86,41 @@ export async function createSigningRequest(templateName, worker) {
   const w = arr.find(s => /worker/i.test(s.role || '')) || arr[0];
   const h = arr.find(s => /hamilton/i.test(s.role || ''));
   // The countersigner is Alex; his link stays English even on a Spanish document.
-  return { template: tpl.name, worker: url(w, lang), hamilton: h ? url(h, 'en') : null, lang };
+  //
+  // The Hamilton link is deliberately NOT returned here. DocuSeal does not gate
+  // page access on signing order — with the worker's part untouched, the
+  // countersigner URL renders a fully live, signable form, so Hamilton could
+  // execute an employment agreement the employee has not signed. The account
+  // toggle that would enforce this (`enforce_signing_order`) does not persist
+  // on this edition. Order is therefore enforced by delivery: nobody holds the
+  // countersign URL until the worker is actually done. Slugs are random, so an
+  // undelivered link is not reachable by guessing.
+  return {
+    template: tpl.name, worker: url(w, lang), lang,
+    submissionId: w.submission_id,
+    hamiltonSubmitterId: h ? h.id : null,
+    hamilton: null,
+  };
+}
+
+/** Release the countersign link, but only once the worker has genuinely
+ *  completed. Returns null (and says why) if they have not. */
+export async function countersignLink(submissionId) {
+  const sub = await (await api(`/api/submissions/${submissionId}`)).json();
+  const subs = sub.submitters || [];
+  const w = subs.find(s => /worker/i.test(s.role || ''));
+  const h = subs.find(s => /hamilton/i.test(s.role || ''));
+  if (!h) return { ready: false, reason: 'this document has no countersigner' };
+  if (w && !w.completed_at) {
+    return { ready: false, reason: `worker "${w.name}" has not signed yet`, link: null };
+  }
+  return { ready: true, link: `${SEC.url}/s/${h.slug}?lang=en` };
 }
 
 /** Alex, first person, no sign-off, directive tied to a consequence. */
 export function message(worker, link, docTitle) {
   if ((worker.language || 'en') === 'es') {
-    return `Aqui esta tu ${docTitle} para firmar: ${link}\n\nNecesito que lo firmes hoy.`;
+    return `Aquí está tu ${docTitle} para firmar: ${link}\n\nNecesito que lo firmes hoy.`;
   }
   return `Here is your ${docTitle} to sign: ${link}\n\nI need this signed today.`;
 }
