@@ -87,3 +87,24 @@ incomplete PDF would be worse than no message.
 
     node pipeline/send-signing-link.mjs countersign <submissionId> [--send <rw.json> <alex-phone>]
     node pipeline/send-signing-link.mjs deliver <submissionId> "<worker name>" <phone> <en|es> <rw.json>
+
+## California new-hire pamphlets — send these BEFORE the acknowledgment
+
+Section A of the policy acknowledgment has the worker initial that he received
+eight specific state notices. The e-sign flow never sent them, so every one of
+those initials attested to something that had not happened. Same defect class as
+an acknowledgment referencing an IIPP that did not exist.
+
+    node pipeline/send-pamphlets.mjs verify <en|es>              # check all 8 links
+    node pipeline/send-pamphlets.mjs send <phone> <en|es> <rw.json>
+
+Then pass `pamphletsSent: true` to `createSigningRequest`. Without it the sender
+refuses to issue the acknowledgment in either language.
+
+Every URL is fetched and confirmed `200 application/pdf` from the issuing agency
+before anything is sent, and `sendPamphlets` aborts the whole batch if any link
+is dead — a 404 here would recreate the false record the module exists to
+prevent. Sources: DIR/DWC (Time of Hire, DWC 9783), EDD (DE 2320/2515/2511),
+DLSE (paid sick leave, domestic-violence notice), CRD (sexual harassment).
+DWC 9783 is published in English only and is sent as-is to Spanish speakers,
+since the predesignation form must be offered either way.
