@@ -69,7 +69,13 @@ td{padding:7px 5px;border-bottom:1px solid #e2e2e2;vertical-align:top}
 .ds-sig{min-width:230px;height:56px}
 .ds-ini{min-width:64px;height:44px}
 .ds-date{min-width:130px;height:44px}
-td .ds-ini{min-width:56px}
+/* 150px is right for a blank in prose and far too wide for a table cell — the
+   4-column task table put an initials box 5% past the right edge of the page,
+   where DocuSeal would clip or mis-place it. Table cells get their own floor. */
+td .ds, th .ds{min-width:40px;max-width:100%}
+td .ds-ini{min-width:40px}
+td .ds-date{min-width:70px}
+td .ds-sig{min-width:90px}
 `;
 
 // ---- field extraction -------------------------------------------------------
@@ -211,6 +217,11 @@ export function buildOne(slug) {
   return { slug, fields };
 }
 
+// measure.mjs imports PAGE from this file. Without an entry-point guard that
+// import would re-run the whole document build as a side effect.
+const IS_MAIN = !!process.argv[1] &&
+  import.meta.url === new URL(`file:///${process.argv[1].replace(/\\/g, '/')}`).href;
+
 const DOCS = process.argv.slice(2).length ? process.argv.slice(2) : [
   'employment-agreement', 'employment-agreement-es',
   'wage-notice-2810-5', 'wage-notice-2810-5-es',
@@ -220,9 +231,11 @@ const DOCS = process.argv.slice(2).length ? process.argv.slice(2) : [
   'fall-protection-program', 'code-of-safe-practices',
 ];
 
+if (IS_MAIN) {
 const manifest = DOCS.map(buildOne);
 writeFileSync(`${OUT}/manifest.json`, JSON.stringify(manifest, null, 2));
 for (const m of manifest) {
   const byType = m.fields.reduce((a, f) => (a[f.type] = (a[f.type] || 0) + 1, a), {});
   console.log(`${m.slug.padEnd(34)} fields=${String(m.fields.length).padStart(3)}  ${JSON.stringify(byType)}`);
+}
 }

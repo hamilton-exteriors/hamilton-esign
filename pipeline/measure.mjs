@@ -5,7 +5,14 @@ import pw from 'file:///C:/Users/admin/AppData/Roaming/npm/node_modules/playwrig
 const { chromium } = pw;
 
 const DIR = 'C:/Users/admin/AppData/Local/Temp/claude/C--Users-admin/d1994a65-4339-4973-8fe3-b31c96359079/scratchpad/build';
-const PAGE = { w: 816, h: 1056, mt: 120, mb: 96, ml: 144, mr: 120 };
+// IMPORTED, never redeclared. This file previously carried its own copy of the
+// Letter geometry, so changing PAGE in build-docs.mjs silently did nothing: the
+// HTML was laid out at phone size while the viewport, the coordinate
+// normalisation denominator and page.pdf() all still used 816x1056. The result
+// was phone-sized content crammed into the top-left ~45% x 65% of a Letter
+// canvas, and every "we fixed legibility" claim was false at the last mile.
+// Two constants for one fact is the bug; there is now one.
+import { PAGE } from './build-docs.mjs';
 const manifest = JSON.parse(readFileSync(`${DIR}/manifest.json`, 'utf8'));
 
 // Injected: flow content into fixed pages, refine types, measure.
