@@ -61,6 +61,7 @@
   --hx-line:   rgb(196, 191, 182);
   --hx-ink:    rgb(26, 26, 26);
   --hx-muted:  rgb(90, 90, 92);   /* 4.7:1 on cream — passes for body text */
+  --hx-danger: rgb(153, 27, 27);  /* 6.4:1 on cream — declining, and nothing else */
   --hx-ease:   cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -233,20 +234,63 @@ a[href^="https://docuseal.com"] {
 }
 .hx-footer a[href*="github.com/docusealco"] { display: inline !important; }
 
-/* The decline confirm rendered in the SAME filled deep green as NEXT, in a
-   modal with no cancel, under a thumb that has just tapped NEXT repeatedly.
-   Destructive actions must not wear the primary skin. */
+/* --------------------------------------------------------------- decline --
+   Destructive actions must not wear the primary skin.
+
+   The previous rule here targeted `dialog .btn` and never matched: the confirm
+   is `<button class="base-button">`, not `.btn`. Measured live, it was still
+   rendering background rgb(13,43,29) with white 600-weight text — byte
+   identical to the primary NEXT button, which sits on screen at the same time
+   about 40px below it, same full width, same radius. A thumb in NEXT-tapping
+   rhythm refuses the worker's own employment agreement, and declining is not
+   undoable from his side.
+
+   Scoped through the decline form's own action rather than the dialog, so a
+   future upstream modal with a legitimate primary action is unaffected. No
+   :has() — an old Android WebView must still get this right. */
+dialog form[action$='/decline'] .base-button,
+dialog form[action$='/decline'] button[type='submit'],
 dialog .btn:not([disabled]),
 [role='dialog'] .btn:not([disabled]) {
   background: transparent !important;
-  color: rgb(153, 27, 27) !important;      /* 6.4:1 on cream */
-  border: 1px solid rgb(153, 27, 27) !important;
+  background-color: transparent !important;
+  color: var(--hx-danger) !important;
+  border: 1px solid var(--hx-danger) !important;
   box-shadow: none !important;
   min-height: 44px;
+  font-weight: 600 !important;
 }
+dialog form[action$='/decline'] .base-button:hover,
+dialog form[action$='/decline'] button[type='submit']:hover,
 dialog .btn:not([disabled]):hover,
 [role='dialog'] .btn:not([disabled]):hover {
-  background: rgba(153, 27, 27, .07) !important;
+  background-color: rgba(153, 27, 27, .07) !important;
+}
+
+/* Backing out is the safe choice here, and it was the smallest target on the
+   screen: a 22x22 glyph, under even the 24x24 floor, while the irreversible
+   action was full width. Grow the hit area with a pseudo-element so the glyph
+   stays where the eye expects it and nothing in the modal header reflows.
+
+   Targeted by the glyph's own w-6/h-6 classes, NOT by `form[method='dialog']
+   button`: daisyUI's modal backdrop is also a button inside a dialog-method
+   form, and forcing position:relative on a full-screen backdrop collapses it. */
+dialog button.w-6.h-6 {
+  position: relative;
+}
+dialog button.w-6.h-6::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+/* The reason box is optional, and at h-40 plus the modal's own top margin it
+   pushed the actual question and both answers down the screen. Enough room to
+   type a sentence, not enough to dominate a confirmation. */
+dialog textarea[name='reason'] {
+  height: 6.5rem !important;
 }
 
 /* Disabled primary button: upstream renders the label at 1.47:1, effectively
@@ -266,19 +310,39 @@ dialog .btn:not([disabled]):hover,
 .hx-footer a { color: var(--hx-green); text-decoration: underline; }
 .hx-footer .hx-entity {
   display: block; font-weight: 600; color: var(--hx-deep);
-  font-size: 12.5px; margin-bottom: 6px;
+  font-size: 13px; margin-bottom: 6px;
 }
-/* The way out of a dead end. Tap target sized for a thumb. */
+/* The way out of a dead end. Tap target sized for a thumb, and set at 14px:
+   this is the one line on the page a stuck worker has to be able to read, so it
+   does not get fine-print treatment. */
 .hx-footer .hx-help {
-  display: block; font-size: 13px; color: var(--hx-ink); margin-bottom: 10px;
+  display: block; font-size: 14px; color: var(--hx-ink); margin-bottom: 10px;
 }
 .hx-footer .hx-phone {
   display: inline-block; min-height: 44px; line-height: 44px;
   padding: 0 4px; font-weight: 600; color: var(--hx-green);
   text-decoration: underline; text-underline-offset: 3px;
 }
-.hx-footer .hx-legal { display: block; font-size: 11.5px; line-height: 1.5; }
+.hx-footer .hx-legal { display: block; font-size: 12px; line-height: 1.55; }
 .hx-footer .hx-or { color: var(--hx-muted); padding: 0 2px; }
+/* The AGPL source link is an obligation, so it stays genuinely tappable rather
+   than being decorative fine print. Inline links in a sentence are exempt from
+   the 44px target rule, but the underline offset keeps them separable. */
+.hx-footer .hx-legal a { text-underline-offset: 3px; }
+
+/* Upstream sizes this 32px, inside the field row a signer is typing in. Growing
+   the box to 40px did reach a comfortable target but left it flush against the
+   input's right edge (measured: both at x=373), spending the 8px gap upstream
+   had. Same treatment as the modal close instead: leave the box alone, extend
+   only the hit area. One technique for "target too small", used twice. */
+.toggle-multiline-text-button { position: relative; }
+.toggle-multiline-text-button::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
