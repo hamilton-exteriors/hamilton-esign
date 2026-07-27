@@ -13,6 +13,10 @@ COPY brand/_powered_by.html.erb    /app/app/views/shared/_powered_by.html.erb
 COPY brand/_docuseal_logo.html.erb    /app/app/views/submit_form/_docuseal_logo.html.erb
 COPY brand/_start_form_logo.html.erb  /app/app/views/start_form/_docuseal_logo.html.erb
 
+# Self-hosted fonts. The upstream CSP (style-src 'self' 'unsafe-inline') blocks
+# fonts.googleapis.com, so an external font stylesheet never loads at all.
+COPY brand/fonts/                  /app/public/fonts/
+
 # Browser tab: title, meta and favicons.
 COPY brand/_head_tags.html.erb     /app/app/views/layouts/_head_tags.html.erb
 COPY brand/_meta.html.erb          /app/app/views/shared/_meta.html.erb
