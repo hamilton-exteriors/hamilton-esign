@@ -121,6 +121,18 @@ export async function createSigningRequest(templateName, worker) {
       `\`node pipeline/send-pamphlets.mjs send <phone> ${lang} <rw.json>\` first, then pass ` +
       `pamphletsSent: true. Signing it beforehand records a delivery that never happened.`);
   }
+  // Section A rows 11-13 attest to receiving the IIPP, the heat plan and the
+  // fall protection rules. Those documents exist but nothing sent them, so those
+  // three initials were false for the same reason rows 3-10 were before the
+  // pamphlet step. The programs must also be SIGNED first: an unsigned, undated
+  // program reads to an inspector as no program.
+  if (REQUIRES_PAMPHLETS.has(templateName) && !worker.programsSent) {
+    throw new Error(
+      `refusing to send "${templateName}": Section A rows 11-13 have the worker initial that he ` +
+      `received Hamilton's IIPP, heat illness plan and fall protection rules. Check ` +
+      `\`node pipeline/send-programs.mjs status ${lang}\` — Alex must sign them, then send them ` +
+      `with \`send-programs.mjs send <phone> ${lang} <rw.json>\` and pass programsSent: true.`);
+  }
   const tpl = await templateByName(templateName);
   const roles = (tpl.submitters || []).map(s => s.name);
 

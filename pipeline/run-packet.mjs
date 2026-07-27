@@ -15,6 +15,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { HIRE_PACKET, createSigningRequest, sendWhatsApp, deliverSignedCopy } from './send-signing-link.mjs';
 import { sendPamphlets } from './send-pamphlets.mjs';
+import { sendPrograms } from './send-programs.mjs';
 
 const SEC = JSON.parse(readFileSync('C:/Users/admin/.claude/.hamilton-secrets/docuseal.json', 'utf8'));
 const api = (p) => fetch(`${SEC.url}${p}`, { headers: { 'X-Auth-Token': SEC.apiKey } }).then(r => r.json());
@@ -68,10 +69,15 @@ export async function startPacket(worker, rwPath, { dryRun = true } = {}) {
     const pam = await sendPamphlets(worker, rwPath);
     if (!pam.sent) return { ...plan, aborted: `pamphlets not sent: ${pam.reason}` };
     plan.pamphlets = pam.count;
+    // Rows 11-13 of the acknowledgment attest to receiving these, so they go out
+    // in the same breath as the pamphlets. Refuses if Alex has not signed them.
+    const prog = await sendPrograms(worker, rwPath);
+    if (!prog.sent) return { ...plan, aborted: `programs not sent: ${prog.reason}` };
+    plan.programs = prog.count;
     await sendWhatsApp(worker.phone, plan.intro, rwPath);
   }
 
-  const first = await createSigningRequest(docs[0].title, { ...worker, pamphletsSent: true });
+  const first = await createSigningRequest(docs[0].title, { ...worker, pamphletsSent: true, programsSent: true });
   plan.sent.push({ i: 1, title: first.template, submissionId: first.submissionId, link: first.worker });
   plan.message = t.doc(1, docs.length, first.template, first.worker);
   if (!dryRun) await sendWhatsApp(worker.phone, plan.message, rwPath);
@@ -108,7 +114,7 @@ export async function advance(state, rwPath, { dryRun = true } = {}) {
     return { action: 'packet-complete', message: msg, state };
   }
 
-  const next = await createSigningRequest(docs[nextIdx].title, { ...worker, pamphletsSent: true });
+  const next = await createSigningRequest(docs[nextIdx].title, { ...worker, pamphletsSent: true, programsSent: true });
   const msg = t.doc(nextIdx + 1, docs.length, next.template, next.worker);
   state.sent.push({ i: nextIdx + 1, title: next.template, submissionId: next.submissionId, link: next.worker });
   if (!dryRun) await sendWhatsApp(worker.phone, msg, rwPath);
