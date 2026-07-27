@@ -20,6 +20,9 @@ COPY brand/fonts/                  /app/public/fonts/
 # Browser tab: title, meta and favicons.
 COPY brand/_head_tags.html.erb     /app/app/views/layouts/_head_tags.html.erb
 COPY brand/_meta.html.erb          /app/app/views/shared/_meta.html.erb
+# /favicon.ico is the path browsers request by DEFAULT (no <link> needed) and
+# cache hardest, so leaving it upstream means the DocuSeal mark keeps showing.
+COPY brand/icons/favicon.ico       /app/public/favicon.ico
 COPY brand/icons/favicon.svg       /app/public/favicon.svg
 COPY brand/icons/favicon-16.png    /app/public/favicon-16x16.png
 COPY brand/icons/favicon-32.png    /app/public/favicon-32x32.png
