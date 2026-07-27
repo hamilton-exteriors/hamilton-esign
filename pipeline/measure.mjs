@@ -77,7 +77,10 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
       const head = table && table.querySelector('thead tr, tr');
       const th = head && head.children[idx];
       const label = norm(th && th.textContent);
-      if (/initial/.test(label)) {
+      // "inicial" too: the Spanish column header is "Iniciales", which does NOT
+      // contain the English string "initial" (no t) — without this every
+      // initials box on the Spanish roster would type as free text.
+      if (/initial|inicial/.test(label)) {
         el.dataset.type = 'initials';
         // Name the initial after WHAT is being acknowledged, not the row number.
         // The signer is attesting to receiving a specific document; a prompt

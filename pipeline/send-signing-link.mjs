@@ -26,21 +26,18 @@ export const HIRE_PACKET = {
     { key: 'safety-roster',  title: 'Safety Training Roster' },
   ],
   es: [
-    { key: 'agreement',   title: 'Contrato de Empleo' },
-    { key: 'wage-notice', title: 'Aviso de Salario - Código Laboral 2810.5' },
-    // No Spanish version of the acknowledgment or the roster exists yet. They
-    // are deliberately ABSENT here rather than falling back to English: the
-    // acknowledgment makes the worker initial 14 separate receipts and attest
-    // that everything was provided in a language he understands, and the roster
-    // carries the CCR 1670 fall-protection certification. Handing either to a
-    // Spanish speaker in English produces a signature asserting the opposite of
-    // what actually happened.
-    // TODO: write policy-acknowledgment-es.md and safety-training-roster-es.md.
+    { key: 'agreement',      title: 'Contrato de Empleo' },
+    { key: 'wage-notice',    title: 'Aviso de Salario - Código Laboral 2810.5' },
+    { key: 'acknowledgment', title: 'Acuse de Recibo de Políticas' },
+    { key: 'safety-roster',  title: 'Registro de Capacitación en Seguridad' },
   ],
 };
 
 /** Templates that exist only in English. Sending one to a non-English speaker
- *  is a refusal, not a silent fallback. */
+ *  is a refusal, not a silent fallback: these documents have the worker attest
+ *  they were provided in a language he understands. The Spanish packet above
+ *  routes to the Spanish templates, so this set only guards against someone
+ *  hand-picking an English title for a Spanish speaker. */
 const ENGLISH_ONLY = new Set([
   'New Hire Policy Acknowledgment',
   'Safety Training Roster',

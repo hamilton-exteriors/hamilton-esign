@@ -68,8 +68,14 @@ function classify(label, seg) {
 function labelFrom(seg) {
   const s = seg.replace(/\s+/g, ' ').trim();
   // "Something:" right before the blank is the strongest signal
-  const colon = s.match(/([A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9'()\/. -]{2,48}?)\s*:\s*$/);
-  if (colon) return colon[1].trim().replace(/^[-–—•\d.]+\s*/, '');
+  const colon = s.match(/([A-Za-z¿ÁÉÍÓÚÜÑáéíóúüñ0-9'()\/. -]{2,48}?)\s*:\s*$/);
+  if (colon) {
+    // The capture can reach back across a sentence boundary and drag the tail
+    // of the preceding sentence in ("...Inc. Section B initials"). The label is
+    // whatever follows the last full stop.
+    const parts = colon[1].trim().split(/(?<=[.!?])\s+/);
+    return parts[parts.length - 1].trim().replace(/^[-–—•\d.]+\s*/, '');
+  }
   // otherwise the trailing few words
   const tail = s.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9'()\/. -]+$/, '').split(' ').slice(-5).join(' ').trim();
   return tail.replace(/^[-–—•\d.]+\s*/, '');
@@ -153,7 +159,8 @@ export function buildOne(slug) {
 const DOCS = process.argv.slice(2).length ? process.argv.slice(2) : [
   'employment-agreement', 'employment-agreement-es',
   'wage-notice-2810-5', 'wage-notice-2810-5-es',
-  'policy-acknowledgment', 'safety-training-roster',
+  'policy-acknowledgment', 'policy-acknowledgment-es',
+  'safety-training-roster', 'safety-training-roster-es',
   'iipp', 'heat-illness-prevention-plan', 'heat-illness-prevention-plan-es',
   'fall-protection-program', 'code-of-safe-practices',
 ];
