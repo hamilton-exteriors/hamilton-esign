@@ -60,3 +60,15 @@ produces a second copy of a signed employment record.
 
 Credentials are read from `~/.claude/.hamilton-secrets/docuseal.json` and the
 Workspace service account; none are stored in this repo.
+
+## Sending a signing link
+
+    node pipeline/send-signing-link.mjs "<template name>" "<worker>" <phone> <en|es>
+    # add --send <path to rw.json> to actually deliver over WhatsApp
+
+**Always append `?lang=`**, which this script does for you. Without it DocuSeal
+guesses from `Accept-Language` and lands on `en-GB`, so a Spanish speaker gets a
+Spanish document wrapped in an English interface. On a Labor Code 2810.5 notice
+that defeats the point of producing the Spanish version. The parameter is
+`lang`, not `locale`, and the account locale setting does not affect the signer
+page. The countersigner link stays English regardless of the worker's language.
