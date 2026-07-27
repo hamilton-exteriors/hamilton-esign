@@ -1,6 +1,10 @@
-/* Hamilton Exteriors signer-page theme.
-   Overrides DocuSeal's daisyUI "docuseal" theme + the signer surfaces only.
-   Palette is taken from hamilton-exteriors.com src/styles/global.css. */
+/* Hamilton Exteriors signer page.
+   Overrides DocuSeal's daisyUI "docuseal" theme and the signer surfaces only.
+   Palette from hamilton-exteriors.com src/styles/global.css.
+
+   Register: product. The signer is mid-task on a phone, arriving from a
+   WhatsApp link. Everything below serves "read it, fill it, sign it" — the
+   chrome gets out of the way rather than performing. */
 
 @font-face {
   font-family: 'Hamilton Display';
@@ -11,73 +15,182 @@
 :root, [data-theme='docuseal'] {
   /* daisyUI tokens: "H S% L%" consumed via hsl(var(--x)) */
   --p:  152 46% 27%;   /* primary  = Hamilton green rgb(37,99,70)  */
-  --pf: 152 54% 20%;   /* primary focus                            */
-  --pc: 0 0% 100%;     /* text on primary                          */
+  --pf: 152 54% 20%;
+  --pc: 0 0% 100%;
   --s:  152 54% 11%;   /* secondary = deep green rgb(13,43,29)     */
   --sf: 152 54% 8%;
   --sc: 0 0% 100%;
   --a:  86 47% 88%;    /* accent   = light green rgb(227,239,211)  */
   --af: 86 40% 80%;
   --ac: 152 54% 11%;
-  --n:  152 54% 11%;   /* neutral: the big CONTINUE button         */
+  --n:  152 54% 11%;   /* neutral: the primary CONTINUE / NEXT button */
   --nf: 152 54% 8%;
   --nc: 0 0% 100%;
   --b1: 40 29% 94%;    /* base = Hamilton cream rgb(244,241,235)   */
   --b2: 39 20% 90%;
   --b3: 39 11% 74%;
-  --bc: 0 0% 10%;      /* base content = charcoal                  */
+  --bc: 0 0% 10%;
   --in: 152 46% 27%;
   --su: 152 46% 27%;
   --er: 0 72% 51%;
   --rounded-btn: 0.5rem;
-  --hamilton-green: rgb(37, 99, 70);
-  --hamilton-deep: rgb(13, 43, 29);
-  --hamilton-cream: rgb(244, 241, 235);
-  --hamilton-line: rgb(196, 191, 182);
+
+  --hx-green:  rgb(37, 99, 70);
+  --hx-deep:   rgb(13, 43, 29);
+  --hx-cream:  rgb(244, 241, 235);
+  --hx-line:   rgb(196, 191, 182);
+  --hx-ink:    rgb(26, 26, 26);
+  --hx-muted:  rgb(90, 90, 92);   /* 4.7:1 on cream — passes for body text */
+  --hx-ease:   cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body {
   font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  background: var(--hamilton-cream);
-  color: rgb(26, 26, 26);
+  background: var(--hx-cream);
+  color: var(--hx-ink);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* --- Header: logo lockup + document title -------------------------------- */
-.hx-header {
-  display: flex; align-items: center; justify-content: center;
-  padding: 18px 16px 14px;
+/* ---------------------------------------------------------------- header --
+   Was ~200px of an 844px phone viewport before any document was visible, with
+   the logo wordmark and the product name saying the same words twice. */
+/* Upstream's header row has no horizontal gutter, so the mark rendered flush
+   against the left edge of the viewport at x=0. */
+.hx-brand { display: inline-flex; align-items: center; padding-inline: 16px; }
+.hx-brand-mark { height: 30px; width: auto; display: block; border-radius: 3px; }
+@media (min-width: 768px) {
+  .hx-brand { padding-inline: 24px; }
+  .hx-brand-mark { height: 40px; }
 }
-.hx-header img { height: 46px; width: auto; display: block; border-radius: 3px; }
 
-h1, .hx-doc-title {
-  font-family: 'Hamilton Display', 'DM Sans', system-ui, sans-serif;
-  letter-spacing: .01em;
-  color: var(--hamilton-deep);
+/* The document title is app chrome, not the document. Display faces belong on
+   the brand mark, not on UI labels — and at 390px the display face truncated
+   the title to "Heat Illness Preve...". */
+h1 {
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 1rem !important;
+  line-height: 1.3 !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  color: var(--hx-deep);
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  text-wrap: balance;
+}
+@media (min-width: 768px) { h1 { font-size: 1.125rem !important; } }
+
+/* --------------------------------------------------------------- actions --
+   Decline and Download were the loudest elements on screen, outranking the one
+   action the signer came to take. Demote both; filled green is reserved for
+   the primary step button. */
+.btn {
+  transition: background-color .18s var(--hx-ease),
+              border-color .18s var(--hx-ease),
+              color .18s var(--hx-ease);
+}
+main .btn:not(.btn-primary):not([class*='w-full']) {
+  background: transparent !important;
+  color: var(--hx-deep) !important;
+  border: 1px solid var(--hx-line) !important;
+  box-shadow: none !important;
+  min-height: 44px;               /* touch target */
+  font-weight: 500;
+}
+main .btn:not(.btn-primary):not([class*='w-full']):hover {
+  background: rgba(37, 99, 70, .07) !important;
+  border-color: var(--hx-green) !important;
 }
 
-/* --- Field markers: DocuSeal ships pink; Hamilton uses a green wash ------- */
+/* Focus has to be visible: someone is tabbing through 63 initials on the
+   safety roster. */
+a:focus-visible, button:focus-visible, input:focus-visible,
+textarea:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--hx-green) !important;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------------------------------------------------------------- fields --
+   DocuSeal ships pink/red field markers, which read as errors. */
 [class*='bg-red-'], .field-area, .submitter-field {
   background-color: rgba(37, 99, 70, .10) !important;
 }
 .field-area:hover, .submitter-field:hover {
   background-color: rgba(37, 99, 70, .18) !important;
 }
-[class*='border-red-'] { border-color: var(--hamilton-green) !important; }
-[class*='text-red-']:not(.hx-error) { color: var(--hamilton-green) !important; }
+[class*='border-red-'] { border-color: var(--hx-green) !important; }
+[class*='text-red-']:not(.hx-error) { color: var(--hx-green) !important; }
 
-/* Active/required outline reads as brand, not alarm */
-.--active, [data-active='true'] { outline-color: var(--hamilton-green) !important; }
-
-/* --- Document surface ---------------------------------------------------- */
-.page-container, .document-page, [class*='shadow'] img {
-  border: 1px solid var(--hamilton-line);
-  border-radius: 4px;
+/* The ACTIVE field is drawn with a red dashed outline, not a border, so the
+   border override above never reached it. A red dashed box on the field a
+   signer is currently filling reads as a validation error on every step. */
+[class*='outline-red'], [class*='outline-dashed'], [class*='border-dashed'] {
+  outline-color: var(--hx-green) !important;
+  border-color: var(--hx-green) !important;
+}
+main [style*='rgb(239, 68, 68)'], main [style*='rgb(220, 38, 38)'] {
+  outline-color: var(--hx-green) !important;
+  border-color: var(--hx-green) !important;
 }
 
-/* --- Footer -------------------------------------------------------------- */
+/* Placeholder was near-invisible gray; it needs the same 4.5:1 as body text. */
+input::placeholder, textarea::placeholder {
+  color: var(--hx-muted) !important;
+  opacity: 1 !important;
+}
+
+/* The field tooltip is dark and sat on top of document text. Keep it, shrink
+   it, so the sentence underneath stays readable. */
+.tooltip, [role='tooltip'], .field-tooltip {
+  font-size: .75rem !important;
+  background: rgba(13, 43, 29, .92) !important;
+  backdrop-filter: blur(2px);
+}
+
+/* -------------------------------------------------------------- document --
+   Page edges were invisible against the cream, so a page ending read as the
+   app being broken rather than as a page ending. */
+.page-container, .document-page {
+  border: 1px solid var(--hx-line);
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(13, 43, 29, .06);
+}
+
+/* --------------------------------------------------------------- stepper --
+   One dot per field is fine at 4 fields. The safety roster has 63 and the
+   acknowledgment 30; the dot row becomes an unreadable smear and pushes the
+   primary button toward the fold. Shrink and scroll it instead. */
+nav[aria-label='Form progress'],
+nav[aria-label='Form progress'] > div {
+  display: flex; flex-wrap: nowrap; gap: 6px;
+  overflow-x: auto; scrollbar-width: none;
+  max-width: 100%; padding: 2px 4px;
+  scroll-snap-type: x proximity;
+}
+nav[aria-label='Form progress']::-webkit-scrollbar { display: none; }
+nav[aria-label='Form progress'] button {
+  flex: 0 0 auto; scroll-snap-align: center;
+  width: 8px !important; height: 8px !important; min-height: 0 !important;
+  padding: 0 !important; border-radius: 999px;
+}
+
+/* ---------------------------------------------------------------- footer -- */
 .hx-footer {
   text-align: center; padding: 20px 16px 28px;
-  font-size: 12px; line-height: 1.5; color: rgb(104, 104, 105);
+  font-size: 12px; line-height: 1.55; color: var(--hx-muted);
 }
-.hx-footer a { color: var(--hamilton-green); text-decoration: underline; }
-.hx-footer .hx-entity { display: block; font-weight: 600; color: var(--hamilton-deep); }
+.hx-footer a { color: var(--hx-green); text-decoration: underline; }
+.hx-footer .hx-entity {
+  display: block; font-weight: 600; color: var(--hx-deep);
+  font-size: 12.5px; margin-bottom: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

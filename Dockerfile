@@ -6,6 +6,9 @@ COPY brand/hamilton.css            /app/app/assets/hamilton.css
 COPY brand/form.html.erb           /app/app/views/layouts/form.html.erb
 COPY brand/_logo.html.erb          /app/app/views/shared/_logo.html.erb
 COPY brand/_powered_by.html.erb    /app/app/views/shared/_powered_by.html.erb
+# Logo lockup: mark only. Upstream renders the mark AND the product name as
+# text, which prints "Hamilton Exteriors" twice at the top of every document.
+COPY brand/_docuseal_logo.html.erb /app/app/views/submit_form/_docuseal_logo.html.erb
 
 # Product name is a Ruby constant upstream, not an env var.
 RUN sed -i "s/PRODUCT_NAME = 'DocuSeal'/PRODUCT_NAME = 'Hamilton Exteriors'/" /app/lib/docuseal.rb \
