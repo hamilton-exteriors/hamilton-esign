@@ -12,7 +12,7 @@
 //   3. wage notice — what he is paid (§2810.5)
 //   4. acknowledgment — what he received
 //   5. safety roster — what he was trained on
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { HIRE_PACKET, createSigningRequest, sendWhatsApp, deliverSignedCopy } from './send-signing-link.mjs';
 import { sendPamphlets } from './send-pamphlets.mjs';
 
@@ -115,13 +115,30 @@ export async function advance(state, rwPath, { dryRun = true } = {}) {
   return { action: 'sent-next', message: msg, state };
 }
 
+// State lives in a file so `advance` can actually resume a packet. The earlier
+// version printed `{lang, sent:[id]}`, which advance() cannot consume — it needs
+// `worker` and `sent[].i/.title` — so sequencing was unreachable even by hand
+// and the intro promised something that never happened.
+const stateFile = (worker) =>
+  `${process.env.TEMP || '/tmp'}/hamilton-packet-${String(worker.phone).replace(/\D/g, '')}.json`;
+
+const saveState = (s) => {
+  const f = stateFile(s.worker);
+  writeFileSync(f, JSON.stringify(s, null, 2));
+  return f;
+};
+
 // --- CLI ---------------------------------------------------------------------
-// node run-packet.mjs plan <name> <phone> <en|es>            (dry run, prints everything)
-// node run-packet.mjs start <name> <phone> <en|es> <rw.json> (really sends)
-const [, , cmd, name, phone, language, rw] = process.argv;
+// node run-packet.mjs plan    <name> <phone> <en|es>              dry run, prints everything
+// node run-packet.mjs start   <name> <phone> <en|es> <rw.json>    really sends doc 1
+// node run-packet.mjs advance <phone> <rw.json>                   send next if current is signed
+// node run-packet.mjs status  <phone>                             where is this worker
+const [, , cmd, a1, a2, a3, a4] = process.argv;
+
 if (cmd === 'plan' || cmd === 'start') {
   const dryRun = cmd === 'plan';
-  const p = await startPacket({ name, phone, language }, rw, { dryRun });
+  const worker = { name: a1, phone: a2, language: a3 };
+  const p = await startPacket(worker, a4, { dryRun });
   if (p.aborted) { console.log('ABORTED: ' + p.aborted); process.exit(1); }
   console.log(`packet: ${p.total} documents, lang=${p.lang}${dryRun ? '  (DRY RUN)' : ''}`);
   console.log(`\nintro:\n${p.intro}`);
@@ -129,5 +146,18 @@ if (cmd === 'plan' || cmd === 'start') {
   console.log(`\nremaining, sent as each is signed:`);
   const of = p.lang === 'es' ? 'de' : 'of';
   HIRE_PACKET[p.lang].slice(1).forEach((d, i) => console.log(`  ${i + 2} ${of} ${p.total}: ${d.title}`));
-  console.log(`\nstate to persist: ${JSON.stringify({ lang: p.lang, sent: p.sent.map(s => s.submissionId) })}`);
+  if (!dryRun) console.log(`\nstate: ${saveState(p)}\nnow poll:  node run-packet.mjs advance ${worker.phone} <rw.json>`);
+} else if (cmd === 'advance' || cmd === 'status') {
+  const f = stateFile({ phone: a1 });
+  if (!existsSync(f)) { console.log(`no packet in progress for ${a1} (${f})`); process.exit(1); }
+  const state = JSON.parse(readFileSync(f, 'utf8'));
+  if (cmd === 'status') {
+    const last = state.sent[state.sent.length - 1];
+    console.log(`${state.worker.name}: ${state.sent.length} of ${state.total} sent, awaiting "${last.title}"`);
+    process.exit(0);
+  }
+  const r = await advance(state, a2, { dryRun: !a2 });
+  console.log(r.action + (r.on ? `: ${r.on}` : ''));
+  if (r.message) console.log(r.message);
+  saveState(state);
 }
