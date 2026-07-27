@@ -278,6 +278,7 @@ dialog .btn:not([disabled]):hover,
   text-decoration: underline; text-underline-offset: 3px;
 }
 .hx-footer .hx-legal { display: block; font-size: 11.5px; line-height: 1.5; }
+.hx-footer .hx-or { color: var(--hx-muted); padding: 0 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -1,15 +1,22 @@
-<%# This footer renders on EVERY signer state, including the dead ends
-    (declined / expired / archived / awaiting), each of which is otherwise a
-    single line of status text with no way to reach a human. The phone number
-    is the point — which is also why this line must speak the signer's
-    language: the recovery affordance being the one English string on a
-    Spanish page defeats it for exactly the person who needs it. %>
+<%# Renders on EVERY signer state, including the dead ends (declined / expired /
+    archived / awaiting), each of which is otherwise a single line of status text
+    with no way forward. Two affordances, both in the signer's language:
+    a tappable phone number, and a prefilled WhatsApp message so a worker whose
+    link expired can ask for a new one without composing anything. A dead end
+    that only states a fact is not a recovery path. %>
 <% es = I18n.locale.to_s.start_with?('es') %>
+<%
+  ask = es ? 'Hola Alex, necesito un enlace nuevo para firmar mis documentos.'
+           : 'Hi Alex, I need a new link to sign my documents.'
+%>
 <div class="hx-footer">
   <span class="hx-entity">ABR Quality Resources Inc dba Hamilton Exteriors</span>
   <span class="hx-help">
-    <%= es ? '¿Preguntas sobre este documento? Llama al' : 'Questions about this document? Call' %>
+    <%= es ? '¿Preguntas o necesitas un enlace nuevo?' : 'Questions, or need a new link?' %>
     <a href="tel:+16509773241" class="hx-phone">(650) 977-3241</a>
+    <span class="hx-or"><%= es ? 'o' : 'or' %></span>
+    <a href="https://wa.me/16509773241?text=<%= ERB::Util.url_encode(ask) %>"
+       class="hx-phone" rel="noopener"><%= es ? 'escríbeme por WhatsApp' : 'message me on WhatsApp' %></a>
   </span>
   <span class="hx-legal">
     CSLB 1078806 &middot; 21634 Redwood Rd Unit F, Castro Valley, CA 94546<br>
