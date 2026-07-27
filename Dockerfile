@@ -1,6 +1,13 @@
 # Hamilton e-Sign — DocuSeal (AGPL-3.0) with Hamilton-branded signer views.
 # Only the signer-facing surface is modified; the admin UI is upstream.
-FROM docuseal/docuseal:latest
+# PINNED, deliberately. Every CSS selector and ERB override in brand/ is written
+# against this specific build's markup — the field-marker recolor targets
+# page-container, the stepper targets nav[aria-label='Form progress'], the
+# completion attribution targets a docuseal.com anchor. Upstream shipped 3.1.6 on
+# 2026-07-27; on :latest the next deploy would silently pull it and any markup
+# change would break the branding with no error anywhere. Bump this on purpose,
+# then re-verify the signer page, never by accident.
+FROM docuseal/docuseal:3.1.5
 
 COPY brand/hamilton.css            /app/app/assets/hamilton.css
 COPY brand/form.html.erb           /app/app/views/layouts/form.html.erb
