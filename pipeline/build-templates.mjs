@@ -29,6 +29,13 @@ const TITLES = {
   'code-of-safe-practices': 'Code of Safe Practices',
 };
 
+// Sections and fields that only apply to some workers. Forcing these produces a
+// signed record asserting something untrue: a roofer who does not supervise
+// cannot honestly initial supervisor training, and a worker who answers NO to
+// driving cannot honestly attest he holds a licence and authorizes an MVR pull.
+const CONDITIONAL_SECTION = /supervisor|capataz|foreman|driving|manejo de veh/i;
+const CONDITIONAL_FIELD = /if assigned|si se asigna|if driving|si maneja|respirator|respirador|Section H|secci[óo]n H/i;
+
 // --- session (admin UI endpoints) -------------------------------------------
 let cookie = '';
 const setCookie = (r) => {
@@ -137,28 +144,47 @@ for (const d of docs) {
   if (owners.includes('employer')) subs.employer = { name: 'Hamilton', uuid: randomUUID() };
   const submitters = [subs.worker, subs.employer].filter(Boolean);
 
-  // The drawer prompt is the only text a signer reads at each step, so it
-  // carries position and section: "3/31 · A · Documents I received — DE 2320…".
-  // Without this a 58-field roster is an undifferentiated grind with no sense
-  // of progress, which the critique identified as the abandonment point.
+  // `name` renders in `field-area-active-label`: absolutely positioned, no
+  // truncate, no max-width, inside a page-container that clips overflow. Only
+  // ~50 chars survive. Putting the section in `name` was therefore worse than
+  // nothing — the surviving 50 chars were the INVARIANT prefix, identical for
+  // 8-13 consecutive fields, and the varying topic was the part clipped off.
+  //
+  // So: `name` stays short and carries only what changes. Position goes first
+  // because it is 5 chars and always visible. Section orientation moves to
+  // `description`, which DocuSeal renders in its own element below the label.
   const perOwner = {};
   for (const f of d.fields) perOwner[f.owner] = (perOwner[f.owner] || 0) + 1;
   const idx = {};
+  const NAME_MAX = 46;
 
   const seen = new Map();
   const fields = d.fields.map((f) => {
     idx[f.owner] = (idx[f.owner] || 0) + 1;
     const total = perOwner[f.owner];
     // Only worth showing on documents long enough to feel long.
-    const pos = total >= 8 ? `${idx[f.owner]}/${total} · ` : '';
-    const sec = f.section ? `${f.section} — ` : '';
-    let nm = `${pos}${sec}${f.name}`;
+    const pos = total >= 8 ? `${idx[f.owner]}/${total} ` : '';
+    let short = f.name;
+    if (short.length > NAME_MAX) {
+      const cut = short.slice(0, NAME_MAX);
+      const sp = cut.lastIndexOf(' ');
+      short = (sp > NAME_MAX * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s(,;:-]+$/, '') + '…';
+    }
+    let nm = `${pos}${short}`;
     const n = (seen.get(nm) || 0) + 1; seen.set(nm, n);
     if (n > 1) nm = `${nm} (${n})`;
-    // Compliance documents: every blank is mandatory. A signer must not be able
-    // to skip an acknowledgment line and still produce a "signed" record.
+    // Most blanks are mandatory: a signer must not skip an acknowledgment line
+    // and still produce a "signed" record. But `required: true` on a field
+    // inside a CONDITIONAL section forces a false attestation — the supervisor
+    // part says "complete only if the employee supervises", the driving section
+    // only applies if he answers YES, and several roster rows say "if assigned".
+    // Forcing those manufactures exactly the false record the pamphlet guard
+    // exists to prevent, so conditional sections are optional.
+    const conditional = CONDITIONAL_SECTION.test(f.section || '') ||
+      CONDITIONAL_FIELD.test(f.name || '');
     return { uuid: randomUUID(), submitter_uuid: (subs[f.owner] || submitters[0]).uuid,
-      name: nm, type: f.type, required: true,
+      name: nm, type: f.type, required: !conditional,
+      ...(f.section ? { description: f.section } : {}),
       areas: [{ x: f.x, y: f.y, w: f.w, h: f.h, attachment_uuid: au, page: f.page }] };
   });
   const st = await saveTemplate(id, schema, csrf, submitters, fields);

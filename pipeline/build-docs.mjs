@@ -6,16 +6,33 @@ const SRC = 'C:/Users/admin/.claude/skills/onboard-worker/references/documents';
 const OUT = 'C:/Users/admin/AppData/Local/Temp/claude/C--Users-admin/d1994a65-4339-4973-8fe3-b31c96359079/scratchpad/build';
 mkdirSync(OUT, { recursive: true });
 
-// Letter @96dpi. Margins per contractor-doc-design: T1.25 B1.0 L1.5 R1.25
-export const PAGE = { w: 816, h: 1056, mt: 120, mb: 96, ml: 144, mr: 120 };
+// PHONE geometry, deliberately not Letter.
+//
+// DocuSeal rasterises each page and scales the image to the container width. On
+// a 390px phone the container is ~374px, so a Letter page built at 816px lands
+// at 374/816 = 0.458 scale: 10.5pt body text renders at about 6.4 CSS px and a
+// 20px initials box becomes 9px tall. The worker cannot read the document he is
+// signing and cannot reliably hit the fields, which made every other
+// improvement chrome around an illegible page.
+//
+// At 420px wide the same container renders ~0.89:1, so 15px body text arrives at
+// ~13px and a 44px field stays ~39px. measure.mjs normalises all coordinates to
+// 0-1, so the field mapping follows automatically, and it already asserts zero
+// page overflow, which makes the repagination self-checking.
+//
+// Keep a Letter build for anything printed or filed: PAGE_PRINT below.
+export const PAGE = { w: 420, h: 748, mt: 40, mb: 34, ml: 30, mr: 30 };
+export const PAGE_PRINT = { w: 816, h: 1056, mt: 120, mb: 96, ml: 144, mr: 120 };
 
 const CSS = `
 @page { size: Letter; margin: 0; }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
+/* Sizes are px, not pt: this page is read on a phone at ~0.89:1, so the number
+   here is close to what the eye gets. Anything under 15px body lands illegible. */
 body{
   font-family:"Helvetica Neue",Helvetica,Calibri,Arial,sans-serif;
-  font-size:10.5pt; line-height:14.5pt; color:#1a1a1a;
+  font-size:15px; line-height:21px; color:#1a1a1a;
   -webkit-font-smoothing:antialiased;
 }
 /* EXACT height, not min-height: a page div that grows even 1px spills into a
@@ -28,28 +45,31 @@ body{
 .page:last-child{page-break-after:auto;break-after:auto}
 .page>*:first-child{margin-top:0}
 .page>*:last-child{margin-bottom:0}
-h1{font-size:19pt;line-height:23pt;font-weight:700;letter-spacing:.2px;margin:0 0 6pt}
-h2{font-size:13pt;line-height:17pt;font-weight:600;margin:18pt 0 6pt;
-   padding-bottom:3pt;border-bottom:.75pt solid #d8d8d8}
-h3{font-size:11pt;line-height:15pt;font-weight:700;margin:12pt 0 4pt}
-p{margin:0 0 8pt}
-ul,ol{margin:0 0 8pt;padding-left:16pt}
-li{margin:0 0 3pt}
+h1{font-size:21px;line-height:26px;font-weight:700;letter-spacing:.2px;margin:0 0 8px}
+h2{font-size:17px;line-height:22px;font-weight:600;margin:22px 0 8px;
+   padding-bottom:4px;border-bottom:1px solid #d8d8d8}
+h3{font-size:15px;line-height:20px;font-weight:700;margin:16px 0 5px}
+p{margin:0 0 11px}
+ul,ol{margin:0 0 11px;padding-left:20px}
+li{margin:0 0 5px}
 strong{font-weight:700}
-hr{border:0;border-top:.75pt solid #d8d8d8;margin:12pt 0}
-table{width:100%;border-collapse:collapse;margin:6pt 0 12pt;font-size:9.5pt;line-height:13pt}
-th{text-align:left;font-weight:600;font-size:8pt;letter-spacing:.6px;text-transform:uppercase;
-   color:#555;border-bottom:1pt solid #333;padding:5pt 6pt}
-td{padding:5pt 6pt;border-bottom:.5pt solid #e2e2e2;vertical-align:top}
-.legal{font-size:8pt;line-height:11pt;color:#555}
-.doc-meta{font-size:8pt;letter-spacing:.6px;text-transform:uppercase;color:#666;margin:0 0 12pt}
-/* Field markers: invisible in print, measured in the browser */
-.ds{display:inline-block;min-width:150px;height:20px;vertical-align:bottom;
-    border-bottom:.75pt solid #444}
-.ds-sig{min-width:230px;height:34px}
-.ds-ini{min-width:52px;height:20px}
-.ds-date{min-width:110px;height:20px}
-td .ds-ini{min-width:46px}
+hr{border:0;border-top:1px solid #d8d8d8;margin:16px 0}
+table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:14px;line-height:19px}
+th{text-align:left;font-weight:600;font-size:12px;letter-spacing:.4px;text-transform:uppercase;
+   color:#555;border-bottom:1px solid #333;padding:6px 5px}
+td{padding:7px 5px;border-bottom:1px solid #e2e2e2;vertical-align:top}
+/* Was 8pt -> ~4.9 CSS px on a phone, i.e. unreadable. Fine print is still
+   print a worker is signing. */
+.legal{font-size:13px;line-height:18px;color:#4a4a4a}
+.doc-meta{font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:#5a5a5a;margin:0 0 14px}
+/* Field markers: invisible in print, measured in the browser. Heights are the
+   tap target — 20px here became 9px on a phone. 44px stays ~39px at 0.89:1. */
+.ds{display:inline-block;min-width:150px;height:44px;vertical-align:bottom;
+    border-bottom:1px solid #444}
+.ds-sig{min-width:230px;height:56px}
+.ds-ini{min-width:64px;height:44px}
+.ds-date{min-width:130px;height:44px}
+td .ds-ini{min-width:56px}
 `;
 
 // ---- field extraction -------------------------------------------------------
@@ -68,7 +88,10 @@ function classify(label, seg) {
 function labelFrom(seg) {
   const s = seg.replace(/\s+/g, ' ').trim();
   // "Something:" right before the blank is the strongest signal
-  const colon = s.match(/([A-Za-z¿ÁÉÍÓÚÜÑáéíóúüñ0-9'()\/. -]{2,48}?)\s*:\s*$/);
+  // Anchor the capture at a word start, not mid-token: the old {2,48} window
+  // could begin inside a word and produce a prompt reading "apacitación se dio
+  // en". clip() only trimmed the END of a label; this trims the front.
+  const colon = s.match(/(?:^|[\s>])([A-Za-z¿ÁÉÍÓÚÜÑáéíóúüñ0-9'()\/. -]{2,48}?)\s*:\s*$/);
   if (colon) {
     // The capture can reach back across a sentence boundary and drag the tail
     // of the preceding sentence in ("...Inc. Section B initials"). The label is
@@ -136,6 +159,10 @@ function markFields(html, defaultOwner = 'worker') {
       if (RE_WORKER_HEAD.test(t)) owner = 'worker';
       else if (seenSignature && RE_EMPLOYER_HEAD.test(t) && t.length < 80) owner = 'employer';
     }
+    // The signature block is not part of the last content section. Without this
+    // the sticky section label filed the worker's whole-document signature
+    // under whatever heading happened to come last ("K · Idioma").
+    if (RE_WORKER_HEAD.test(t) || RE_EMPLOYER_HEAD.test(t)) section = '';
     let cursor = 0;
     const replaced = text.replace(RE_BLANK, (blank, off) => {
       const seg = text.slice(cursor, off);   // text since the previous blank

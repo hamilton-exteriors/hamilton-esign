@@ -52,14 +52,67 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
     tbl.remove();
   };
 
+  // A list too tall for one page splits by <li>, same idea as the table split.
+  // Without this a long <ol> is a single unsplittable block and its tail is
+  // clipped off the bottom of the PDF.
+  const placeList = (list) => {
+    const items = Array.from(list.children);
+    let chunk;
+    const startChunk = () => {
+      chunk = list.cloneNode(false);
+      chunk.removeAttribute('start');
+      page.appendChild(chunk);
+    };
+    startChunk();
+    let n = 1;
+    for (const li of items) {
+      chunk.appendChild(li);
+      if (overflows() && chunk.children.length > 1) {
+        chunk.removeChild(li);
+        newPage();
+        startChunk();
+        if (list.tagName === 'OL') chunk.setAttribute('start', String(n));
+        chunk.appendChild(li);
+      }
+      n += 1;
+    }
+    list.remove();
+  };
+
   for (const b of blocks) {
     page.appendChild(b);
     if (overflows()) {
       if (page.children.length > 1) { newPage(); page.appendChild(b); }
       if (overflows() && b.tagName === 'TABLE') { placeTable(b); continue; }
+      if (overflows() && (b.tagName === 'UL' || b.tagName === 'OL')) { placeList(b); continue; }
     }
   }
   flow.remove();
+
+  // Safety net: a table chunk whose final row pushes it just past the boundary
+  // still overflows, and the PDF silently clips it. Walk every page and push its
+  // last child forward until nothing overflows. Legal text being cut off the
+  // bottom of a page is not a cosmetic defect.
+  for (let pass = 0; pass < 12; pass++) {
+    let moved = false;
+    for (let i = 0; i < pages.length; i++) {
+      const p = pages[i];
+      let guard = 0;
+      while (p.scrollHeight > p.clientHeight && p.children.length > 1 && guard++ < 40) {
+        const victim = p.lastElementChild;
+        let next = pages[i + 1];
+        if (!next) {
+          next = document.createElement('div');
+          next.className = 'page';
+          document.body.appendChild(next);
+          pages.push(next);
+        }
+        next.insertBefore(victim, next.firstChild);
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
 
   // Hard check: nothing may overflow its page, or the PDF will clip it.
   const overflow = pages
@@ -156,6 +209,18 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
     const name = el.dataset.name || '';
     const labelShaped = name.length < 40 && !/[.!?]$/.test(name);
     if (labelShaped && EMPLOYER_FILL.test(name)) el.dataset.owner = 'employer';
+  }
+  // "Trainer: ______  Date: ______" puts the trainer AND the date on one line.
+  // The date's own label is just "Date", so the employer rule missed it and the
+  // trainee ended up certifying the dates he was trained on. A date sharing a
+  // line with a trainer field belongs to whoever owns the trainer field.
+  for (const el of document.querySelectorAll('.ds')) {
+    if (el.dataset.type !== 'date' || el.dataset.owner === 'employer') continue;
+    const line = el.closest('p, td, li') || el.parentElement;
+    if (!line) continue;
+    const owns = Array.from(line.querySelectorAll('.ds'))
+      .some(o => o !== el && o.dataset.owner === 'employer');
+    if (owns) el.dataset.owner = 'employer';
   }
 
   // Measure, page-relative + normalised
