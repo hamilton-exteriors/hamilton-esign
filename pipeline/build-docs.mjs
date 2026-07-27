@@ -91,16 +91,44 @@ function labelFrom(seg) {
 const RE_EMPLOYER_HEAD = /^ABR Quality Resources\b/i;
 const RE_WORKER_HEAD = /^\s*(Employee|Empleado|Trabajador|Worker)\s*$/i;
 
+/** Short section label from an h2, for the signer's prompt.
+ *  "## Part 2 — Fall protection (§1670 — written certification required)"
+ *  becomes "Part 2 · Fall protection". The drawer prompt is the only text a
+ *  signer reads at each step, so it has to carry where they are; a 65-field
+ *  roster with no section context is an undifferentiated grind. */
+function sectionLabel(heading) {
+  let s = heading.replace(/\s+/g, ' ').trim();
+  s = s.replace(/\s*\([^)]*\)\s*$/, '');                 // drop trailing (§…) note
+  const m = s.match(/^(Part|Parte)\s+(\d+)\s*[—–-]\s*(.+)$/i);
+  if (m) {
+    const topic = m[3].split(/\s*[—–(]/)[0].trim();
+    return `${m[1]} ${m[2]} · ${topic}`;
+  }
+  const lettered = s.match(/^([A-K])\.\s+(.+)$/);
+  if (lettered) return `${lettered[1]} · ${lettered[2]}`;
+  return s.length <= 34 ? s : '';
+}
+
 /** Replace ____ runs in rendered HTML with measurable spans. */
 function markFields(html, defaultOwner = 'worker') {
   const fields = [];
   let owner = defaultOwner;
+  let section = '';
   // The entity name also appears as the LETTERHEAD at the top of every document.
   // Only treat it as the countersignature marker once we are actually in the
   // signature area, i.e. after at least one signature field has been emitted.
   let seenSignature = false;
-  // operate only on text outside tags
-  const out = html.replace(/>([^<]+)</g, (whole, text) => {
+  // Match h2 blocks AND bare text nodes in document order, so the current
+  // section is known by the time a blank inside it is processed. A text-node-
+  // only pass cannot see which heading it sits under.
+  // The closing `<` is a LOOKAHEAD, not consumed: `>([^<]+)<` would swallow the
+  // `<` that opens the next tag, so every `<h2` got eaten by the preceding text
+  // node and no field ever learned its section.
+  const out = html.replace(/(<h2[^>]*>[\s\S]*?<\/h2>)|>([^<]+)(?=<)/g, (whole, h2, text) => {
+    if (h2) {
+      section = sectionLabel(h2.replace(/<[^>]+>/g, ''));
+      return whole;
+    }
     const t = text.trim();
     // Company safety programs are Hamilton's own record end to end; an
     // "Employee" heading inside one must not hand fields to a worker.
@@ -125,13 +153,13 @@ function markFields(html, defaultOwner = 'worker') {
       if (type === 'signature') seenSignature = true;
       if (!label || label.length < 2) label = `Field ${fieldSeq}`;
       const id = `f${fieldSeq}`;
-      fields.push({ id, name: label, type, owner: fieldOwner });
+      fields.push({ id, name: label, type, owner: fieldOwner, section });
       const cls = type === 'signature' ? 'ds ds-sig'
         : type === 'initials' ? 'ds ds-ini'
         : type === 'date' ? 'ds ds-date' : 'ds';
-      return `<span class="${cls}" id="${id}" data-name="${label.replace(/"/g, '')}" data-type="${type}" data-owner="${fieldOwner}"></span>`;
+      return `<span class="${cls}" id="${id}" data-name="${label.replace(/"/g, '')}" data-type="${type}" data-owner="${fieldOwner}" data-section="${section.replace(/"/g, '')}"></span>`;
     });
-    return `>${replaced}<`;
+    return `>${replaced}`;
   });
   return { html: out, fields };
 }

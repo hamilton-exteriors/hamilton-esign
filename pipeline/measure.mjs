@@ -167,6 +167,7 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
       out.push({
         id: el.id,
         name: el.dataset.name,
+        section: el.dataset.section || '',
         type: el.dataset.type,
         owner: el.dataset.owner || 'worker',
         page: pi,

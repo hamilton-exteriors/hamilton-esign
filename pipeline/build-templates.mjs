@@ -137,9 +137,22 @@ for (const d of docs) {
   if (owners.includes('employer')) subs.employer = { name: 'Hamilton', uuid: randomUUID() };
   const submitters = [subs.worker, subs.employer].filter(Boolean);
 
+  // The drawer prompt is the only text a signer reads at each step, so it
+  // carries position and section: "3/31 · A · Documents I received — DE 2320…".
+  // Without this a 58-field roster is an undifferentiated grind with no sense
+  // of progress, which the critique identified as the abandonment point.
+  const perOwner = {};
+  for (const f of d.fields) perOwner[f.owner] = (perOwner[f.owner] || 0) + 1;
+  const idx = {};
+
   const seen = new Map();
   const fields = d.fields.map((f) => {
-    let nm = f.name;
+    idx[f.owner] = (idx[f.owner] || 0) + 1;
+    const total = perOwner[f.owner];
+    // Only worth showing on documents long enough to feel long.
+    const pos = total >= 8 ? `${idx[f.owner]}/${total} · ` : '';
+    const sec = f.section ? `${f.section} — ` : '';
+    let nm = `${pos}${sec}${f.name}`;
     const n = (seen.get(nm) || 0) + 1; seen.set(nm, n);
     if (n > 1) nm = `${nm} (${n})`;
     // Compliance documents: every blank is mandatory. A signer must not be able

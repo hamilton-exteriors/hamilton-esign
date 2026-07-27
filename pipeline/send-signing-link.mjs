@@ -194,8 +194,16 @@ async function sendDocument(to, link, filename, caption, rwPath) {
   return { status: r.status, body: (await r.text()).slice(0, 200) };
 }
 
+// Only run the CLI when this file IS the entry point. Without the guard,
+// importing this module executes its CLI against the importing script's argv —
+// `run-packet.mjs plan ...` made it look for a template literally named "plan".
+const IS_MAIN = !!process.argv[1] &&
+  import.meta.url === new URL(`file:///${process.argv[1].replace(/\\/g, '/')}`).href;
+
 // --- CLI ---------------------------------------------------------------------
-if (process.argv[2] === 'countersign') {
+if (!IS_MAIN) {
+  // imported as a library; do nothing
+} else if (process.argv[2] === 'countersign') {
   // node send-signing-link.mjs countersign <submissionId> [--send <rw.json>]
   const submissionId = process.argv[3];
   const sendIdx = process.argv.indexOf('--send');

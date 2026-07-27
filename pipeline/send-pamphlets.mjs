@@ -89,11 +89,17 @@ export async function sendPamphlets(worker, rwPath) {
   return { sent: results.every(r => r.status === 200), count: checked.length, results };
 }
 
+// Only run the CLI when this file IS the entry point (see send-signing-link).
+const IS_MAIN = !!process.argv[1] &&
+  import.meta.url === new URL(`file:///${process.argv[1].replace(/\\/g, '/')}`).href;
+
 // --- CLI ---------------------------------------------------------------------
 // node send-pamphlets.mjs verify <en|es>
 // node send-pamphlets.mjs send <phone> <en|es> <rw.json>
 const [, , cmd, a, b, c] = process.argv;
-if (cmd === 'verify') {
+if (!IS_MAIN) {
+  // imported as a library; do nothing
+} else if (cmd === 'verify') {
   const r = await verifyAll(a || 'en');
   for (const x of r) console.log(`${x.ok ? 'OK  ' : 'DEAD'} ${String(x.row).padStart(2)}. ${x.name}`);
   console.log(`\n${r.filter(x => x.ok).length}/${r.length} live`);
