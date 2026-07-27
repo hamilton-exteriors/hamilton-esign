@@ -1,19 +1,22 @@
 <%# This footer renders on EVERY signer state, including the dead ends
     (declined / expired / archived / awaiting), each of which is otherwise a
     single line of status text with no way to reach a human. The phone number
-    is the point: a worker who lands on "Form has been deleted" must be able to
-    call someone. %>
+    is the point — which is also why this line must speak the signer's
+    language: the recovery affordance being the one English string on a
+    Spanish page defeats it for exactly the person who needs it. %>
+<% es = I18n.locale.to_s.start_with?('es') %>
 <div class="hx-footer">
   <span class="hx-entity">ABR Quality Resources Inc dba Hamilton Exteriors</span>
   <span class="hx-help">
-    Questions about this document? Call
+    <%= es ? '¿Preguntas sobre este documento? Llama al' : 'Questions about this document? Call' %>
     <a href="tel:+16509773241" class="hx-phone">(650) 977-3241</a>
   </span>
   <span class="hx-legal">
     CSLB 1078806 &middot; 21634 Redwood Rd Unit F, Castro Valley, CA 94546<br>
-    Secure signing by
+    <%= es ? 'Firma segura por' : 'Secure signing by' %>
     <a href="https://github.com/hamilton-exteriors/hamilton-esign" rel="noopener">Hamilton e-Sign</a>,
-    a modified version of <a href="https://github.com/docusealco/docuseal" rel="noopener">DocuSeal</a>
-    (AGPL-3.0) &mdash; source at the link above.
+    <%= es ? 'una versión modificada de' : 'a modified version of' %>
+    <a href="https://github.com/docusealco/docuseal" rel="noopener">DocuSeal</a>
+    (AGPL-3.0) &mdash; <%= es ? 'código fuente en el enlace de arriba' : 'source at the link above' %>.
   </span>
 </div>

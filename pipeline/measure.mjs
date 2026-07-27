@@ -68,6 +68,13 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
 
   // Refine types using DOM context (table column headers etc.)
   const norm = (s) => (s || '').trim().toLowerCase();
+  /** Cut to max chars at a word boundary, so a prompt never ends mid-word. */
+  const clip = (s, max) => {
+    if (s.length <= max) return s;
+    const cut = s.slice(0, max);
+    const sp = cut.lastIndexOf(' ');
+    return (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s(,;:—-]+$/, '') + '…';
+  };
   for (const el of document.querySelectorAll('.ds')) {
     const td = el.closest('td');
     if (td) {
@@ -90,7 +97,9 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
           .map(c => c.textContent.trim().replace(/\s+/g, ' '))
           .filter(t => t && !/^\d+$/.test(t))       // drop the row-number column
           .sort((a, b) => b.length - a.length)[0];  // the description is the longest cell
-        el.dataset.name = item ? item.slice(0, 70) : `Initials r${tr.rowIndex}`;
+        // Truncate on a word boundary, not mid-word: the raw 70-char cut
+        // produced prompts like "...de médico personal (compensación de traba".
+        el.dataset.name = item ? clip(item, 70) : `Initials r${tr.rowIndex}`;
       }
       else if (/date|fecha/.test(label)) { el.dataset.type = 'date'; }
       else if (/signature|firma/.test(label)) { el.dataset.type = 'signature'; }

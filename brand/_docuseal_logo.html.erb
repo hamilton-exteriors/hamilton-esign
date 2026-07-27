@@ -1,6 +1,7 @@
-<%# Logo only. The wordmark already reads "Hamilton Exteriors"; setting the
-    product name beside it repeats the same words twice at the top of the page
-    and reads as an unfinished template. %>
-<a href="<%= root_path %>" class="hx-brand" aria-label="Hamilton Exteriors">
+<%# Mark only, and NOT a link. Upstream wraps the logo in an <a href="/">,
+    and the root page is DocuSeal's marketing/sign-in screen — a mid-signing
+    exit trap that dumps a worker onto an English page about open-source
+    software. There is nowhere a signer needs to navigate to from here. %>
+<span class="hx-brand" aria-label="Hamilton Exteriors">
   <%= render 'shared/logo', class: 'hx-brand-mark' %>
-</a>
+</span>

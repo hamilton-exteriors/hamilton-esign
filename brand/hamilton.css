@@ -132,24 +132,32 @@ textarea:focus-visible, [tabindex]:focus-visible {
 }
 
 /* ---------------------------------------------------------------- fields --
-   DocuSeal ships pink/red field markers, which read as errors. */
-[class*='bg-red-'], .field-area, .submitter-field {
+   DocuSeal ships pink/red field markers, which read as errors.
+
+   Scoped INSIDE page-container on purpose: the earlier unscoped versions of
+   these rules repainted every red utility class on the page green, including
+   any genuine validation or failure message the JS bundle renders — an error
+   state shown in the success color. Field markers only ever live inside the
+   document's <page-container> element, so that is the boundary. */
+page-container [class*='bg-red-'], .field-area, .submitter-field {
   background-color: rgba(37, 99, 70, .10) !important;
 }
 .field-area:hover, .submitter-field:hover {
   background-color: rgba(37, 99, 70, .18) !important;
 }
-[class*='border-red-'] { border-color: var(--hx-green) !important; }
-[class*='text-red-']:not(.hx-error) { color: var(--hx-green) !important; }
+page-container [class*='border-red-'] { border-color: var(--hx-green) !important; }
+page-container [class*='text-red-'] { color: var(--hx-green) !important; }
 
 /* The ACTIVE field is drawn with a red dashed outline, not a border, so the
    border override above never reached it. A red dashed box on the field a
    signer is currently filling reads as a validation error on every step. */
-[class*='outline-red'], [class*='outline-dashed'], [class*='border-dashed'] {
+page-container [class*='outline-red'],
+page-container [class*='outline-dashed'],
+page-container [class*='border-dashed'] {
   outline-color: var(--hx-green) !important;
   border-color: var(--hx-green) !important;
 }
-main [style*='rgb(239, 68, 68)'], main [style*='rgb(220, 38, 38)'] {
+page-container [style*='rgb(239, 68, 68)'], page-container [style*='rgb(220, 38, 38)'] {
   outline-color: var(--hx-green) !important;
   border-color: var(--hx-green) !important;
 }
@@ -170,12 +178,16 @@ input::placeholder, textarea::placeholder {
 
 /* -------------------------------------------------------------- document --
    Page edges were invisible against the cream, so a page ending read as the
-   app being broken rather than as a page ending. */
-.page-container, .document-page {
+   app being broken rather than as a page ending.
+   NOTE: page-container is a custom ELEMENT (<page-container class="block …">),
+   not a class — the earlier `.page-container` selector never matched anything
+   and this fix silently never shipped. */
+page-container {
   border: 1px solid var(--hx-line);
   border-radius: 6px;
   background: #fff;
   box-shadow: 0 1px 2px rgba(13, 43, 29, .06);
+  overflow: hidden;
 }
 
 /* --------------------------------------------------------------- stepper --
@@ -204,12 +216,38 @@ nav[aria-label='Form progress'] button {
    software" link to docuseal.com on the screen the signer lands on right after
    completing. That is a competitor link on Hamilton's completion page, and it
    is separate from the AGPL notice in our footer, which already credits
-   DocuSeal and offers the source. Hide the duplicate, keep the obligation. */
+   DocuSeal and offers the source. Hide the duplicate, keep the obligation.
+
+   Hiding only the <a> left the sentence rendering as "Powered by - open source
+   documents software" with a gap where the wordmark was, which is worse than
+   leaving it alone. Hide the whole containing div instead. */
+div:has(> a[href^="https://www.docuseal.com"]),
+div:has(> a[href^="https://docuseal.com"]) {
+  display: none !important;
+}
+/* Belt and braces for engines without :has() — hide the link too, and keep the
+   footer's own AGPL credit (a github.com link) visible. */
 a[href^="https://www.docuseal.com"],
 a[href^="https://docuseal.com"] {
   display: none !important;
 }
-a[href*="github.com/docusealco"] { display: inline !important; }
+.hx-footer a[href*="github.com/docusealco"] { display: inline !important; }
+
+/* The decline confirm rendered in the SAME filled deep green as NEXT, in a
+   modal with no cancel, under a thumb that has just tapped NEXT repeatedly.
+   Destructive actions must not wear the primary skin. */
+dialog .btn:not([disabled]),
+[role='dialog'] .btn:not([disabled]) {
+  background: transparent !important;
+  color: rgb(153, 27, 27) !important;      /* 6.4:1 on cream */
+  border: 1px solid rgb(153, 27, 27) !important;
+  box-shadow: none !important;
+  min-height: 44px;
+}
+dialog .btn:not([disabled]):hover,
+[role='dialog'] .btn:not([disabled]):hover {
+  background: rgba(153, 27, 27, .07) !important;
+}
 
 /* Disabled primary button: upstream renders the label at 1.47:1, effectively
    invisible, so a blocked signer cannot read what the button says. */

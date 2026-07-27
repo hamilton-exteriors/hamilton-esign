@@ -84,6 +84,40 @@ async function saveTemplate(id, schema, csrf, submitters, fields) {
   return r.status;
 }
 
+/** Template preferences via POST /templates/:id/preferences — the permitted
+ *  route for this (the admin PUT rejects a preferences key with 422, and the
+ *  REST API silently drops it).
+ *
+ *  - submitters_order=preserved: page-level signing-order enforcement. Without
+ *    it the countersigner URL renders a live, signable form before the worker
+ *    has signed. The delivery-side withholding in send-signing-link.mjs stays
+ *    as the second layer.
+ *  - completed_message: the completion screen otherwise promises nothing — the
+ *    worker's signed copy arrives later by WhatsApp and the on-screen download
+ *    quietly dies 30 minutes after signing, so the screen must say what
+ *    actually happens next, in the signer's language. */
+async function savePreferences(id, csrf, es, twoParty) {
+  const msg = twoParty
+    ? (es
+      ? { title: 'Listo — firmado', body: 'Alex firma después y te mandamos tu copia firmada aquí mismo por WhatsApp. No necesitas descargar nada.' }
+      : { title: 'Done — signed', body: 'Alex signs next, then your signed copy comes right back to you on WhatsApp. You do not need to download anything.' })
+    : (es
+      ? { title: 'Firmado y archivado', body: 'Este documento queda archivado en los registros de Hamilton.' }
+      : { title: 'Signed and filed', body: 'This document is filed in Hamilton\'s records.' });
+  const body = new URLSearchParams({
+    'template[preferences][submitters_order]': 'preserved',
+    'template[preferences][completed_message][title]': msg.title,
+    'template[preferences][completed_message][body]': msg.body,
+  });
+  const r = await fetch(`${URL_}/templates/${id}/preferences`, {
+    method: 'POST',
+    headers: { cookie, 'X-CSRF-Token': csrf, 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+    body,
+  });
+  setCookie(r);
+  return r.status;
+}
+
 // --- main --------------------------------------------------------------------
 const docs = JSON.parse(readFileSync(`${DIR}/fields.json`, 'utf8'));
 await signIn();
@@ -115,8 +149,11 @@ for (const d of docs) {
       areas: [{ x: f.x, y: f.y, w: f.w, h: f.h, attachment_uuid: au, page: f.page }] };
   });
   const st = await saveTemplate(id, schema, csrf, submitters, fields);
+  const es = /-es$/.test(d.slug);
+  const twoParty = submitters.length > 1;
+  const pst = await savePreferences(id, csrf, es, twoParty);
   const split = owners.map(o => `${o}:${d.fields.filter(f => f.owner === o).length}`).join(' ');
-  console.log(`${String(id).padStart(3)}  ${name.padEnd(44)} ${String(fields.length).padStart(3)}f  [${split}]  save=${st}`);
+  console.log(`${String(id).padStart(3)}  ${name.padEnd(44)} ${String(fields.length).padStart(3)}f  [${split}]  save=${st} prefs=${pst}`);
   built.push({ id, slug: d.slug, name, roles: submitters.map(s => s.name), fields: fields.length });
 }
 console.log('\nbuilt ' + built.length + ' templates');

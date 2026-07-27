@@ -1,5 +1,4 @@
-<%# Logo only. Upstream renders the mark beside an <h1>DocuSeal</h1>; the
-    wordmark already reads "Hamilton Exteriors", so the text is redundant. %>
-<a href="/" class="hx-brand hx-brand--start" aria-label="Hamilton Exteriors">
+<%# Mark only, not a link — same exit-trap reasoning as the signing view. %>
+<span class="hx-brand hx-brand--start" aria-label="Hamilton Exteriors">
   <%= render 'shared/logo', height: 56 %>
-</a>
+</span>
