@@ -43,6 +43,15 @@ const ENGLISH_ONLY = new Set([
   'Safety Training Roster',
 ]);
 
+/** Section A of the acknowledgment has the worker initial that he RECEIVED
+ *  eight specific state notices. Sending it before those notices have actually
+ *  been delivered asks him to attest to something that did not happen. Pass
+ *  { pamphletsSent: true } once send-pamphlets.mjs has run for this worker. */
+const REQUIRES_PAMPHLETS = new Set([
+  'New Hire Policy Acknowledgment',
+  'Acuse de Recibo de Políticas',
+]);
+
 const api = (path, init = {}) => fetch(`${SEC.url}${path}`, {
   ...init,
   headers: { 'X-Auth-Token': SEC.apiKey, 'Content-Type': 'application/json', ...(init.headers || {}) },
@@ -63,6 +72,13 @@ export async function createSigningRequest(templateName, worker) {
       `refusing to send "${templateName}" to a ${lang}-speaking worker: no ${lang} version exists. ` +
       `This document asks the signer to attest it was provided in a language they understand, ` +
       `so sending it in English would make the signature itself false.`);
+  }
+  if (REQUIRES_PAMPHLETS.has(templateName) && !worker.pamphletsSent) {
+    throw new Error(
+      `refusing to send "${templateName}": its Section A has the worker initial that he received ` +
+      `eight California state notices, and they have not been sent. Run ` +
+      `\`node pipeline/send-pamphlets.mjs send <phone> ${lang} <rw.json>\` first, then pass ` +
+      `pamphletsSent: true. Signing it beforehand records a delivery that never happened.`);
   }
   const tpl = await templateByName(templateName);
   const roles = (tpl.submitters || []).map(s => s.name);
