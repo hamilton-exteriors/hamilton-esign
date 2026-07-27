@@ -15,7 +15,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { HIRE_PACKET, createSigningRequest, sendWhatsApp, deliverSignedCopy } from './send-signing-link.mjs';
 import { sendPamphlets } from './send-pamphlets.mjs';
-import { sendPrograms } from './send-programs.mjs';
+import { sendPrograms, programStatus } from './send-programs.mjs';
 
 const SEC = JSON.parse(readFileSync('C:/Users/admin/.claude/.hamilton-secrets/docuseal.json', 'utf8'));
 const api = (p) => fetch(`${SEC.url}${p}`, { headers: { 'X-Auth-Token': SEC.apiKey } }).then(r => r.json());
@@ -65,21 +65,62 @@ export async function startPacket(worker, rwPath, { dryRun = true } = {}) {
   const plan = { worker, lang, total: docs.length, sent: [], dryRun };
 
   plan.intro = t.intro(docs.length);
-  if (!dryRun) {
-    const pam = await sendPamphlets(worker, rwPath);
-    if (!pam.sent) return { ...plan, aborted: `pamphlets not sent: ${pam.reason}` };
-    plan.pamphlets = pam.count;
-    // Rows 11-13 of the acknowledgment attest to receiving these, so they go out
-    // in the same breath as the pamphlets. Refuses if Alex has not signed them.
-    const prog = await sendPrograms(worker, rwPath);
-    if (!prog.sent) return { ...plan, aborted: `programs not sent: ${prog.reason}` };
-    plan.programs = prog.count;
-    await sendWhatsApp(worker.phone, plan.intro, rwPath);
+  if (!dryRun) await sendWhatsApp(worker.phone, plan.intro, rwPath);
+  return sendDoc(plan, 0, rwPath, { dryRun });
+}
+
+/** Documents whose Section A attests to receiving the pamphlets and the signed
+ *  safety programs. ONLY these need that delivery to have happened. */
+const NEEDS_HANDOUTS = new Set(['acknowledgment']);
+
+/**
+ * Send document `idx` of the packet, delivering the pamphlets and signed safety
+ * programs first IF and ONLY IF that document attests to receiving them.
+ *
+ * This scoping is the whole point. The previous version delivered both at packet
+ * start and aborted if either failed, which meant four unsigned company safety
+ * programs blocked the ENTIRE packet — including the employment agreement and
+ * the wage notice, neither of which references them. A worker hired that day got
+ * nothing at all, with the failure visible only in a CLI message. The gate was
+ * correct; its scope was not.
+ */
+async function sendDoc(plan, idx, rwPath, { dryRun = true } = {}) {
+  const { worker, lang } = plan;
+  const docs = HIRE_PACKET[lang];
+  const t = copy[lang];
+  const doc = docs[idx];
+
+  const flags = { pamphletsSent: false, programsSent: false };
+  if (NEEDS_HANDOUTS.has(doc.key)) {
+    if (dryRun) {
+      // A dry run must surface this blocker, not skip past it. Setting the flags
+      // unconditionally made `plan` report the acknowledgment as sendable while
+      // the safety programs were unsigned — hiding the one thing the person
+      // running the dry run needs to know. programStatus is read-only.
+      const st = await programStatus(worker.language === 'es' ? 'es' : 'en');
+      const unsigned = st.filter(s => !s.signed);
+      if (unsigned.length) {
+        return { ...plan, aborted:
+          `"${doc.title}" attests to receiving Hamilton's safety programs and ` +
+          `${unsigned.length} of ${st.length} are unsigned: ` +
+          `${unsigned.map(u => u.title).join('; ')}. Everything before it in the packet ` +
+          `still sends; this document waits for those signatures.` };
+      }
+    } else {
+      const pam = await sendPamphlets(worker, rwPath);
+      if (!pam.sent) return { ...plan, aborted: `pamphlets not sent: ${pam.reason}` };
+      plan.pamphlets = pam.count;
+      const prog = await sendPrograms(worker, rwPath);
+      if (!prog.sent) return { ...plan, aborted: `programs not sent: ${prog.reason}` };
+      plan.programs = prog.count;
+    }
+    flags.pamphletsSent = true;
+    flags.programsSent = true;
   }
 
-  const first = await createSigningRequest(docs[0].title, { ...worker, pamphletsSent: true, programsSent: true });
-  plan.sent.push({ i: 1, title: first.template, submissionId: first.submissionId, link: first.worker });
-  plan.message = t.doc(1, docs.length, first.template, first.worker);
+  const req = await createSigningRequest(doc.title, { ...worker, ...flags });
+  plan.sent.push({ i: idx + 1, title: req.template, submissionId: req.submissionId, link: req.worker });
+  plan.message = t.doc(idx + 1, docs.length, req.template, req.worker);
   if (!dryRun) await sendWhatsApp(worker.phone, plan.message, rwPath);
   return plan;
 }
@@ -114,11 +155,11 @@ export async function advance(state, rwPath, { dryRun = true } = {}) {
     return { action: 'packet-complete', message: msg, state };
   }
 
-  const next = await createSigningRequest(docs[nextIdx].title, { ...worker, pamphletsSent: true, programsSent: true });
-  const msg = t.doc(nextIdx + 1, docs.length, next.template, next.worker);
-  state.sent.push({ i: nextIdx + 1, title: next.template, submissionId: next.submissionId, link: next.worker });
-  if (!dryRun) await sendWhatsApp(worker.phone, msg, rwPath);
-  return { action: 'sent-next', message: msg, state };
+  // Same scoped path as startPacket: handouts go out only for the document that
+  // actually attests to receiving them.
+  const r = await sendDoc(state, nextIdx, rwPath, { dryRun });
+  if (r.aborted) return { action: 'blocked', reason: r.aborted, state };
+  return { action: 'sent-next', message: state.message, state };
 }
 
 // State lives in a file so `advance` can actually resume a packet. The earlier

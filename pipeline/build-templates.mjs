@@ -106,8 +106,8 @@ async function saveTemplate(id, schema, csrf, submitters, fields) {
 async function savePreferences(id, csrf, es, twoParty) {
   const msg = twoParty
     ? (es
-      ? { title: 'Listo — firmado', body: 'Alex firma después y te mandamos tu copia firmada aquí mismo por WhatsApp. No necesitas descargar nada.' }
-      : { title: 'Done — signed', body: 'Alex signs next, then your signed copy comes right back to you on WhatsApp. You do not need to download anything.' })
+      ? { title: 'Listo, firmado', body: 'Alex firma después y te mandamos tu copia firmada aquí mismo por WhatsApp. No necesitas descargar nada.' }
+      : { title: 'Done, signed', body: 'Alex signs next, then your signed copy comes right back to you on WhatsApp. You do not need to download anything.' })
     : (es
       ? { title: 'Firmado y archivado', body: 'Este documento queda archivado en los registros de Hamilton.' }
       : { title: 'Signed and filed', body: 'This document is filed in Hamilton\'s records.' });
