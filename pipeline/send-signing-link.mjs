@@ -20,13 +20,13 @@ const LANGS = { es: 'es', en: 'en' };
  *  those are Hamilton's own record and are signed once by Alex, not per worker. */
 export const HIRE_PACKET = {
   en: [
-    { key: 'agreement',      title: 'Employment Agreement (At-Will)' },
+    { key: 'agreement',      title: 'Employment Agreement' },
     { key: 'wage-notice',    title: 'Wage Notice - Labor Code 2810.5' },
     { key: 'acknowledgment', title: 'New Hire Policy Acknowledgment' },
     { key: 'safety-roster',  title: 'Safety Training Roster' },
   ],
   es: [
-    { key: 'agreement',   title: 'Contrato de Empleo (Empleo a Voluntad)' },
+    { key: 'agreement',   title: 'Contrato de Empleo' },
     { key: 'wage-notice', title: 'Aviso de Salario - Código Laboral 2810.5' },
     // No Spanish version of the acknowledgment or the roster exists yet. They
     // are deliberately ABSENT here rather than falling back to English: the

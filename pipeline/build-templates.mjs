@@ -14,8 +14,8 @@ const COMPANY = new Set(['iipp', 'heat-illness-prevention-plan', 'heat-illness-p
 // opening one thing and then shown another. Accents are part of the name;
 // stripping them to stay ASCII is not a simplification, it is a misspelling.
 const TITLES = {
-  'employment-agreement': 'Employment Agreement (At-Will)',
-  'employment-agreement-es': 'Contrato de Empleo (Empleo a Voluntad)',
+  'employment-agreement': 'Employment Agreement',
+  'employment-agreement-es': 'Contrato de Empleo',
   'wage-notice-2810-5': 'Wage Notice - Labor Code 2810.5',
   'wage-notice-2810-5-es': 'Aviso de Salario - Código Laboral 2810.5',
   'policy-acknowledgment': 'New Hire Policy Acknowledgment',
