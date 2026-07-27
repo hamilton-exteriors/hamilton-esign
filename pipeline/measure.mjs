@@ -136,6 +136,10 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
     return (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s(,;:—-]+$/, '') + '…';
   };
   for (const el of document.querySelectorAll('.ds')) {
+    // A checkbox already carries its own option label from build-docs ("Roofer",
+    // "Capataz"), which is a far better prompt than the column-header rename
+    // would produce ("Position r1"). Leave them alone.
+    if (el.dataset.type === 'checkbox') continue;
     const td = el.closest('td');
     if (td) {
       const tr = td.parentElement;

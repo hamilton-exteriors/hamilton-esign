@@ -57,6 +57,47 @@ const api = (path, init = {}) => fetch(`${SEC.url}${path}`, {
   headers: { 'X-Auth-Token': SEC.apiKey, 'Content-Type': 'application/json', ...(init.headers || {}) },
 });
 
+/** Which employer-owned checkboxes to tick, from what we already know.
+ *
+ *  Every one of these is Hamilton's statement, not the worker's: which rate
+ *  applies, which sick-leave method Hamilton runs, which language the notice was
+ *  provided in. Matching is by exact field name against the live template, so a
+ *  renamed field silently drops out rather than ticking the wrong box.
+ *
+ *  🔴 SICK_LEAVE_METHOD is an owner decision and is deliberately null. California
+ *  allows accrual (1 hr per 30 worked, 40 hr cap) or front-loading (40 hr at the
+ *  start of the year) and Hamilton must run one of them. Guessing would state a
+ *  policy on a §2810.5 notice that Hamilton does not actually operate. Set it
+ *  once the owner picks. */
+export const SICK_LEAVE_METHOD = null; // 'accrual' | 'frontload'
+
+function employerPrefill(tpl, worker) {
+  // Live field names carry a position prefix from build-templates ("1/14 Roofer"),
+  // so match on the part AFTER it. Exact-name matching silently ticked nothing.
+  const strip = (n) => n.replace(/^\d+\/\d+\s+/, '');
+  const fields = (tpl.fields || []).filter(f => f.type === 'checkbox');
+  const out = {};
+  const tickWhere = (pred) => {
+    for (const f of fields) if (pred(strip(f.name))) out[f.name] = true;
+  };
+
+  const foreman = /foreman|capataz/i.test(worker.role || '');
+  tickWhere(n => foreman
+    ? /^(Foreman|Capataz)\b/i.test(n)
+    : /^(Roofer|Techador)\b/i.test(n));
+
+  // build-docs normalises these to stable keys ("Language: Spanish") precisely
+  // so matching does not depend on a sentence surviving truncation.
+  const es = (worker.language || 'en') === 'es';
+  tickWhere(n => n === (es ? 'Language: Spanish' : 'Language: English'));
+
+  if (SICK_LEAVE_METHOD) {
+    tickWhere(n => n === (SICK_LEAVE_METHOD === 'accrual'
+      ? 'Sick leave: accrual' : 'Sick leave: front load'));
+  }
+  return out;
+}
+
 export async function templateByName(name) {
   const r = await (await api('/api/templates?limit=100')).json();
   const t = (r.data || []).find(x => x.name === name && !x.archived_at);
@@ -83,9 +124,22 @@ export async function createSigningRequest(templateName, worker) {
   const tpl = await templateByName(templateName);
   const roles = (tpl.submitters || []).map(s => s.name);
 
-  const submitters = [{ role: 'Worker', name: worker.name, email: worker.email || undefined }];
+  // Prefill everything Hamilton already knows, so the worker never sees an
+  // unanswered election on his own wage notice. The pay-rate boxes matter most:
+  // stating the rate IS the legal purpose of a §2810.5 notice, and shipping both
+  // Roofer and Foreman unmarked is the gap a worker watching for
+  // misclassification would notice first.
+  const employerValues = employerPrefill(tpl, worker);
+
+  const submitters = [{
+    role: 'Worker', name: worker.name, email: worker.email || undefined,
+    ...(worker.startDate ? { values: { 'Start date': worker.startDate, 'Fecha de inicio': worker.startDate } } : {}),
+  }];
   if (roles.includes('Hamilton')) {
-    submitters.push({ role: 'Hamilton', name: 'Alex Li', email: SEC.email });
+    submitters.push({
+      role: 'Hamilton', name: 'Alex Li', email: SEC.email,
+      ...(Object.keys(employerValues).length ? { values: employerValues } : {}),
+    });
   }
 
   const res = await api('/api/submissions', {

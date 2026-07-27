@@ -67,6 +67,10 @@ td{padding:7px 5px;border-bottom:1px solid #e2e2e2;vertical-align:top}
 .ds{display:inline-block;min-width:150px;height:44px;vertical-align:bottom;
     border-bottom:1px solid #444}
 .ds-sig{min-width:230px;height:56px}
+/* A checkbox occupies the glyph's own footprint, so it must NOT inherit the
+   150px prose min-width or it pushes the label off the line. */
+.ds-box{min-width:22px;width:22px;height:22px;border:1px solid #444;
+        border-bottom-width:1px;vertical-align:middle;margin-right:4px}
 .ds-ini{min-width:64px;height:44px}
 .ds-date{min-width:130px;height:44px}
 /* 150px is right for a blank in prose and far too wide for a table cell — the
@@ -81,6 +85,16 @@ td .ds-sig{min-width:90px}
 // ---- field extraction -------------------------------------------------------
 let fieldSeq = 0;
 const RE_BLANK = /_{4,}/g;
+
+// A "☐" is a real election, not decoration. Left as a static glyph these never
+// become fields, so the signed PDF ships with BOTH pay-rate boxes unmarked on a
+// §2810.5 notice whose entire legal purpose is to state the rate of pay. Every
+// remaining ☐ in the documents is employer-elected (which rate applies, which
+// sick-leave method, which language was provided), so they become checkbox
+// fields owned by Hamilton and prefilled per hire at submission time.
+// Fact statements that merely READ like elections were rewritten as statements
+// instead ("Meals: none claimed") — a box beside an answer implies a question.
+const RE_CHECKBOX = /☐/g;
 
 function classify(label, seg) {
   const c = (label + ' ' + seg).toLowerCase();
@@ -192,7 +206,49 @@ function markFields(html, defaultOwner = 'worker') {
         : type === 'date' ? 'ds ds-date' : 'ds';
       return `<span class="${cls}" id="${id}" data-name="${label.replace(/"/g, '')}" data-type="${type}" data-owner="${fieldOwner}" data-section="${section.replace(/"/g, '')}"></span>`;
     });
-    return `>${replaced}`;
+    // Checkbox pass. Unlike a blank, the label FOLLOWS the glyph ("☐ Roofer"),
+    // so take the text after it, up to a bold marker or end of cell.
+    const withBoxes = replaced.replace(RE_CHECKBOX, (glyph, off) => {
+      const after = replaced.slice(off + glyph.length);
+      // Stop at the NEXT glyph, or "☐ Roofer ☐ Foreman" makes the first label
+      // swallow the second option. Also decode entities marked() emitted, or
+      // the prompt reads "The Employee&#39;s primary language".
+      let label = (after.match(/^\s*([^|*\n☐☒]{2,44})/) || [])[1] || '';
+      label = label
+        .replace(/&#39;|&rsquo;/g, "'").replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/\s+/g, ' ').trim().replace(/[:\-—,]+$/, '');
+      // Long election sentences get a SHORT STABLE name instead of a truncated
+      // one. Truncation broke prefill matching: "…primary language is Spani"
+      // no longer contains "spanish", and the Spanish line was cut before
+      // "español" entirely, so both language boxes ticked at once. A stable key
+      // is also a better prompt than a sentence fragment.
+      // Classify from the untruncated text of THIS option only. Two traps here:
+      // the 44-char label capture cuts "…is Spanish" to "…is Spani" (so the
+      // Spanish option classified as English), and a wider window runs past the
+      // newline into the NEXT option (so both classified as Spanish). Stop at
+      // the line break, and at the next glyph, and trim.
+      const norm = after.split(/[\n☐☒|]/)[0].trim().toLowerCase();
+      if (/primary language|idioma principal/.test(norm)) {
+        label = /spanish|español|espanol/.test(norm) ? 'Language: Spanish' : 'Language: English';
+      } else if (/^accrual|^acumulaci/.test(norm)) {
+        label = 'Sick leave: accrual';
+      } else if (/^front load|^entrega adelantada/.test(norm)) {
+        label = 'Sick leave: front load';
+      } else if (label.length > 40) {
+        const cut = label.slice(0, 40); const sp = cut.lastIndexOf(' ');
+        label = (sp > 24 ? cut.slice(0, sp) : cut) + '…';
+      }
+      fieldSeq += 1;
+      if (!label || label.length < 2) label = `Choice ${fieldSeq}`;
+      const id = `f${fieldSeq}`;
+      // Employer-owned: which rate applies, which sick-leave method and which
+      // language was provided are all Hamilton's statements, not the worker's.
+      fields.push({ id, name: label, type: 'checkbox', owner: 'employer', section });
+      return `<span class="ds ds-box" id="${id}" data-name="${label.replace(/"/g, '')}" ` +
+             `data-type="checkbox" data-owner="employer" data-section="${section.replace(/"/g, '')}"></span>`;
+    });
+    return `>${withBoxes}`;
   });
   return { html: out, fields };
 }

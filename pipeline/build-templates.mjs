@@ -180,7 +180,11 @@ for (const d of docs) {
     // only applies if he answers YES, and several roster rows say "if assigned".
     // Forcing those manufactures exactly the false record the pamphlet guard
     // exists to prevent, so conditional sections are optional.
-    const conditional = CONDITIONAL_SECTION.test(f.section || '') ||
+    // A checkbox is one option out of a mutually exclusive set — exactly one of
+    // Roofer/Foreman is ticked, one language, one sick-leave method. Marking
+    // them required would demand Hamilton tick BOTH Roofer and Foreman.
+    const conditional = f.type === 'checkbox' ||
+      CONDITIONAL_SECTION.test(f.section || '') ||
       CONDITIONAL_FIELD.test(f.name || '');
     return { uuid: randomUUID(), submitter_uuid: (subs[f.owner] || submitters[0]).uuid,
       name: nm, type: f.type, required: !conditional,
