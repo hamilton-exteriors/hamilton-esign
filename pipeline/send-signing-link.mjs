@@ -64,12 +64,13 @@ const api = (path, init = {}) => fetch(`${SEC.url}${path}`, {
  *  provided in. Matching is by exact field name against the live template, so a
  *  renamed field silently drops out rather than ticking the wrong box.
  *
- *  🔴 SICK_LEAVE_METHOD is an owner decision and is deliberately null. California
- *  allows accrual (1 hr per 30 worked, 40 hr cap) or front-loading (40 hr at the
- *  start of the year) and Hamilton must run one of them. Guessing would state a
- *  policy on a §2810.5 notice that Hamilton does not actually operate. Set it
- *  once the owner picks. */
-export const SICK_LEAVE_METHOD = null; // 'accrual' | 'frontload'
+ *  SICK_LEAVE_METHOD is an owner ruling (2026-07-27): **accrual**. One hour of
+ *  paid sick leave per 30 hours worked, capped at 40 hours / 5 days per year,
+ *  per Labor Code §246(b). This is what the §2810.5 notice now states, so
+ *  payroll must actually accrue it that way — the notice and the practice have
+ *  to match. Changing this is a policy change, not a config tweak, and it
+ *  requires a fresh notice to every employee within 7 days (§2810.5(b)). */
+export const SICK_LEAVE_METHOD = 'accrual'; // 'accrual' | 'frontload'
 
 function employerPrefill(tpl, worker) {
   // Live field names carry a position prefix from build-templates ("1/14 Roofer"),
