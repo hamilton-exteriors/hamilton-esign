@@ -19,8 +19,14 @@
   the header triggers, the modal title AND this button, so it cannot be
   redefined; these strings are local to the partial instead.
 
-  Ruby stays on its own <% %> lines: a multi-line ternary inside <%= %> is a
-  syntax error and takes the whole page to a 500.
+  Ruby stays on its own statement lines. A multi-line ternary inside an output
+  tag is a syntax error and takes the whole page to a 500.
+
+  Nothing in this comment may contain an ERB closing delimiter. The first one
+  ends the comment, and every character after it renders to the signer as body
+  text. An earlier revision of this very block illustrated the tag syntax
+  literally and shipped "is a syntax error and takes the whole page to a 500."
+  to the top of the decline modal, in both languages.
 %>
 <%
   es = I18n.locale.to_s.downcase.start_with?('es')
