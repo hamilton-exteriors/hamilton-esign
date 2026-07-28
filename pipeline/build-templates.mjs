@@ -27,6 +27,10 @@ const TITLES = {
   'heat-illness-prevention-plan-es': 'Plan de Prevención de Enfermedades por Calor',
   'fall-protection-program': 'Fall Protection Program',
   'code-of-safe-practices': 'Code of Safe Practices',
+  // Overseas contractors. Not a California employment document and must never be
+  // mixed with one: it asserts the signer is not a US person and performs all
+  // services outside the US.
+  'independent-contractor-agreement': 'Independent Contractor Agreement',
 };
 
 // Sections and fields that only apply to some workers. Forcing these produces a

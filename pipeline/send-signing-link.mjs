@@ -87,6 +87,43 @@ const api = (path, init = {}) => fetch(`${SEC.url}${path}`, {
  *  requires a fresh notice to every employee within 7 days (§2810.5(b)). */
 export const SICK_LEAVE_METHOD = 'accrual'; // 'accrual' | 'frontload'
 
+/** Fill and lock the contractor agreement's commercial terms.
+ *
+ *  Returns {} for every W-2 document, which have none of these labels, so this
+ *  is inert on the employee path.
+ *
+ *  Live field names carry a "3/10 " position prefix from build-templates, so
+ *  match on the stripped name and write back the live one. Matching the raw
+ *  label silently prefills nothing, which is how the pay-rate checkboxes failed
+ *  the first time. */
+function contractorTerms(tpl, worker) {
+  const strip = (n) => n.replace(/^\d+\/\d+\s+/, '');
+  const wanted = {
+    'Contractor': worker.name,
+    'Role': worker.role,
+    'Monthly rate during probation': worker.rateProbation,
+    'Probation length in months': worker.probationMonths,
+    'Monthly rate after probation': worker.rate,
+  };
+  // The contractor's own facts stay editable; only what Hamilton is promising
+  // to pay is locked. Locking their country or name would be patronising and
+  // would strand a typo.
+  const lock = new Set(['Role', 'Monthly rate during probation',
+    'Probation length in months', 'Monthly rate after probation']);
+
+  const values = {};
+  const readonly = [];
+  for (const f of tpl.fields || []) {
+    const bare = strip(f.name);
+    if (!(bare in wanted)) continue;
+    const v = wanted[bare];
+    if (v === undefined || v === null || v === '') continue;
+    values[f.name] = String(v);
+    if (lock.has(bare)) readonly.push(f.name);
+  }
+  return { values, readonly };
+}
+
 function employerPrefill(tpl, worker) {
   // Live field names carry a position prefix from build-templates ("1/14 Roofer"),
   // so match on the part AFTER it. Exact-name matching silently ticked nothing.
@@ -159,9 +196,21 @@ export async function createSigningRequest(templateName, worker) {
   // misclassification would notice first.
   const employerValues = employerPrefill(tpl, worker);
 
+  // Commercial terms belong to Hamilton, but they live on the CONTRACTOR's page
+  // on purpose: someone must be able to read what they are being paid before
+  // they sign it. So they are prefilled and then locked, rather than made
+  // employer-owned, which would have shown the contractor a blank rate and
+  // filled it in afterwards.
+  const terms = contractorTerms(tpl, worker);
+  const workerValues = {
+    ...(worker.startDate ? { 'Start date': worker.startDate, 'Fecha de inicio': worker.startDate } : {}),
+    ...terms.values,
+  };
+
   const submitters = [{
     role: 'Worker', name: worker.name, email: worker.email || undefined,
-    ...(worker.startDate ? { values: { 'Start date': worker.startDate, 'Fecha de inicio': worker.startDate } } : {}),
+    ...(Object.keys(workerValues).length ? { values: workerValues } : {}),
+    ...(terms.readonly.length ? { readonly_fields: terms.readonly } : {}),
   }];
   if (roles.includes('Hamilton')) {
     submitters.push({

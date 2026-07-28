@@ -63,11 +63,18 @@ export const WORKER_TYPES = {
     label: 'Overseas independent contractor (non-US)',
     employment: 'contractor',
     jurisdiction: 'non-US',
+    // Authored 2026-07-28 from the agreement Pat (Fatmih Makburi) actually
+    // signed on 2026-07-21, generalised so the commercial terms are per-hire
+    // fields instead of hardcoded. Nicole Nascimento's 2026-07-10 set is the
+    // second precedent and matches.
+    //
+    // Still deliberately NOT pointed at any W-2 document. There is no Spanish
+    // variant on purpose: the two contractors to date work in English, and an
+    // unreviewed machine translation of a contract is worse than no translation.
     packet: {
-      // 🔴 NOT YET AUTHORED. Deliberately EMPTY rather than pointed at the W-2
-      // documents: a fallback here would produce exactly the cross-contamination
-      // this file exists to prevent. See NEEDS_OWNER_DECISION below.
-      en: [],
+      en: [
+        { key: 'contractor-agreement', title: 'Independent Contractor Agreement' },
+      ],
     },
     // No California pamphlets: DE 2320/2515/2511, the DWC pamphlet, the CRD
     // sheet and the domestic-violence notice are California EMPLOYEE
@@ -87,23 +94,36 @@ export const WORKER_TYPES = {
       'DE 34 new hire report, DE 4 withholding',
       'The California pamphlet set',
     ],
+    // Handouts delivered over WhatsApp alongside the agreement. Neither is
+    // signable here: the W-8BEN is an IRS form the contractor downloads, signs
+    // and emails back, and the role expectations document is reference material.
+    handouts: [
+      { key: 'w8ben', title: 'W-8BEN instructions',
+        note: 'IRS form, contractor downloads from irs.gov, signs, emails back to admin@' },
+      { key: 'role-expectations', title: 'Role expectations',
+        note: 'Per-role. Pat/Nicole used "Roofing Project Coordinator - Role Expectations".' },
+    ],
     blockers: [
-      'Contractor agreement not drafted',
-      'Payment rail undecided (Wise / PayPal / other) — Mercury ACH is domestic',
+      'No payment until the signed W-8BEN is on file (agreement section 3.3)',
+      'Role expectations document is per-role and must exist before sending',
     ],
   },
 };
 
-/** Everything still needing an owner decision before an overseas packet can be
- *  sent. Surfaced rather than guessed at. */
+/** Everything still needing an owner decision. Surfaced rather than guessed at.
+ *
+ *  Most of this list was answered all along and nobody had checked: the
+ *  agreement Pat signed on 2026-07-21 settles governing law (California, sec 8),
+ *  scope (sec 1, via a per-role expectations document), rate and cadence (sec 3,
+ *  two installments by Mercury), IP and confidentiality (sec 5 and 6), and term
+ *  and notice (sec 4, seven days either way). Those are now the template, not
+ *  open questions. Check Drive before declaring something undrafted. */
 export const NEEDS_OWNER_DECISION = {
   overseas_contractor: [
-    'Governing law and venue for the contractor agreement',
-    'Scope of work and deliverables per role (coordinator vs designer vs sales)',
-    'Rate, currency, invoice cadence, and payment rail',
-    'IP assignment and confidentiality terms',
-    'Term, notice period, and termination triggers',
-    'Whether an equipment or software stipend applies',
+    'Equipment or software stipend: the executed agreement is silent, so today ' +
+      'the answer is effectively none. Say so explicitly or add a clause.',
+    'Venue: section 8 sets California governing law but names no forum for a ' +
+      'dispute. Fine to leave, but it is a deliberate choice, not an oversight.',
   ],
 };
 
