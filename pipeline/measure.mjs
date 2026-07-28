@@ -221,17 +221,34 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
     const labelShaped = name.length < 40 && !/[.!?]$/.test(name);
     if (labelShaped && EMPLOYER_FILL.test(name)) el.dataset.owner = 'employer';
   }
-  // "Trainer: ______  Date: ______" puts the trainer AND the date on one line.
-  // The date's own label is just "Date", so the employer rule missed it and the
-  // trainee ended up certifying the dates he was trained on. A date sharing a
-  // line with a trainer field belongs to whoever owns the trainer field.
-  for (const el of document.querySelectorAll('.ds')) {
+  // A bare "Date" belongs to whoever owns the field it follows.
+  //
+  // The date's own label is just "Date", so the employer rule above misses it
+  // and the trainee ends up certifying the dates he was trained on. This used to
+  // scope to the shared line, because the source read
+  // "Trainer: ______  Date: ______". Those pairs are now split onto separate
+  // lines so the field boxes stop wrapping away from their labels, which
+  // silently moved 4 trainer dates per roster back onto the Worker. Follow
+  // document order instead of the block, so the rule survives the layout.
+  const DATE_ONLY = /^(date|fecha)$/i;
+  const all = Array.from(document.querySelectorAll('.ds'));
+  for (let i = 0; i < all.length; i++) {
+    const el = all[i];
     if (el.dataset.type !== 'date' || el.dataset.owner === 'employer') continue;
-    const line = el.closest('p, td, li') || el.parentElement;
-    if (!line) continue;
-    const owns = Array.from(line.querySelectorAll('.ds'))
-      .some(o => o !== el && o.dataset.owner === 'employer');
-    if (owns) el.dataset.owner = 'employer';
+    if (!DATE_ONLY.test((el.dataset.name || '').trim())) continue;
+    const prev = all[i - 1];
+    if (!prev || prev.dataset.owner !== 'employer') continue;
+    // Do not inherit across a section boundary: a heading between the two means
+    // they are unrelated, and quietly moving a worker's date to the employer is
+    // the mirror image of the bug being fixed.
+    const block = el.closest('p, td, li') || el;
+    const prevBlock = prev.closest('p, td, li') || prev;
+    let hop = prevBlock, crossed = false, guard = 0;
+    while (hop && hop !== block && guard++ < 20) {
+      hop = hop.nextElementSibling;
+      if (hop && /^H[1-6]$/.test(hop.tagName)) { crossed = true; break; }
+    }
+    if (!crossed) el.dataset.owner = 'employer';
   }
 
   // Measure, page-relative + normalised
