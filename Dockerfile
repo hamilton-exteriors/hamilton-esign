@@ -19,29 +19,39 @@
 # nodejs/yarn/git/build-base and the shakapacker gem). Verified beforehand that a
 # NO-OP recompile of 3.1.5 reproduces the pack content hashes already running in
 # production, so a patched build differs only by the patch.
-FROM ruby:4.0.5-alpine AS webpack
+FROM ruby:4.0.5-alpine@sha256:f48938e9ae72a4d32e728b03c306e7a7ff21f0cb6c2ed33f44a078c700b2aea6 AS webpack
 
 ENV RAILS_ENV=production
 ENV NODE_ENV=production
 
 WORKDIR /src
 
-RUN apk add --no-cache nodejs yarn git build-base && gem install shakapacker
+RUN apk add --no-cache \
+      nodejs=24.17.0-r0 \
+      yarn=1.22.22-r1 \
+      git=2.54.0-r0 \
+      build-base=0.5-r4 && \
+    gem install shakapacker -v 9.7.0 --no-document
 
-RUN git clone --depth 1 --branch 3.1.5 https://github.com/docusealco/docuseal.git /src
+ARG DOCUSEAL_COMMIT=5fe75c84ffc71d1e879884f453a7532b4dee049a
+RUN git init . && \
+    git remote add origin https://github.com/docusealco/docuseal.git && \
+    git fetch --depth 1 origin "$DOCUSEAL_COMMIT" && \
+    git checkout --detach FETCH_HEAD && \
+    test "$(git rev-parse HEAD)" = "$DOCUSEAL_COMMIT"
 
 # Every edit asserts its anchor text, so an upstream change fails the build here
 # rather than shipping a bundle where fields silently capture nothing.
 COPY patches/docuseal-inline-fields.mjs /patches/
 RUN node /patches/docuseal-inline-fields.mjs /src/app/javascript/submission_form
 
-RUN yarn install --network-timeout 1000000
+RUN yarn install --frozen-lockfile --network-timeout 1000000
 
-RUN echo "gem 'shakapacker'" > Gemfile && ./bin/shakapacker && \
+RUN echo "gem 'shakapacker', '9.7.0'" > Gemfile && ./bin/shakapacker && \
     test -f /src/public/packs/manifest.json
 
 # ------------------------------------------------------------------- app -----
-FROM docuseal/docuseal:3.1.5
+FROM docuseal/docuseal:3.1.5@sha256:d20b62c1eac8719d2ffa31188d83866cf1b0d41c1aeea01c37bd850ef32cb517
 
 # The patched bundle, replacing the whole packs tree so the manifest and its
 # content-hashed filenames stay consistent with each other.

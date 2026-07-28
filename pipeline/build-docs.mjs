@@ -1,9 +1,11 @@
 // Hamilton doc pipeline: markdown -> print HTML (field-marked) -> PDF + field coords
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { marked } from 'marked';
+import { BUILD_DIR, DOCS_DIR, REPO_ROOT } from './config.mjs';
+import { DEFAULT_DOCUMENT_SLUGS } from './registry.mjs';
 
-const SRC = 'C:/Users/admin/.claude/skills/onboard-worker/references/documents';
-const OUT = 'C:/Users/admin/AppData/Local/Temp/claude/C--Users-admin/d1994a65-4339-4973-8fe3-b31c96359079/scratchpad/build';
+const SRC = DOCS_DIR;
+const OUT = BUILD_DIR;
 mkdirSync(OUT, { recursive: true });
 
 // LETTER geometry, and the trade-off behind it is worth stating.
@@ -317,7 +319,7 @@ function markFields(html, defaultOwner = 'worker') {
  *  reference: a signed record that depends on a live URL to render its own logo
  *  is a record that degrades. Same wordmark the signer page uses. */
 const LOGO = (() => {
-  const erb = readFileSync('C:/Users/admin/AppData/Local/Temp/claude/C--Users-admin/d1994a65-4339-4973-8fe3-b31c96359079/scratchpad/hamilton-esign/brand/_logo.html.erb', 'utf8');
+  const erb = readFileSync(`${REPO_ROOT}/brand/_logo.html.erb`, 'utf8');
   const m = erb.match(/data:image\/[a-z+]+;base64,[A-Za-z0-9+/=]+/);
   return m ? m[0] : null;
 })();
@@ -409,7 +411,7 @@ td .ds,td .ds-ini,td .ds-date{min-width:44px}
  *  content to live in the same DOM and the isolation has to happen here instead.
  *  Generated rather than hand-written: there are around forty selectors and
  *  missing one silently restyles the signing UI. */
-function scopeCss(css, scope) {
+export function scopeCss(css, scope) {
   // Comments MUST go first. Anchoring on "start of string or }" silently skips
   // any selector that follows a comment instead of a rule, which left .ds, .legal
   // and .letterhead unscoped and free to restyle DocuSeal's own chrome. The
@@ -429,7 +431,7 @@ function scopeCss(css, scope) {
 
 /** Fail the build if any rule escaped the scope. A leaked selector does not look
  *  like a bug in the reading view, it looks like DocuSeal's UI breaking. */
-function assertScoped(css, scope) {
+export function assertScoped(css, scope) {
   const leaked = [];
   const re = /(^|})\s*([^{}@]+?)\s*\{/g;
   let m;
@@ -481,14 +483,7 @@ export function buildOne(slug) {
 const IS_MAIN = !!process.argv[1] &&
   import.meta.url === new URL(`file:///${process.argv[1].replace(/\\/g, '/')}`).href;
 
-const DOCS = process.argv.slice(2).length ? process.argv.slice(2) : [
-  'employment-agreement', 'employment-agreement-es',
-  'wage-notice-2810-5', 'wage-notice-2810-5-es',
-  'policy-acknowledgment', 'policy-acknowledgment-es',
-  'safety-training-roster', 'safety-training-roster-es',
-  'iipp', 'heat-illness-prevention-plan', 'heat-illness-prevention-plan-es',
-  'fall-protection-program', 'code-of-safe-practices',
-];
+const DOCS = process.argv.slice(2).length ? process.argv.slice(2) : DEFAULT_DOCUMENT_SLUGS;
 
 if (IS_MAIN) {
 const manifest = DOCS.map(buildOne);

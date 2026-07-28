@@ -73,19 +73,67 @@
           window.dispatchEvent(new Event('hx-reflow-ready'));
 
           var pages = document.querySelectorAll('page-container');
-          var showPages = function (on) {
-            for (var i = 0; i < pages.length; i++) pages[i].style.display = on ? '' : 'none';
-            wrap.style.display = on ? 'none' : '';
+          var readDoc = wrap.querySelector('#hx-read-doc');
+          var toggle = wrap.querySelector('#hx-read-toggle');
+          var prefersPage = false;
+          var reflowInvalid = false;
+
+          var retarget = function () {
+            // Vue's Teleports are not reactive to DOM visibility. Every view
+            // transition must force the field components to choose targets again.
+            window.dispatchEvent(new Event('hx-reflow-ready'));
           };
-          showPages(false);
-          document.getElementById('hx-read-toggle').addEventListener('click', function () {
-            showPages(true);
+          var showPdf = function () {
+            for (var i = 0; i < pages.length; i++) pages[i].style.display = '';
+            readDoc.style.display = 'none';
+            toggle.textContent = 'Show readable view';
+            retarget();
+          };
+          var showReflow = function () {
+            if (!MOBILE.matches || prefersPage || reflowInvalid) {
+              showPdf();
+              return;
+            }
+
+            // Keep the PDF visible while Vue retargets. Hiding it first turns a
+            // missing or stale UUID into an invisible required field.
+            readDoc.style.display = '';
+            for (var i = 0; i < pages.length; i++) pages[i].style.display = '';
+            retarget();
+            requestAnimationFrame(function () {
+              requestAnimationFrame(function () {
+                if (!MOBILE.matches || prefersPage) {
+                  showPdf();
+                  return;
+                }
+                var stranded = document.querySelector('page-container .field-area');
+                var inline = readDoc.querySelector('.field-area');
+                if (stranded || !inline) {
+                  // Reflow is an enhancement. Any field that failed to move makes
+                  // the exact PDF the safe, signable fallback for this session.
+                  reflowInvalid = true;
+                  wrap.style.display = 'none';
+                  showPdf();
+                  return;
+                }
+                for (var i = 0; i < pages.length; i++) pages[i].style.display = 'none';
+                toggle.textContent = 'Show the page';
+              });
+            });
+          };
+
+          showReflow();
+          toggle.addEventListener('click', function () {
+            prefersPage = !prefersPage;
+            if (prefersPage) showPdf();
+            else showReflow();
           });
-          // Any tap on a field area means the signer wants the real page, since
-          // that is where the fields live.
-          document.addEventListener('click', function (e) {
-            if (e.target.closest && e.target.closest('page-container')) showPages(true);
-          }, true);
+          MOBILE.addEventListener('change', function () {
+            // Crossing 768px used to let CSS hide reflow while the script kept the
+            // PDF hidden inline, leaving a blank signing screen after rotation.
+            if (MOBILE.matches) showReflow();
+            else showPdf();
+          });
         }
 
         fetch('/reflow/index.json', { credentials: 'same-origin' })

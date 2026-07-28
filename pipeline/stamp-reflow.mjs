@@ -1,69 +1,60 @@
-// Stamp the LIVE field uuids into the reading views, without recreating anything.
-//
-// build-templates stamps as it mints, which only helps documents built from now
-// on. The 14 templates already in production were created before that existed,
-// and rebuilding them to get uuids would invalidate every signing link already
-// sent — which has happened three times today and should not happen a fourth.
-//
-// Order is the join key: build-templates creates template fields by mapping over
-// fields.json in order, so live.fields[i] is d.fields[i]. The span id from
-// build-docs ("f7") is what the reading view carries, so the map is
-// d.fields[i].id -> live.fields[i].uuid.
-//
-//   node pipeline/stamp-reflow.mjs          report only
-//   node pipeline/stamp-reflow.mjs --apply  write the stamps
+// Stamp live field UUIDs into checked-in reading views without rebuilding live
+// templates. Identity is geometry/type/role, never API array order.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { BUILD_DIR } from './config.mjs';
+import { createDocusealClient } from './docuseal-api.mjs';
+import { TEMPLATE_REGISTRY, requireUniqueActiveTemplate } from './registry.mjs';
+import { matchGeneratedFields } from './field-match.mjs';
 
-const DIR = 'C:/Users/admin/AppData/Local/Temp/claude/C--Users-admin/d1994a65-4339-4973-8fe3-b31c96359079/scratchpad/build';
-const SEC = JSON.parse(readFileSync('C:/Users/admin/.claude/.hamilton-secrets/docuseal.json', 'utf8'));
-const api = (p) => fetch(`${SEC.url}${p}`, { headers: { 'X-Auth-Token': SEC.apiKey } }).then((r) => r.json());
-const APPLY = process.argv.includes('--apply');
+const client = createDocusealClient();
+const apply = process.argv.includes('--apply');
+const fieldsPath = `${BUILD_DIR}/fields.json`;
+if (!existsSync(fieldsPath)) {
+  throw new Error(`missing ${fieldsPath}; run build-docs and measure with HAMILTON_BUILD_DIR set if needed`);
+}
+const documents = JSON.parse(readFileSync(fieldsPath, 'utf8'));
+const bySlug = new Map(documents.map((document) => [document.slug, document]));
+const inventory = await client.listAll('/api/templates', { what: 'template inventory' });
 
-const TITLES = JSON.parse(readFileSync(new URL('../brand/reflow/index.json', import.meta.url), 'utf8'));
-const slugByName = TITLES;                                  // name -> slug
-const docs = JSON.parse(readFileSync(`${DIR}/fields.json`, 'utf8'));
-const bySlug = Object.fromEntries(docs.map((d) => [d.slug, d]));
+let written = 0;
+const problems = [];
+for (const entry of TEMPLATE_REGISTRY) {
+  try {
+    const template = requireUniqueActiveTemplate(inventory, entry.title);
+    const generated = bySlug.get(entry.slug);
+    if (!generated) throw new Error('not present in fields.json');
+    const full = await client.request(`/api/templates/${template.id}`, {}, `template ${template.id}`);
+    const mapping = matchGeneratedFields(generated.fields, full);
 
-const list = await api('/api/templates?limit=60');
-const live = (list.data || []).filter((t) => !t.archived_at);
-
-let done = 0;
-let problems = 0;
-for (const t of live) {
-  const slug = slugByName[t.name];
-  if (!slug) { console.log(`  ??  no reading view mapped for "${t.name}"`); continue; }
-  const d = bySlug[slug];
-  if (!d) { console.log(`  ??  ${slug}: not in fields.json, rebuild docs first`); problems++; continue; }
-
-  const full = await api(`/api/templates/${t.id}`);
-  const lf = full.fields || [];
-  if (lf.length !== d.fields.length) {
-    console.log(`  !!  ${slug}: live has ${lf.length} fields, build has ${d.fields.length}. ` +
-      'The reading view and the template are out of sync; rebuild rather than guess.');
-    problems++;
-    continue;
+    const path = new URL(`../brand/reflow/${entry.slug}.reflow.html`, import.meta.url);
+    if (!existsSync(path)) throw new Error('reading view file is missing');
+    let html = readFileSync(path, 'utf8').replace(/ data-hx-uuid="[^"]*"/g, '');
+    let stamped = 0;
+    for (const field of generated.fields) {
+      const uuid = mapping.get(field.id);
+      const before = html;
+      html = html.replace(`id="${field.id}"`, `id="${field.id}" data-hx-uuid="${uuid}"`);
+      if (html !== before) stamped++;
+    }
+    const markers = (html.match(/class="ds[^"]*"/g) || []).length;
+    const uuids = [...html.matchAll(/data-hx-uuid="([^"]+)"/g)].map((match) => match[1]);
+    if (stamped !== markers || uuids.length !== new Set(uuids).size || stamped !== entry.fields) {
+      throw new Error(`expected ${entry.fields} unique anchors, stamped ${stamped}/${markers}`);
+    }
+    console.log(`  ok  ${entry.slug.padEnd(34)} ${stamped}/${markers} anchors (template ${template.id})`);
+    if (apply) {
+      writeFileSync(path, html);
+      written++;
+    }
+  } catch (error) {
+    problems.push(`${entry.slug}: ${error.message}`);
+    console.error(`  FAIL  ${entry.slug}: ${error.message}`);
   }
-
-  const path = new URL(`../brand/reflow/${slug}.reflow.html`, import.meta.url);
-  if (!existsSync(path)) { console.log(`  ??  ${slug}: no reading view file`); problems++; continue; }
-  let html = readFileSync(path, 'utf8');
-  // Idempotent: drop any previous stamps before writing the current ones.
-  html = html.replace(/ data-hx-uuid="[^"]*"/g, '');
-
-  let stamped = 0;
-  for (let i = 0; i < d.fields.length; i++) {
-    const before = html;
-    html = html.replace(`id="${d.fields[i].id}"`, `id="${d.fields[i].id}" data-hx-uuid="${lf[i].uuid}"`);
-    if (html !== before) stamped++;
-  }
-  const markers = (html.match(/class="ds[^"]*"/g) || []).length;
-  const ok = stamped === markers;
-  if (!ok) problems++;
-  console.log(`  ${ok ? 'ok  ' : 'FAIL'}  ${slug.padEnd(34)} ${stamped}/${markers} anchors  (template ${t.id})`);
-  if (ok && APPLY) { writeFileSync(path, html); done++; }
 }
 
-console.log(problems
-  ? `\n${problems} problem(s); nothing written for those.`
-  : APPLY ? `\nstamped ${done} reading view(s)` : '\nall clean; re-run with --apply');
-process.exit(problems ? 1 : 0);
+if (problems.length) {
+  console.error(`\n${problems.length} problem(s); failed closed.`);
+  process.exit(1);
+}
+if (!TEMPLATE_REGISTRY.length) throw new Error('template registry is empty');
+console.log(apply ? `\nstamped ${written} reading views` : `\nverified ${TEMPLATE_REGISTRY.length} reading views; re-run with --apply`);

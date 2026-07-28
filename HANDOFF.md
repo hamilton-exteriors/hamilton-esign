@@ -4,7 +4,8 @@ For the next agent. Written to be reviewed and continued, not admired. Where I a
 unsure I say so. Where I broke something, I say that too.
 
 **Repo:** `hamilton-exteriors/hamilton-esign` (PUBLIC, AGPL-3.0)
-**HEAD at handoff:** `c922c07` + this file. Pushed, tree clean.
+**Baseline before remediation:** `c922c07`
+**Review branch:** `claude/review-inline-fields`; see the release status in §8.
 **Live:** <https://sign.hamilton-exteriors.com> and
 <https://docuseal-production-7617.up.railway.app> — same service, both 200.
 **Railway:** project `backoffice` `9ff3cd8c-…`, env `72326ee3-…`, service
@@ -62,14 +63,11 @@ it produced, so a rebuild can be scoped to one document.
 357 Acuse de Recibo de Políticas     33f   364 Code of Safe Practices         2f
 ```
 
-**5 open submissions — the owner's safety programs, awaiting his signature.
-DO NOT archive these; they are the live links he was emailed.**
-
-```
-140 IIPP                     fn6f3r9RYruDAr    143 Fall Protection   F6ybdjBYiYsih8
-141 Heat Illness (EN)        7f4ABM2ittBwny    144 Code of Safe Pr.  UX2LxkFsu1Xfh9
-142 Plan de Prevención (ES)  5n2j9Xt9Aue3Ps
-```
+**5 open safety-program submissions await the owner's signature.** The original
+bearer links were accidentally committed in this public handoff, then revoked and
+replaced on 2026-07-28. The current links were delivered privately by email and are
+intentionally not recorded in Git. Never put signing slugs or bearer URLs in a
+tracked handoff.
 
 **Field ownership per document — diff after ANY layout change.** A layout change
 silently moved 4 trainer dates to the worker once (§6.2).
@@ -177,9 +175,10 @@ Teleport cannot cross documents.
 after components have mounted and chosen page images. Injecting DOM is not a
 reactive change, so the patch listens for `hx-reflow-ready` and `$forceUpdate()`s.
 
-**`pipeline/stamp-reflow.mjs`** stamps **live** field uuids into the reading views
-so you need not rebuild templates to get them. Join key is the span id from
-`build-docs` (`f7`), not document order.
+**`pipeline/stamp-reflow.mjs`** stamps **live** field UUIDs into the reading views
+without rebuilding templates. It matches each generated field to the live field by
+normalised page, geometry, type, and signer role. Array order is never an identity;
+missing, duplicate, or ambiguous matches fail closed.
 
 Verified live at handoff:
 ```
@@ -217,12 +216,15 @@ desktop  anchors=0 fieldsInline=0 fieldsOnPages=5 pagesHidden=false steps=5
 ## 7. Verification
 
 ```bash
-node pipeline/verify-templates.mjs        # every live template's raster fills its page
-node <scratchpad>/css-validate.mjs brand/hamilton.css
+bun run test                              # unit + responsive controller regressions
+node pipeline/build-docs.mjs
+node pipeline/measure.mjs
+node pipeline/stamp-reflow.mjs            # read-only live UUID mapping report
+node pipeline/verify-templates.mjs        # all 14 templates, every PDF page
 # ERB — a bad layout 500s every signer page. The harness MUST wrap the compiled
 # template in a method, or a layout that legitimately yields reports "Invalid yield":
 docker run --rm -v "<dir>:/chk:ro" -v "<erbcheck2.rb>:/e.rb:ro" -w /app \
-  docuseal/docuseal:3.1.5 bundle exec ruby /e.rb
+  hamilton-esign-review bundle exec ruby /e.rb
 ```
 
 ⚠️ **Verify document TEXT against `build/<slug>.html`, never the signer page.**
@@ -231,38 +233,44 @@ assertions there pass off the footer chrome instead.
 
 ---
 
-## 8. What still needs doing
+## 8. Release status and remaining work
+
+**Release status:** remediation is validated in the worktree but must not be called
+live until the Railway deployment and post-deploy browser checks below succeed.
+Git push alone does not deploy this service.
 
 **Blocked on the owner, not code:**
-1. **Sign the 5 safety programs.** All 5 are `unsigned`. This gates the New Hire
-   Policy Acknowledgment by design, so onboarding stops at document 3. It is
-   **5, not 4** — the Spanish heat plan is a separate signature and Diego needs it.
-2. **Workers comp class 5552.** §6 of the wage notice is blank until bound, and
-   nobody goes on a roof until it is.
+1. **Sign the 5 safety programs.** The private replacement links were emailed on
+   2026-07-28. Old public links are revoked. The Policy Acknowledgment stays gated.
+2. **Workers comp class 5552.** Section 6 of the wage notice remains blank until
+   bound, and nobody goes on a roof until it is.
 
-**Code, roughly in priority order:**
-3. **Review the Vue fork** (§5). Independent eyes on a patched signing UI.
-4. **Inline fields are verified on the IIPP only** (5 fields, simple). Verify the
-   65-field Safety Training Roster and 33-field acknowledgment — table cells and
-   initials columns are the untested shapes.
-5. **No inline-field regression test.** `verify-templates.mjs` checks rasters, not
-   the reflow view. Worth a Playwright check asserting `fieldsInline == anchors`
-   on phone and `fieldsOnPages == fields` on desktop.
-6. **`advance()` has no automated trigger** — packet sequencing is manual. The
-   DocuSeal webhook is HMAC-capable and points at nothing.
-7. **Drive filing sweep is not scheduled** (`file-to-drive.mjs sweep`, idempotent
-   by filename).
-8. **Overseas packet has no Spanish variant**, deliberately: an unreviewed machine
-   translation of a contract is worse than none.
-9. **`run-packet.mjs plan` with no args** throws a raw 422 instead of usage.
-10. **Stock pack files linger** in the image because `COPY` merges rather than
-    replaces. Harmless — the manifest points at the patched bundle — but untidy.
+**Deliberately deferred:**
+- Webhook-driven packet advancement and scheduled Drive filing need a durable
+  datastore, endpoint, retention policy, and operator.
+- The durable operational source for trainer confirmation is not selected. Until
+  then the roster requires the explicit `training` command and recorded trainer name.
+- The overseas agreement has no Spanish variant; do not machine-translate it.
 
-**Unverified claims. Re-check rather than trust:**
-- `assertScoped` in `build-docs.mjs` is **not proven to raise**. The positive path
-  passes and emits zero leaks, but my attempt to re-introduce the defect did not
-  modify the file, so the negative test never ran.
-- The reading view is verified on the IIPP and Employment Agreement only.
+**Closed by this remediation:**
+- Complex 65-field roster and 33-field acknowledgment responsive behavior is covered.
+- Mobile page/readable toggles, both viewport crossings, and stale UUID fallback have
+  browser regressions using the real layout controller.
+- Preview/plan is read-only; template lookup and pagination fail closed.
+- Worker type is mandatory; training is outside automatic new-hire progression.
+- Packet state uses generated IDs, atomic checkpoints, recoverable locks, explicit
+  ambiguous-delivery retry, and per-artifact retry state.
+- Drive deduplication uses immutable submission/document `appProperties`.
+- Full verification requires all 14 templates and rasterizes every PDF page.
+- Docker bases, DocuSeal source, APK packages, Shakapacker, and Yarn lock resolution
+  are pinned.
+
+**Required after deployment:**
+- Re-run disposable `ZZ TEST` phone/desktop checks for IIPP, roster, and acknowledgment.
+- Exercise Show Page, return to readable view, both sides of 768px, and stale-anchor
+  PDF fallback. Archive every disposable submission afterward.
+- Confirm the five private replacement links remain signable and the revoked links
+  remain deleted. Never record either URL set here.
 
 ---
 

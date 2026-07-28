@@ -1,35 +1,33 @@
-// File a completed Hamilton e-sign submission into Google Drive.
-//
-// Routing is a LEGAL requirement, not tidiness: the I-9 and anything carrying a
-// medical fact must live in physically separate files from the personnel file.
-// Mixing them is its own violation, independent of what the documents say.
+// File a fully completed Hamilton e-sign submission into Google Drive using
+// immutable DocuSeal identities, not a collision-prone person/template/day name.
 import { readFileSync } from 'node:fs';
-import { loadRw, safeName, driveQuote } from './safe.mjs';
-import { createRequire } from 'node:module';
-const require = createRequire('C:/Users/admin/AppData/Roaming/npm/node_modules/');
-const { google } = require('googleapis');
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { Readable } from 'node:stream';
+import { google } from 'googleapis';
+import { safeName, driveQuote } from './safe.mjs';
+import { createDocusealClient } from './docuseal-api.mjs';
 
-const SEC = JSON.parse(readFileSync('C:/Users/admin/.claude/.hamilton-secrets/docuseal.json', 'utf8'));
-const KEY = JSON.parse(readFileSync('C:/Users/admin/.claude/skills/gmail/config/google-service-account.json', 'utf8'));
-
+const client = createDocusealClient();
+const serviceAccountPath = process.env.GOOGLE_SERVICE_ACCOUNT_PATH ||
+  join(homedir(), '.claude', 'skills', 'gmail', 'config', 'google-service-account.json');
 const ROOT = 'Hamilton Employee Records';
 
-// template slug/name -> destination bucket
-// Spanish titles must match too — the Spanish heat plan is a company program,
-// and falling through to 'personnel' would file it in a worker's folder.
 const ROUTE = [
-  [/i-?9|employment eligibility|elegibilidad de empleo/i,   'i9'],
+  [/i-?9|employment eligibility|elegibilidad de empleo/i, 'i9'],
   [/predesignation|physician|medical|dwc|predesignaci|m[ée]dico/i, 'medical'],
-  [/safety training roster|registro de capacitaci/i,        'safety-roster'],
+  [/safety training roster|registro de capacitaci/i, 'safety-roster'],
   [/iipp|injury and illness|heat illness|fall protection|code of safe/i, 'program'],
   [/prevenci[óo]n de (enfermedades|lesiones)|por calor|protecci[óo]n contra ca[íi]das|pr[áa]cticas seguras/i, 'program'],
-  [/.*/,                                                    'personnel'],
+  [/.*/, 'personnel'],
 ];
-const bucketFor = (name) => ROUTE.find(([re]) => re.test(name))[1];
+const bucketFor = (name) => ROUTE.find(([pattern]) => pattern.test(name))[1];
 
 async function drive() {
+  const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
   const auth = new google.auth.JWT({
-    email: KEY.client_email, key: KEY.private_key,
+    email: serviceAccount.client_email,
+    key: serviceAccount.private_key,
     scopes: ['https://www.googleapis.com/auth/drive'],
     subject: 'admin@hamilton-exteriors.com',
   });
@@ -39,102 +37,137 @@ async function drive() {
 
 const esc = driveQuote;
 
-async function folder(d, name, parentId) {
-  const q = [`name='${esc(name)}'`, "mimeType='application/vnd.google-apps.folder'",
-    'trashed=false', parentId ? `'${parentId}' in parents` : "'root' in parents"].join(' and ');
-  const found = await d.files.list({ q, fields: 'files(id,name)', pageSize: 1 });
+async function folder(clientDrive, name, parentId) {
+  const query = [
+    `name='${esc(name)}'`,
+    "mimeType='application/vnd.google-apps.folder'",
+    'trashed=false',
+    parentId ? `'${parentId}' in parents` : "'root' in parents",
+  ].join(' and ');
+  const found = await clientDrive.files.list({ q: query, fields: 'files(id,name)', pageSize: 1 });
   if (found.data.files?.length) return found.data.files[0].id;
-  const made = await d.files.create({
+  const created = await clientDrive.files.create({
     requestBody: { name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId || 'root'] },
     fields: 'id',
   });
-  return made.data.id;
+  if (!created.data.id) throw new Error(`Drive did not return an id for folder ${name}`);
+  return created.data.id;
 }
 
-/** Employees/<Name>/{personnel,i9,medical} + Safety/{training-rosters/<Name>,programs} */
-async function destination(d, bucket, person) {
-  const root = await folder(d, ROOT);
+async function destination(clientDrive, bucket, person) {
+  const root = await folder(clientDrive, ROOT);
   if (bucket === 'program') {
-    const safety = await folder(d, 'Safety', root);
-    return folder(d, 'Programs', safety);
+    const safety = await folder(clientDrive, 'Safety', root);
+    return folder(clientDrive, 'Programs', safety);
   }
   if (bucket === 'safety-roster') {
-    const safety = await folder(d, 'Safety', root);
-    const rosters = await folder(d, 'Training Rosters', safety);
-    return folder(d, person, rosters);
+    const safety = await folder(clientDrive, 'Safety', root);
+    const rosters = await folder(clientDrive, 'Training Rosters', safety);
+    return folder(clientDrive, person, rosters);
   }
-  const employees = await folder(d, 'Employees', root);
-  const who = await folder(d, person, employees);
-  return folder(d, { personnel: 'Personnel', i9: 'I-9', medical: 'Medical' }[bucket], who);
+  const employees = await folder(clientDrive, 'Employees', root);
+  const employee = await folder(clientDrive, person, employees);
+  return folder(clientDrive, { personnel: 'Personnel', i9: 'I-9', medical: 'Medical' }[bucket], employee);
+}
+
+export function driveIdentity(submissionId, documentId) {
+  if (submissionId == null || documentId == null) throw new Error('submission and document ids are required');
+  return {
+    docusealSubmissionId: String(submissionId),
+    docusealDocumentId: String(documentId),
+  };
 }
 
 export async function fileSubmission(submissionId) {
-  const d = await drive();
-  const hdr = { 'X-Auth-Token': SEC.apiKey };
-  const sub = await (await fetch(`${SEC.url}/api/submissions/${submissionId}`, { headers: hdr })).json();
-  const docs = await (await fetch(`${SEC.url}/api/submissions/${submissionId}/documents`, { headers: hdr })).json();
+  if (!Number.isInteger(Number(submissionId)) || Number(submissionId) <= 0) {
+    throw new Error('submission id must be a positive integer');
+  }
+  const submission = await client.request(`/api/submissions/${submissionId}`, {}, `submission ${submissionId}`);
+  if (submission.archived_at) throw new Error(`submission ${submissionId} is archived`);
+  const submitters = submission.submitters || [];
+  if (!submitters.length) throw new Error(`submission ${submissionId} has no submitters`);
+  const pending = submitters.filter((submitter) => !submitter.completed_at);
+  if (pending.length) {
+    throw new Error(`submission ${submissionId} is incomplete; waiting on ${pending.map((entry) => entry.name).join(', ')}`);
+  }
+  const documents = await client.request(`/api/submissions/${submissionId}/documents`, {},
+    `documents for submission ${submissionId}`);
+  if (!documents.documents?.length) throw new Error(`submission ${submissionId} has no signed documents`);
 
-  const tplName = sub.template?.name || docs.documents?.[0]?.name || 'document';
-  const bucket = bucketFor(tplName);
-  // the signer, not the countersigner, names the file
-  const signer = (sub.submitters || []).find(s => /worker|employee/i.test(s.role || '')) || (sub.submitters || [])[0];
+  const clientDrive = await drive();
+  const templateName = submission.template?.name || documents.documents[0]?.name || 'document';
+  const bucket = bucketFor(templateName);
+  const signer = submitters.find((entry) => /worker|employee/i.test(entry.role || '')) || submitters[0];
   const person = safeName(signer?.name, 'Unassigned');
+  const date = (submission.completed_at || submitters[0].completed_at || '').slice(0, 10) || 'signed';
+  const output = [];
 
-  const out = [];
-  for (const doc of docs.documents || []) {
-    const parent = await destination(d, bucket, person);
-    const filename = `${safeName(tplName, 'Document')} - ${person} - ${(sub.completed_at || '').slice(0, 10) || 'draft'}.pdf`;
-    // Idempotency: a re-run or a duplicate webhook must not create a second copy
-    // of a signed employment record.
-    const dupe = await d.files.list({
-      q: `name='${esc(filename)}' and '${parent}' in parents and trashed=false`,
-      fields: 'files(id,name,webViewLink)', pageSize: 1,
+  for (const document of documents.documents) {
+    const parent = await destination(clientDrive, bucket, person);
+    const identity = driveIdentity(submissionId, document.id);
+    const duplicate = await clientDrive.files.list({
+      q: `appProperties has { key='docusealSubmissionId' and value='${esc(identity.docusealSubmissionId)}' } and ` +
+        `appProperties has { key='docusealDocumentId' and value='${esc(identity.docusealDocumentId)}' } and trashed=false`,
+      fields: 'files(id,name,webViewLink)',
+      pageSize: 1,
     });
-    if (dupe.data.files?.length) {
-      out.push({ bucket, person, file: filename, link: dupe.data.files[0].webViewLink, skipped: true });
+    if (duplicate.data.files?.length) {
+      output.push({ bucket, person, file: duplicate.data.files[0].name,
+        link: duplicate.data.files[0].webViewLink, skipped: true });
       continue;
     }
-    const bytes = Buffer.from(await (await fetch(doc.url)).arrayBuffer());
-    const res = await d.files.create({
-      requestBody: { name: filename, parents: [parent] },
-      media: { mimeType: 'application/pdf', body: require('node:stream').Readable.from(bytes) },
+
+    const filename = `${safeName(templateName, 'Document')} - ${person} - ${date} - S${submissionId}-D${document.id}.pdf`;
+    const response = await fetch(document.url);
+    if (!response.ok) throw new Error(`signed PDF ${document.id} returned ${response.status}`);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (!bytes.length) throw new Error(`signed PDF ${document.id} was empty`);
+    const created = await clientDrive.files.create({
+      requestBody: { name: filename, parents: [parent], appProperties: identity },
+      media: { mimeType: 'application/pdf', body: Readable.from(bytes) },
       fields: 'id,name,webViewLink',
     });
-    out.push({ bucket, person, file: res.data.name, link: res.data.webViewLink });
+    if (!created.data.id) throw new Error(`Drive did not return an id for ${filename}`);
+    output.push({ bucket, person, file: created.data.name, link: created.data.webViewLink });
   }
-  return out;
+  return output;
 }
 
-/** Sweep every completed submission and file anything not already in Drive.
- *  Idempotent by filename, so a missed webhook or a re-run costs nothing —
- *  which is why this is a sweep and not a webhook-only path. */
 export async function sweep() {
-  const hdr = { 'X-Auth-Token': SEC.apiKey };
-  const list = await (await fetch(`${SEC.url}/api/submissions?limit=100`, { headers: hdr })).json();
-  // DELETE on a submission ARCHIVES it — archived rows keep status "completed"
-  // and still come back from the list endpoint, so without this filter deleted
-  // test data gets re-filed into the employee records on the next sweep.
-  const done = (list.data || [])
-    .filter(s => !s.archived_at)
-    .filter(s => s.completed_at || s.status === 'completed');
+  const submissions = await client.listAll('/api/submissions', { what: 'submission inventory' });
+  const complete = submissions
+    .filter((submission) => !submission.archived_at)
+    .filter((submission) => {
+      const submitters = submission.submitters || [];
+      return submitters.length > 0 && submitters.every((entry) => entry.completed_at);
+    });
   const results = [];
-  for (const s of done) {
-    try { results.push(...await fileSubmission(s.id)); }
-    catch (e) { results.push({ error: `submission ${s.id}: ${e.message}` }); }
+  for (const submission of complete) {
+    try { results.push(...await fileSubmission(submission.id)); }
+    catch (error) { results.push({ error: `submission ${submission.id}: ${error.message}` }); }
   }
-  return { completed: done.length, results };
+  return { completed: complete.length, results };
 }
 
-const arg = process.argv[2];
-if (arg === 'sweep') {
-  const r = await sweep();
-  console.log(`completed submissions: ${r.completed}`);
-  for (const x of r.results) {
-    console.log(x.error ? `  ERROR ${x.error}`
-      : `  ${x.skipped ? 'already filed' : 'FILED'} [${x.bucket}] ${x.person} - ${x.file}`);
-  }
-} else if (arg) {
-  for (const r of await fileSubmission(Number(arg))) {
-    console.log(`${r.skipped ? 'already filed' : 'filed'} [${r.bucket}] ${r.person}\n   ${r.file}\n   ${r.link || ''}`);
+const IS_MAIN = Boolean(process.argv[1]) &&
+  import.meta.url === new URL(`file:///${process.argv[1].replace(/\\/g, '/')}`).href;
+
+if (IS_MAIN) {
+  const argument = process.argv[2];
+  if (argument === 'sweep') {
+    const result = await sweep();
+    console.log(`completed submissions: ${result.completed}`);
+    for (const entry of result.results) {
+      console.log(entry.error ? `  ERROR ${entry.error}`
+        : `  ${entry.skipped ? 'already filed' : 'FILED'} [${entry.bucket}] ${entry.person} - ${entry.file}`);
+    }
+    if (result.results.some((entry) => entry.error)) process.exitCode = 1;
+  } else if (/^\d+$/.test(argument || '')) {
+    for (const result of await fileSubmission(Number(argument))) {
+      console.log(`${result.skipped ? 'already filed' : 'filed'} [${result.bucket}] ${result.person}\n   ${result.file}\n   ${result.link || ''}`);
+    }
+  } else {
+    console.error('usage: node file-to-drive.mjs <submissionId|sweep>');
+    process.exit(1);
   }
 }

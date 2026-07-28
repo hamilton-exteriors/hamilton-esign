@@ -34,10 +34,15 @@ Markdown source of truth lives in
 `~/.claude/skills/onboard-worker/references/documents/`. Nothing is authored in
 DocuSeal's builder — edit the markdown and re-run.
 
+    bun install
     node pipeline/build-docs.mjs        # md -> print HTML, blanks -> measurable spans
     node pipeline/measure.mjs           # paginate, type + own each field, emit PDF + coords
-    node pipeline/build-templates.mjs   # create DocuSeal templates via the admin endpoints
+    node pipeline/build-templates.mjs   # create templates; refuses active-name collisions
+    node pipeline/stamp-reflow.mjs      # verify live UUID mapping without rebuilding
     node pipeline/file-to-drive.mjs sweep   # file completed submissions into Drive
+
+Generated artifacts default to `build/` in this repository. Override with
+`HAMILTON_BUILD_DIR`; override the markdown source with `HAMILTON_DOCS_DIR`.
 
 Why coordinates instead of DocuSeal's `{{field}}` text tags: tag auto-detection is
 not available on free self-hosted (an uploaded PDF containing tags yields
@@ -55,8 +60,9 @@ physically separate files from the personnel file:
       Employees/<Name>/{Personnel,I-9,Medical}/
       Safety/{Programs,Training Rosters/<Name>}/
 
-The sweep is idempotent by filename, so a re-run or duplicate event never
-produces a second copy of a signed employment record.
+The sweep is idempotent by DocuSeal submission and document IDs stored in Drive
+`appProperties`. Filenames include those IDs, so a second legitimate document on
+the same day is preserved rather than mistaken for a duplicate.
 
 Credentials are read from `~/.claude/.hamilton-secrets/docuseal.json` and the
 Workspace service account; none are stored in this repo.
@@ -64,7 +70,8 @@ Workspace service account; none are stored in this repo.
 ## Sending a signing link
 
     node pipeline/send-signing-link.mjs "<template name>" "<worker>" <phone> <en|es>
-    # add --send <path to rw.json> to actually deliver over WhatsApp
+    # the command above is a read-only preview
+    # add --send <path to rw.json> to create the submission and deliver it
 
 **Always append `?lang=`**, which this script does for you. Without it DocuSeal
 guesses from `Accept-Language` and lands on `en-GB`, so a Spanish speaker gets a
@@ -85,8 +92,27 @@ on a two-party document the PDF only carries both signatures once Hamilton has
 countersigned, and a "here is your signed copy" message attached to an
 incomplete PDF would be worse than no message.
 
-    node pipeline/send-signing-link.mjs countersign <submissionId> [--send <rw.json> <alex-phone>]
+    node pipeline/send-signing-link.mjs countersign <submissionId> [--send <alex-phone> <rw.json>]
     node pipeline/send-signing-link.mjs deliver <submissionId> "<worker name>" <phone> <en|es> <rw.json>
+
+## Sequenced worker packet
+
+Worker classification has no default. Planning is read-only, and the Safety
+Training Roster is a separate post-training action rather than the fourth form in
+a new-hire sequence.
+
+    node pipeline/run-packet.mjs plan  <w2_local|overseas_contractor> "<name>" <phone> <en|es>
+    node pipeline/run-packet.mjs start <w2_local|overseas_contractor> "<name>" <phone> <en|es> <rw.json>
+    node pipeline/run-packet.mjs advance <packetId> [rw.json] [--retry-ambiguous]
+    node pipeline/run-packet.mjs status <packetId>
+    node pipeline/run-packet.mjs training <packetId> "<trainer name>" <rw.json> [--retry-ambiguous]
+
+Packet state is keyed by a generated packet ID and written atomically under
+`HAMILTON_PACKET_STATE_DIR` (or the protected default state directory). A process
+interruption leaves the exact submission recoverable. If WhatsApp accepted a
+message but the local checkpoint did not finish, `advance` stops with
+`delivery-ambiguous`; inspect the conversation before explicitly adding
+`--retry-ambiguous`.
 
 ## California new-hire pamphlets — send these BEFORE the acknowledgment
 

@@ -1,9 +1,13 @@
 // Create DocuSeal templates from the measured PDFs + field coordinates.
-import { readFileSync, writeFileSync, copyFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { BUILD_DIR, loadDocusealSecrets } from './config.mjs';
+import { createDocusealClient } from './docuseal-api.mjs';
+import { TEMPLATE_BY_SLUG } from './registry.mjs';
 
-const DIR = 'C:/Users/admin/AppData/Local/Temp/claude/C--Users-admin/d1994a65-4339-4973-8fe3-b31c96359079/scratchpad/build';
-const SEC = JSON.parse(readFileSync('C:/Users/admin/.claude/.hamilton-secrets/docuseal.json', 'utf8'));
+const DIR = BUILD_DIR;
+const SEC = loadDocusealSecrets();
+const client = createDocusealClient(SEC);
 const URL_ = SEC.url;
 
 // Per-hire docs are signed by the worker; company programs are signed once by the employer.
@@ -13,25 +17,7 @@ const COMPANY = new Set(['iipp', 'heat-illness-prevention-plan', 'heat-illness-p
 // heading printed on the document itself — a worker should not be told he is
 // opening one thing and then shown another. Accents are part of the name;
 // stripping them to stay ASCII is not a simplification, it is a misspelling.
-const TITLES = {
-  'employment-agreement': 'Employment Agreement',
-  'employment-agreement-es': 'Contrato de Empleo',
-  'wage-notice-2810-5': 'Wage Notice - Labor Code 2810.5',
-  'wage-notice-2810-5-es': 'Aviso de Salario - Código Laboral 2810.5',
-  'policy-acknowledgment': 'New Hire Policy Acknowledgment',
-  'policy-acknowledgment-es': 'Acuse de Recibo de Políticas',
-  'safety-training-roster': 'Safety Training Roster',
-  'safety-training-roster-es': 'Registro de Capacitación en Seguridad',
-  'iipp': 'Injury and Illness Prevention Program (IIPP)',
-  'heat-illness-prevention-plan': 'Heat Illness Prevention Plan',
-  'heat-illness-prevention-plan-es': 'Plan de Prevención de Enfermedades por Calor',
-  'fall-protection-program': 'Fall Protection Program',
-  'code-of-safe-practices': 'Code of Safe Practices',
-  // Overseas contractors. Not a California employment document and must never be
-  // mixed with one: it asserts the signer is not a US person and performs all
-  // services outside the US.
-  'independent-contractor-agreement': 'Independent Contractor Agreement',
-};
+const TITLES = Object.fromEntries([...TEMPLATE_BY_SLUG].map(([slug, entry]) => [slug, entry.title]));
 
 // Sections and fields that only apply to some workers. Forcing these produces a
 // signed record asserting something untrue: a roofer who does not supervise
@@ -54,8 +40,10 @@ const tokenFrom = (html, actionRe) => {
 
 async function signIn() {
   let r = await fetch(`${URL_}/sign_in`); setCookie(r);
+  if (!r.ok) throw new Error(`sign_in page failed ${r.status}`);
   const html = await r.text();
   const tok = tokenFrom(html, /sign_in/);
+  if (!tok) throw new Error('sign_in page returned no authenticity token');
   const body = new URLSearchParams({ authenticity_token: tok, 'user[email]': SEC.email, 'user[password]': SEC.password });
   r = await fetch(`${URL_}/sign_in`, { method: 'POST', headers: { cookie, 'Content-Type': 'application/x-www-form-urlencoded' }, body, redirect: 'manual' });
   setCookie(r);
@@ -64,7 +52,9 @@ async function signIn() {
 
 async function createTemplate(name) {
   let r = await fetch(`${URL_}/templates/new`, { headers: { cookie } }); setCookie(r);
+  if (!r.ok) throw new Error(`new template page failed ${r.status}`);
   const tok = tokenFrom(await r.text(), /action="\/templates"/);
+  if (!tok) throw new Error('new template page returned no authenticity token');
   const body = new URLSearchParams({ authenticity_token: tok, 'template[name]': name });
   r = await fetch(`${URL_}/templates`, { method: 'POST', headers: { cookie, 'Content-Type': 'application/x-www-form-urlencoded' }, body, redirect: 'manual' });
   setCookie(r);
@@ -76,13 +66,19 @@ async function createTemplate(name) {
 
 async function uploadPdf(id, slug) {
   const r0 = await fetch(`${URL_}/templates/${id}/edit`, { headers: { cookie } }); setCookie(r0);
+  if (!r0.ok) throw new Error(`template ${id} edit page failed ${r0.status}`);
   const csrf = ((await r0.text()).match(/name="csrf-token" content="([^"]+)"/) || [])[1];
+  if (!csrf) throw new Error(`template ${id} edit page returned no CSRF token`);
   const fd = new FormData();
   fd.append('files[]', new Blob([readFileSync(`${DIR}/${slug}.pdf`)], { type: 'application/pdf' }), `${slug}.pdf`);
   const r = await fetch(`${URL_}/templates/${id}/documents`, {
     method: 'POST', headers: { cookie, 'X-CSRF-Token': csrf, Accept: 'application/json' }, body: fd });
   setCookie(r);
-  const j = await r.json();
+  const text = await r.text();
+  if (!r.ok) throw new Error(`upload ${slug} failed ${r.status}: ${text.slice(0, 160)}`);
+  let j;
+  try { j = JSON.parse(text); }
+  catch { throw new Error(`upload ${slug} returned non-JSON content`); }
   if (!j.schema) throw new Error('upload failed: ' + JSON.stringify(j).slice(0, 200));
   return { schema: j.schema, csrf };
 }
@@ -92,6 +88,8 @@ async function saveTemplate(id, schema, csrf, submitters, fields) {
     method: 'PUT', headers: { cookie, 'X-CSRF-Token': csrf, 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ schema, submitters, fields }) });
   setCookie(r);
+  const body = (await r.text()).slice(0, 200);
+  if (!r.ok) throw new Error(`save template ${id} failed ${r.status}${body ? `: ${body}` : ''}`);
   return r.status;
 }
 
@@ -126,11 +124,25 @@ async function savePreferences(id, csrf, es, twoParty) {
     body,
   });
   setCookie(r);
+  const responseBody = (await r.text()).slice(0, 200);
+  if (!r.ok) throw new Error(`save preferences for ${id} failed ${r.status}${responseBody ? `: ${responseBody}` : ''}`);
   return r.status;
 }
 
 // --- main --------------------------------------------------------------------
 const docs = JSON.parse(readFileSync(`${DIR}/fields.json`, 'utf8'));
+const inventory = await client.listAll('/api/templates', { what: 'template inventory' });
+for (const document of docs) {
+  const entry = TEMPLATE_BY_SLUG.get(document.slug);
+  if (!entry) throw new Error(`no registered template for ${document.slug}`);
+  if (document.fields.length !== entry.fields) {
+    throw new Error(`${document.slug} expected ${entry.fields} fields, build has ${document.fields.length}`);
+  }
+  const collisions = inventory.filter((template) => template.name === entry.title && !template.archived_at);
+  if (collisions.length) {
+    throw new Error(`refusing to create duplicate active template "${entry.title}"; found ${collisions.length}`);
+  }
+}
 await signIn();
 console.log('signed in\n');
 const built = [];
@@ -199,6 +211,15 @@ for (const d of docs) {
   const es = /-es$/.test(d.slug);
   const twoParty = submitters.length > 1;
   const pst = await savePreferences(id, csrf, es, twoParty);
+  const saved = await client.request(`/api/templates/${id}`, {}, `saved template ${id}`);
+  if (saved.name !== name || (saved.fields || []).length !== fields.length) {
+    throw new Error(`saved template ${id} failed read-back verification`);
+  }
+  const savedRoles = (saved.submitters || []).map((submitter) => submitter.name).sort();
+  const expectedRoles = submitters.map((submitter) => submitter.name).sort();
+  if (JSON.stringify(savedRoles) !== JSON.stringify(expectedRoles)) {
+    throw new Error(`saved template ${id} roles are ${savedRoles.join(', ')}, expected ${expectedRoles.join(', ')}`);
+  }
   const split = owners.map(o => `${o}:${d.fields.filter(f => f.owner === o).length}`).join(' ');
   console.log(`${String(id).padStart(3)}  ${name.padEnd(44)} ${String(fields.length).padStart(3)}f  [${split}]  save=${st} prefs=${pst}`);
   // Map each field marker in the source HTML to the uuid just minted for it.

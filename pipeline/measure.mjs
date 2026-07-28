@@ -1,10 +1,10 @@
 // Load each field-marked HTML, paginate it, refine field types from DOM context,
 // measure exact boxes, then emit PDF + DocuSeal-normalised field coordinates.
 import { readFileSync, writeFileSync } from 'node:fs';
-import pw from 'file:///C:/Users/admin/AppData/Roaming/npm/node_modules/playwright/index.js';
-const { chromium } = pw;
+import { chromium } from 'playwright';
+import { BUILD_DIR } from './config.mjs';
 
-const DIR = 'C:/Users/admin/AppData/Local/Temp/claude/C--Users-admin/d1994a65-4339-4973-8fe3-b31c96359079/scratchpad/build';
+const DIR = BUILD_DIR;
 // IMPORTED, never redeclared. This file previously carried its own copy of the
 // Letter geometry, so changing PAGE in build-docs.mjs silently did nothing: the
 // HTML was laid out at phone size while the viewport, the coordinate
@@ -335,6 +335,7 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
 
 const browser = await chromium.launch();
 const results = [];
+const failures = [];
 for (const m of manifest) {
   const page = await browser.newPage({ viewport: { width: PAGE.w, height: PAGE.h } });
   await page.goto('file:///' + `${DIR}/${m.slug}.html`);
@@ -352,11 +353,19 @@ for (const m of manifest) {
   await page.close();
   // Verify the PDF paginated to exactly the pages we measured against.
   const pdfPages = (readFileSync(`${DIR}/${m.slug}.pdf`).toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
-  const ok = pdfPages === res.pageCount && res.overflow.length === 0;
-  const flag = ok ? 'ok' : `PDF=${pdfPages} vs ${res.pageCount}${res.overflow.length ? ' overflow:' + JSON.stringify(res.overflow) : ''}`;
+  const ok = pdfPages === res.pageCount && res.overflow.length === 0 && res.fields.length === m.fields.length;
+  const details = [];
+  if (pdfPages !== res.pageCount) details.push(`PDF=${pdfPages} vs ${res.pageCount}`);
+  if (res.overflow.length) details.push(`overflow:${JSON.stringify(res.overflow)}`);
+  if (res.fields.length !== m.fields.length) details.push(`fields=${res.fields.length} vs ${m.fields.length}`);
+  const flag = ok ? 'ok' : details.join(' ');
   console.log(`${m.slug.padEnd(34)} pages=${String(res.pageCount).padStart(2)} fields=${String(res.fields.length).padStart(3)}  ${flag}`);
+  if (!ok) failures.push(`${m.slug}: ${flag}`);
   results.push({ slug: m.slug, pageCount: res.pageCount, pdfPages, fields: res.fields });
 }
 await browser.close();
+if (failures.length) {
+  throw new Error(`measurement failed; fields.json not written:\n${failures.join('\n')}`);
+}
 writeFileSync(`${DIR}/fields.json`, JSON.stringify(results, null, 2));
 console.log('\nwrote build/fields.json');

@@ -1,0 +1,16 @@
+{
+  "name": "hamilton-esign",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "verify": "node pipeline/verify-templates.mjs"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "1.0.3",
+    "googleapis": "171.4.0",
+    "marked": "18.0.7",
+    "pdfjs-dist": "6.1.200",
+    "playwright": "1.58.2"
+  }
+}

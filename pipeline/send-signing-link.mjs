@@ -10,10 +10,11 @@
 //
 // 2. Hired workers are contacted on WhatsApp, never Indeed, and the copy is
 //    written as Alex in the first person with no sign-off.
-import { readFileSync } from 'node:fs';
-import { loadRw, safeName, getJson } from './safe.mjs';
+import { loadRw, safeName } from './safe.mjs';
+import { createDocusealClient } from './docuseal-api.mjs';
 
-const SEC = JSON.parse(readFileSync('C:/Users/admin/.claude/.hamilton-secrets/docuseal.json', 'utf8'));
+const client = createDocusealClient();
+const SEC = client.secrets;
 
 /** The host a WORKER sees. Deliberately separate from SEC.url, which every API
  *  call uses.
@@ -66,11 +67,6 @@ const REQUIRES_PAMPHLETS = new Set([
   'New Hire Policy Acknowledgment',
   'Acuse de Recibo de Políticas',
 ]);
-
-const api = (path, init = {}) => fetch(`${SEC.url}${path}`, {
-  ...init,
-  headers: { 'X-Auth-Token': SEC.apiKey, 'Content-Type': 'application/json', ...(init.headers || {}) },
-});
 
 /** Which employer-owned checkboxes to tick, from what we already know.
  *
@@ -152,10 +148,7 @@ function employerPrefill(tpl, worker) {
 }
 
 export async function templateByName(name) {
-  const r = await (await api('/api/templates?limit=100')).json();
-  const t = (r.data || []).find(x => x.name === name && !x.archived_at);
-  if (!t) throw new Error(`no live template named "${name}"`);
-  return t;
+  return client.templateByName(name);
 }
 
 /** Returns { worker: url, hamilton: url|null } with ?lang= already applied. */
@@ -219,12 +212,10 @@ export async function createSigningRequest(templateName, worker) {
     });
   }
 
-  const res = await api('/api/submissions', {
+  const out = await client.request('/api/submissions', {
     method: 'POST',
     body: JSON.stringify({ template_id: tpl.id, send_email: false, send_sms: false, submitters }),
-  });
-  if (!res.ok) throw new Error(`submission failed ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const out = await res.json();
+  }, `create submission for ${templateName}`);
   const arr = Array.isArray(out) ? out : [out];
   const url = (s, l) => `${PUBLIC_URL}/s/${s.slug}?lang=${l}`;
   const w = arr.find(s => /worker/i.test(s.role || '')) || arr[0];
@@ -247,14 +238,19 @@ export async function createSigningRequest(templateName, worker) {
   };
 }
 
+export async function archiveSubmission(submissionId) {
+  await client.request(`/api/submissions/${submissionId}`, { method: 'DELETE' },
+    `archive submission ${submissionId}`);
+}
+
 /** Release the countersign link, but only once the worker has genuinely
  *  completed. Returns null (and says why) if they have not. */
 export async function countersignLink(submissionId) {
   // getJson, not a bare fetch: a nonexistent id used to fall through to
   // "this document has no countersigner", which is a wrong ANSWER rather than an
   // error and could let someone conclude a document needs no countersignature.
-  const sub = await getJson(`${SEC.url}/api/submissions/${submissionId}`,
-    { 'X-Auth-Token': SEC.apiKey }, `submission ${submissionId}`);
+  const sub = await client.request(`/api/submissions/${submissionId}`, {},
+    `submission ${submissionId}`);
   const subs = sub.submitters || [];
   const w = subs.find(s => /worker/i.test(s.role || ''));
   const h = subs.find(s => /hamilton/i.test(s.role || ''));
@@ -275,12 +271,25 @@ export function message(worker, link, docTitle) {
 
 export async function sendWhatsApp(to, body, rwPath) {
   const V = loadRw(rwPath);
-  const r = await fetch(`https://${V.RAILWAY_PUBLIC_DOMAIN}/internal/whatsapp/send-text`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${V.PLATFORM_INTERNAL_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to, body }),
-  });
-  return { status: r.status, body: (await r.text()).slice(0, 200) };
+  let r;
+  try {
+    r = await fetch(`https://${V.RAILWAY_PUBLIC_DOMAIN}/internal/whatsapp/send-text`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${V.PLATFORM_INTERNAL_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, body }),
+    });
+  } catch (cause) {
+    const error = new Error(`WhatsApp text delivery outcome is unknown: ${cause.message}`);
+    error.deliveryAmbiguous = true;
+    throw error;
+  }
+  const responseBody = (await r.text()).slice(0, 200);
+  if (!r.ok) {
+    const error = new Error(`WhatsApp text delivery failed (${r.status})${responseBody ? `: ${responseBody}` : ''}`);
+    error.deliveryAmbiguous = r.status >= 500;
+    throw error;
+  }
+  return { status: r.status, body: responseBody };
 }
 
 /** Push the signed PDF itself back to the worker over WhatsApp.
@@ -296,8 +305,8 @@ export async function sendWhatsApp(to, body, rwPath) {
  * countersigned, and sending an incomplete PDF as "here is your signed copy"
  * would be worse than sending nothing. */
 export async function deliverSignedCopy(submissionId, worker, rwPath) {
-  const sub = await getJson(`${SEC.url}/api/submissions/${submissionId}`,
-    { 'X-Auth-Token': SEC.apiKey }, `submission ${submissionId}`);
+  const sub = await client.request(`/api/submissions/${submissionId}`, {},
+    `submission ${submissionId}`);
   const subs = sub.submitters || [];
   // "no submitters" and "not fully signed" are different facts; a submission
   // with none is a broken record, not a document waiting on someone.
@@ -306,7 +315,8 @@ export async function deliverSignedCopy(submissionId, worker, rwPath) {
   if (pending.length) {
     return { sent: false, reason: `not fully signed yet: waiting on ${pending.map(s => s.name).join(', ')}` };
   }
-  const docs = await (await api(`/api/submissions/${submissionId}/documents`)).json();
+  const docs = await client.request(`/api/submissions/${submissionId}/documents`, {},
+    `documents for submission ${submissionId}`);
   if (!docs.documents?.length) return { sent: false, reason: 'no documents on this submission' };
 
   const lang = LANGS[worker.language] || 'en';
@@ -320,7 +330,7 @@ export async function deliverSignedCopy(submissionId, worker, rwPath) {
       ? 'Aquí está tu copia firmada, para tus archivos.'
       : "Here's your signed copy, for your records.";
     const res = await sendDocument(worker.phone, doc.url, filename, caption, rwPath);
-    results.push({ filename, status: res.status, ok: res.status === 200 });
+    results.push({ filename, status: res.status, ok: true });
   }
   return { sent: results.every(r => r.ok), results };
 }
@@ -332,7 +342,9 @@ async function sendDocument(to, link, filename, caption, rwPath) {
     headers: { Authorization: `Bearer ${V.PLATFORM_INTERNAL_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ to, link, filename, caption }),
   });
-  return { status: r.status, body: (await r.text()).slice(0, 200) };
+  const responseBody = (await r.text()).slice(0, 200);
+  if (!r.ok) throw new Error(`WhatsApp document delivery failed (${r.status})${responseBody ? `: ${responseBody}` : ''}`);
+  return { status: r.status, body: responseBody };
 }
 
 // Only run the CLI when this file IS the entry point. Without the guard,
@@ -342,41 +354,69 @@ const IS_MAIN = !!process.argv[1] &&
   import.meta.url === new URL(`file:///${process.argv[1].replace(/\\/g, '/')}`).href;
 
 // --- CLI ---------------------------------------------------------------------
+function usage() {
+  console.error('usage:');
+  console.error('  node send-signing-link.mjs countersign <submissionId> [--send <phone> <rw.json>]');
+  console.error('  node send-signing-link.mjs deliver <submissionId> <name> <phone> <en|es> <rw.json>');
+  console.error('  node send-signing-link.mjs "<template name>" <name> <phone> <en|es> [--send <rw.json>]');
+}
+
 if (!IS_MAIN) {
   // imported as a library; do nothing
 } else if (process.argv[2] === 'countersign') {
-  // node send-signing-link.mjs countersign <submissionId> [--send <rw.json>]
   const submissionId = process.argv[3];
+  if (!submissionId) { usage(); process.exit(1); }
   const sendIdx = process.argv.indexOf('--send');
+  if (sendIdx > 0 && (!process.argv[sendIdx + 1] || !process.argv[sendIdx + 2])) {
+    usage(); process.exit(1);
+  }
   const c = await countersignLink(submissionId);
-  if (!c.ready) { console.log(`not ready: ${c.reason}`); process.exit(0); }
+  if (!c.ready) { console.error(`not ready: ${c.reason}`); process.exit(1); }
   console.log(`countersign link: ${c.link}`);
   if (sendIdx > 0) {
-    const to = process.argv[4];
-    const res = await sendWhatsApp(to, `Signed and ready for your countersignature: ${c.link}`, process.argv[sendIdx + 1]);
+    const res = await sendWhatsApp(process.argv[sendIdx + 1],
+      `Signed and ready for your countersignature: ${c.link}`, process.argv[sendIdx + 2]);
     console.log(`sent to Alex -> HTTP ${res.status}`);
   }
 } else if (process.argv[2] === 'deliver') {
-  // node send-signing-link.mjs deliver <submissionId> <name> <phone> <en|es> <rw.json>
   const [, , , submissionId, name, phone, language, rwPath] = process.argv;
+  if (!submissionId || !name || !phone || !['en', 'es'].includes(language) || !rwPath) {
+    usage(); process.exit(1);
+  }
   const r = await deliverSignedCopy(submissionId, { name, phone, language }, rwPath);
-  console.log(r.sent ? `delivered: ${r.results.map(x => x.filename).join(', ')}` : `not sent: ${r.reason || JSON.stringify(r.results)}`);
+  if (!r.sent) { console.error(`not sent: ${r.reason || JSON.stringify(r.results)}`); process.exit(1); }
+  console.log(`delivered: ${r.results.map(x => x.filename).join(', ')}`);
 } else if (process.argv[2]) {
-  // node send-signing-link.mjs "<template name>" <name> <phone> <en|es> [--send <rw.json>]
   const [, , tplName, name, phone, language] = process.argv;
+  if (!tplName || !name || !phone || !['en', 'es'].includes(language || 'en')) {
+    usage(); process.exit(1);
+  }
   const sendIdx = process.argv.indexOf('--send');
   const worker = { name, phone, language: language || 'en' };
-  const req = await createSigningRequest(tplName, worker);
-  const msg = message(worker, req.worker, req.template);
-  console.log(`template : ${req.template}`);
-  console.log(`lang     : ${req.lang}`);
-  console.log(`worker   : ${req.worker}`);
-  console.log(`submission: ${req.submissionId}`);
-  console.log(`\nmessage to ${phone}:\n${msg}\n`);
-  if (sendIdx > 0) {
-    const res = await sendWhatsApp(phone, msg, process.argv[sendIdx + 1]);
-    console.log(`sent -> HTTP ${res.status} ${res.body}`);
+  if (sendIdx < 0) {
+    const tpl = await templateByName(tplName);
+    const preview = message(worker, '<signing link created only with --send>', tpl.name);
+    console.log(`template : ${tpl.name}`);
+    console.log(`lang     : ${worker.language}`);
+    console.log(`\npreview for ${phone}:\n${preview}\n`);
+    console.log('(read-only preview; pass --send <rw.json> to create and deliver)');
   } else {
-    console.log('(dry run — pass --send <rw.json> to actually deliver)');
+    const rwPath = process.argv[sendIdx + 1];
+    if (!rwPath) { usage(); process.exit(1); }
+    const req = await createSigningRequest(tplName, worker);
+    try {
+      const msg = message(worker, req.worker, req.template);
+      const res = await sendWhatsApp(phone, msg, rwPath);
+      console.log(`created submission ${req.submissionId} and sent -> HTTP ${res.status}`);
+    } catch (error) {
+      if (error.deliveryAmbiguous) {
+        throw new Error(`link delivery outcome is unknown; submission ${req.submissionId} remains active for inspection: ${error.message}`);
+      }
+      await archiveSubmission(req.submissionId);
+      throw new Error(`link delivery failed; submission ${req.submissionId} was revoked: ${error.message}`);
+    }
   }
+} else {
+  usage();
+  process.exit(1);
 }
