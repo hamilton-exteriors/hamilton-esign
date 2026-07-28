@@ -333,6 +333,82 @@ function letterhead() {
     '</div></div>';
 }
 
+/** A READING view of the same document, for phones.
+ *
+ *  This is the half of the problem the Letter page cannot solve. DocuSeal
+ *  rasterises each page and scales the image to the container, so at Letter a
+ *  phone gets roughly 0.46 scale and 10.5pt body type lands near 6.4 CSS px.
+ *  Every serious provider solves this the same way and none of them scale an
+ *  image: Adobe generates "two views for the recipient", a PDF view that is the
+ *  signed artifact plus a Liquid Mode view that reflows the source and
+ *  deliberately overrides its print styling; DocuSign converts to HTML so the
+ *  document adapts to the device rather than making people "pinch and zoom
+ *  around a static shrunken-down PDF"; PandaDoc is web-native and stores a PDF.
+ *
+ *  So: same source, two renderings. The PDF keeps the print geometry and stays
+ *  the record. This one throws the page away and sets the text for a 390px
+ *  screen. It is presentational only. Values are still captured by DocuSeal's
+ *  own field components against the same field UUIDs, and the executed PDF is
+ *  still filled from the absolute coordinates measured off the print build, so
+ *  nothing about the signed artifact depends on this file.
+ *
+ *  Field markers are rendered as visible rules, so a reader can see where the
+ *  blanks are while reading, and the guided prompt still drives the filling. */
+const REFLOW_CSS = `
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:'DM Sans',"Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:16px; line-height:1.55; color:#1a1a1a;
+  background:#fff; padding:20px 18px 32px;
+  -webkit-text-size-adjust:100%;
+}
+h1{font-size:22px;line-height:1.25;font-weight:700;margin:0 0 12px;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:18px;line-height:1.3;font-weight:700;margin:28px 0 10px;padding-bottom:5px;
+   border-bottom:1px solid #d8d8d8;text-wrap:balance}
+h3{font-size:16px;line-height:1.35;font-weight:600;margin:20px 0 8px}
+h4{font-size:15px;font-weight:700;margin:16px 0 6px}
+p{margin:0 0 12px}
+ul,ol{margin:0 0 12px;padding-left:22px}
+li{margin:0 0 7px}
+strong{font-weight:700}
+hr{border:0;border-top:1px solid #d8d8d8;margin:20px 0}
+/* Tables are the one thing that cannot simply reflow. Let them scroll inside
+   their own box rather than forcing the page to scroll sideways. */
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0 18px}
+table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.4;min-width:min(100%,420px)}
+th{text-align:left;font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+   color:#555;border-bottom:1px solid #333;padding:8px 6px}
+td{padding:9px 6px;border-bottom:1px solid #e6e6e6;vertical-align:top}
+.legal{font-size:14px;line-height:1.5;color:#4a4a4a}
+.doc-meta{font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#5a5a5a;margin:0 0 14px}
+/* A blank in the reading view is a rule, not an input: filling happens in the
+   guided prompt, and a second editable copy of a field would be a second source
+   of truth for a signed document. */
+.ds{display:inline-block;min-width:120px;height:1.15em;vertical-align:-.2em;
+    border-bottom:1.5px solid #7a7a7a}
+.ds-sig{min-width:190px;height:1.6em}
+.ds-box{min-width:14px;width:14px;height:14px;border:1.5px solid #555;vertical-align:-.1em;margin-right:5px}
+.ds-ini{min-width:56px}
+.ds-date{min-width:110px}
+.ds-phone{min-width:132px}
+td .ds,td .ds-ini,td .ds-date{min-width:44px}
+.letterhead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+            margin:0 0 18px;padding-bottom:12px;border-bottom:2px solid #1B3C2D}
+.letterhead img{height:34px;width:auto;display:block}
+.letterhead .lh-meta{text-align:right;font-size:9.5px;line-height:1.4;color:#5a5a5a;
+                     letter-spacing:.05em;text-transform:uppercase}
+.letterhead .lh-meta strong{display:block;font-size:10px;color:#1B3C2D;letter-spacing:.08em}
+`;
+
+function reflow(bodyHtml) {
+  // Wrap tables so a wide one scrolls in place instead of widening the page.
+  const wrapped = bodyHtml.replace(/<table/g, '<div class="tbl"><table').replace(/<\/table>/g, '</table></div>');
+  return `<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>${REFLOW_CSS}</style></head><body>${letterhead()}${wrapped}</body></html>`;
+}
+
 /** Split flowed content into fixed-size .page divs is done in-browser; here we wrap once. */
 function wrap(title, bodyHtml) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
@@ -350,6 +426,7 @@ export function buildOne(slug) {
   const { html, fields } = markFields(rawHtml, COMPANY_DOCS.has(slug) ? 'employer' : 'worker');
   const doc = wrap(slug, html);
   writeFileSync(`${OUT}/${slug}.html`, doc);
+  writeFileSync(`${OUT}/${slug}.reflow.html`, reflow(html));
   return { slug, fields };
 }
 

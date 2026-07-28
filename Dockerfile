@@ -24,6 +24,13 @@ COPY brand/_start_form_logo.html.erb  /app/app/views/start_form/_docuseal_logo.h
 # fonts.googleapis.com, so an external font stylesheet never loads at all.
 COPY brand/fonts/                  /app/public/fonts/
 
+# Mobile reading views: the same document set reflowed for a phone, plus an index
+# keyed by template name. DocuSeal rasterises pages and scales the image, so at
+# Letter a phone gets ~0.46 scale and 10.5pt body type lands near 6.4 CSS px.
+# Two renderings of one source is how Adobe (Liquid Mode) and DocuSign
+# (Responsive Signing) both solve this; the PDF stays the signed record.
+COPY brand/reflow/                 /app/public/reflow/
+
 # shared/_title hardcodes the literal "DocuSeal", surviving the PRODUCT_NAME rewrite.
 COPY brand/_title.html.erb         /app/app/views/shared/_title.html.erb
 

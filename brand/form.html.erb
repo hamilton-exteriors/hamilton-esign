@@ -31,6 +31,81 @@
         re-dispatching a synthetic input event, which would double-fire the
         component. Delegated, so fields Vue renders later are covered too.
         nonce is required: the CSP is script-src 'self' plus a nonce. %>
+    <%# Mobile reading view.
+        DocuSeal renders each page as a rasterised image scaled to the container,
+        so on a phone a Letter sheet lands near 0.46 scale and body type around
+        6.4 CSS px. Adobe and DocuSign both answer this by serving a second,
+        reflowed rendering of the same source and keeping the PDF as the signed
+        artifact. This adds that second rendering.
+        Purely presentational and purely additive: it inserts a panel above the
+        document, and every value is still captured by DocuSeal's own field
+        components against the same field UUIDs. The executed PDF is filled from
+        the print coordinates either way, so the record does not depend on this. %>
+    <script nonce="<%= content_security_policy_nonce %>">
+      (function () {
+        var MOBILE = window.matchMedia('(max-width: 767px)');
+        if (!MOBILE.matches) return;
+
+        function titleOf() {
+          var h = document.querySelector('h1');
+          return h ? h.textContent.trim().replace(/\s+/g, ' ') : '';
+        }
+
+        function mount(html) {
+          var host = document.querySelector('page-container');
+          if (!host || !host.parentNode) return;
+          var wrap = document.createElement('div');
+          wrap.id = 'hx-read';
+          wrap.innerHTML =
+            '<div class="hx-read-bar">' +
+            '<span>Readable view</span>' +
+            '<button type="button" id="hx-read-toggle">Show the page</button>' +
+            '</div><iframe id="hx-read-frame" title="Document, readable view"></iframe>';
+          host.parentNode.insertBefore(wrap, host);
+
+          var frame = wrap.querySelector('#hx-read-frame');
+          frame.srcdoc = html;
+          // Size the frame to its content so the outer page does the scrolling
+          // and the reader never fights two scrollbars.
+          frame.addEventListener('load', function () {
+            try {
+              var d = frame.contentDocument;
+              var fit = function () { frame.style.height = d.documentElement.scrollHeight + 'px'; };
+              fit();
+              setTimeout(fit, 250);
+              if (window.ResizeObserver) new ResizeObserver(fit).observe(d.body);
+            } catch (e) { frame.style.height = '70vh'; }
+          });
+
+          var pages = document.querySelectorAll('page-container');
+          var showPages = function (on) {
+            for (var i = 0; i < pages.length; i++) pages[i].style.display = on ? '' : 'none';
+            wrap.style.display = on ? 'none' : '';
+          };
+          showPages(false);
+          document.getElementById('hx-read-toggle').addEventListener('click', function () {
+            showPages(true);
+          });
+          // Any tap on a field area means the signer wants the real page, since
+          // that is where the fields live.
+          document.addEventListener('click', function (e) {
+            if (e.target.closest && e.target.closest('page-container')) showPages(true);
+          }, true);
+        }
+
+        fetch('/reflow/index.json', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (idx) {
+            if (!idx) return;
+            var slug = idx[titleOf()];
+            if (!slug) return;
+            return fetch('/reflow/' + slug + '.reflow.html', { credentials: 'same-origin' })
+              .then(function (r) { return r.ok ? r.text() : null; })
+              .then(function (html) { if (html) mount(html); });
+          })
+          .catch(function () { /* reading view is an enhancement; never block signing */ });
+      })();
+    </script>
     <script nonce="<%= content_security_policy_nonce %>">
       (function () {
         function fmt(raw) {

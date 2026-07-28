@@ -1,5 +1,5 @@
 // Create DocuSeal templates from the measured PDFs + field coordinates.
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, mkdirSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
 const DIR = 'C:/Users/admin/AppData/Local/Temp/claude/C--Users-admin/d1994a65-4339-4973-8fe3-b31c96359079/scratchpad/build';
@@ -204,3 +204,21 @@ for (const d of docs) {
   built.push({ id, slug: d.slug, name, roles: submitters.map(s => s.name), fields: fields.length });
 }
 console.log('\nbuilt ' + built.length + ' templates');
+
+// Stage the mobile reading views into the repo so the image is self-contained.
+//
+// Keyed by the live template NAME, because that is the only identifier the
+// signer page exposes: pages are anchored as page-<attachment_uuid>-<n> and the
+// source filename never reaches the browser. This is the one place that knows
+// both the slug and the template name, so the index is written here.
+const REFLOW_DIR = new URL('../brand/reflow/', import.meta.url);
+mkdirSync(REFLOW_DIR, { recursive: true });
+const index = {};
+for (const b of built) {
+  const src = `${DIR}/${b.slug}.reflow.html`;
+  if (!existsSync(src)) { console.log(`  no reading view for ${b.slug}, skipped`); continue; }
+  copyFileSync(src, new URL(`${b.slug}.reflow.html`, REFLOW_DIR));
+  index[b.name] = b.slug;
+}
+writeFileSync(new URL('index.json', REFLOW_DIR), JSON.stringify(index, null, 2) + '\n');
+console.log(`staged ${Object.keys(index).length} reading view(s) into brand/reflow/`);

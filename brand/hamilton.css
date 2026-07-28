@@ -340,6 +340,31 @@ dialog textarea[name='reason'] {
   cursor: not-allowed;
 }
 
+/* ------------------------------------------------------- reading view -----
+   The reflowed rendering of the document, shown on phones in place of the
+   scaled page images. Chrome only; the document inside the frame carries its
+   own stylesheet. */
+#hx-read { margin: 0 0 4px; }
+#hx-read .hx-read-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 16px;
+  font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--hx-muted);
+}
+#hx-read .hx-read-bar button {
+  min-height: 36px; padding: 0 10px;
+  border: 1px solid var(--hx-line); border-radius: 8px;
+  background: transparent; color: var(--hx-deep);
+  font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: none;
+  cursor: pointer;
+}
+#hx-read .hx-read-bar button:hover { background: rgba(37, 99, 70, .07); }
+#hx-read-frame {
+  display: block; width: 100%; border: 1px solid var(--hx-line); border-radius: 6px;
+  background: #fff; overflow: hidden;
+}
+@media (min-width: 768px) { #hx-read { display: none !important; } }
+
 /* ---------------------------------------------------------------- footer -- */
 .hx-footer {
   text-align: center; padding: 20px 16px 28px;
