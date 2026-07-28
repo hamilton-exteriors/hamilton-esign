@@ -201,7 +201,13 @@ for (const d of docs) {
   const pst = await savePreferences(id, csrf, es, twoParty);
   const split = owners.map(o => `${o}:${d.fields.filter(f => f.owner === o).length}`).join(' ');
   console.log(`${String(id).padStart(3)}  ${name.padEnd(44)} ${String(fields.length).padStart(3)}f  [${split}]  save=${st} prefs=${pst}`);
-  built.push({ id, slug: d.slug, name, roles: submitters.map(s => s.name), fields: fields.length });
+  // Map each field marker in the source HTML to the uuid just minted for it.
+  // `fields` is a 1:1 map over `d.fields`, so index i is the same field in both,
+  // and d.fields[i].id is the span id build-docs wrote ("f7"). Keying on that id
+  // rather than on document order means a reordered document cannot quietly
+  // attach a field to the wrong blank on a signed record.
+  const uuidById = Object.fromEntries(d.fields.map((f, i) => [f.id, fields[i].uuid]));
+  built.push({ id, slug: d.slug, name, roles: submitters.map(s => s.name), fields: fields.length, uuidById });
 }
 console.log('\nbuilt ' + built.length + ' templates');
 
@@ -217,7 +223,21 @@ const index = {};
 for (const b of built) {
   const src = `${DIR}/${b.slug}.reflow.html`;
   if (!existsSync(src)) { console.log(`  no reading view for ${b.slug}, skipped`); continue; }
-  copyFileSync(src, new URL(`${b.slug}.reflow.html`, REFLOW_DIR));
+  // Stamp the uuids in, so Vue can teleport the real field into the right blank.
+  let html = readFileSync(src, 'utf8');
+  let stamped = 0;
+  for (const [fid, uuid] of Object.entries(b.uuidById || {})) {
+    const before = html;
+    html = html.replace(`id="${fid}"`, `id="${fid}" data-hx-uuid="${uuid}"`);
+    if (html !== before) stamped++;
+  }
+  const markers = (html.match(/class="ds[^"]*"/g) || []).length;
+  if (stamped !== markers) {
+    throw new Error(`${b.slug}: stamped ${stamped} field anchor(s) but the reading ` +
+      `view has ${markers} marker(s). A blank with no uuid silently becomes unfillable ` +
+      'in the reflowed view, so this is a hard stop rather than a warning.');
+  }
+  writeFileSync(new URL(`${b.slug}.reflow.html`, REFLOW_DIR), html);
   index[b.name] = b.slug;
 }
 writeFileSync(new URL('index.json', REFLOW_DIR), JSON.stringify(index, null, 2) + '\n');

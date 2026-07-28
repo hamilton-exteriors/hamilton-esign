@@ -62,6 +62,25 @@ patch('areas.vue', [
     `            <FieldArea
               :ref="setAreaRef"
               :inline="!!pageElem.dataset?.hxUuid"`],
+  ['re-resolve targets once the reading view exists',
+    `  beforeUpdate () {
+    this.areaRefs = []
+  },`,
+    `  beforeUpdate () {
+    this.areaRefs = []
+  },
+  mounted () {
+    // Hamilton: the reading view is injected after an async fetch, so it can
+    // land after this component has already mounted and chosen page images as
+    // its Teleport targets. Injecting DOM is not a reactive change, so nothing
+    // would move the fields into the text until the next step change. Re-render
+    // on demand instead.
+    this.onReflowReady = () => this.$forceUpdate()
+    window.addEventListener('hx-reflow-ready', this.onReflowReady)
+  },
+  beforeUnmount () {
+    window.removeEventListener('hx-reflow-ready', this.onReflowReady)
+  },`],
 ]);
 
 // ---- area.vue: render inline instead of positioned by page percentages -------

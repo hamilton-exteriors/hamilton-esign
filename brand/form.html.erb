@@ -56,26 +56,21 @@
           if (!host || !host.parentNode) return;
           var wrap = document.createElement('div');
           wrap.id = 'hx-read';
+          // Injected into THIS document, not an iframe. Vue's Teleport cannot
+          // cross documents, and the fields have to be able to land in the text.
+          // The fragment carries its own stylesheet, scoped under #hx-read-doc at
+          // build time so it cannot restyle DocuSeal's UI.
           wrap.innerHTML =
             '<div class="hx-read-bar">' +
             '<span>Readable view</span>' +
             '<button type="button" id="hx-read-toggle">Show the page</button>' +
-            '</div><iframe id="hx-read-frame" title="Document, readable view"></iframe>';
+            '</div><div id="hx-read-doc"></div>';
           host.parentNode.insertBefore(wrap, host);
-
-          var frame = wrap.querySelector('#hx-read-frame');
-          frame.srcdoc = html;
-          // Size the frame to its content so the outer page does the scrolling
-          // and the reader never fights two scrollbars.
-          frame.addEventListener('load', function () {
-            try {
-              var d = frame.contentDocument;
-              var fit = function () { frame.style.height = d.documentElement.scrollHeight + 'px'; };
-              fit();
-              setTimeout(fit, 250);
-              if (window.ResizeObserver) new ResizeObserver(fit).observe(d.body);
-            } catch (e) { frame.style.height = '70vh'; }
-          });
+          wrap.querySelector('#hx-read-doc').innerHTML = html;
+          // The anchors exist now. Tell the signing components to re-resolve
+          // their Teleport targets, or the fields stay on the hidden page images
+          // until the next step change.
+          window.dispatchEvent(new Event('hx-reflow-ready'));
 
           var pages = document.querySelectorAll('page-container');
           var showPages = function (on) {
