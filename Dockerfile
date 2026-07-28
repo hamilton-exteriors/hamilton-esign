@@ -7,7 +7,45 @@
 # 2026-07-27; on :latest the next deploy would silently pull it and any markup
 # change would break the branding with no error anywhere. Bump this on purpose,
 # then re-verify the signer page, never by accident.
+# ---------------------------------------------------------------- webpack ----
+# Recompile DocuSeal's signer components with the inline-field patch.
+#
+# Needed because DocuSeal has no reflow mode at any tier, and its front end is
+# where a field decides whether it is a box positioned over a page image or an
+# element in a line of text. The runtime image ships the Vue source but no
+# package.json and no node, so the assets cannot be rebuilt in place.
+#
+# Mirrors upstream's own webpack stage exactly (ruby:4.0.5-alpine plus
+# nodejs/yarn/git/build-base and the shakapacker gem). Verified beforehand that a
+# NO-OP recompile of 3.1.5 reproduces the pack content hashes already running in
+# production, so a patched build differs only by the patch.
+FROM ruby:4.0.5-alpine AS webpack
+
+ENV RAILS_ENV=production
+ENV NODE_ENV=production
+
+WORKDIR /src
+
+RUN apk add --no-cache nodejs yarn git build-base && gem install shakapacker
+
+RUN git clone --depth 1 --branch 3.1.5 https://github.com/docusealco/docuseal.git /src
+
+# Every edit asserts its anchor text, so an upstream change fails the build here
+# rather than shipping a bundle where fields silently capture nothing.
+COPY patches/docuseal-inline-fields.mjs /patches/
+RUN node /patches/docuseal-inline-fields.mjs /src/app/javascript/submission_form
+
+RUN yarn install --network-timeout 1000000
+
+RUN echo "gem 'shakapacker'" > Gemfile && ./bin/shakapacker && \
+    test -f /src/public/packs/manifest.json
+
+# ------------------------------------------------------------------- app -----
 FROM docuseal/docuseal:3.1.5
+
+# The patched bundle, replacing the whole packs tree so the manifest and its
+# content-hashed filenames stay consistent with each other.
+COPY --from=webpack /src/public/packs /app/public/packs
 
 COPY brand/hamilton.css            /app/app/assets/hamilton.css
 COPY brand/form.html.erb           /app/app/views/layouts/form.html.erb
