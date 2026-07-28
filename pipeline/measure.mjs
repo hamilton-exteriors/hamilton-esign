@@ -88,11 +88,18 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
 
   for (const b of blocks) {
     page.appendChild(b);
-    if (overflows()) {
-      if (page.children.length > 1) { newPage(); page.appendChild(b); }
-      if (overflows() && b.tagName === 'TABLE') { placeTable(b); continue; }
-      if (overflows() && (b.tagName === 'UL' || b.tagName === 'OL')) { placeList(b); continue; }
-    }
+    if (!overflows()) continue;
+
+    // A table or list that does not fit the REMAINING space is split here and
+    // now, filling this page and continuing on the next with the header
+    // repeated. It used to be moved whole to a fresh page and only split if it
+    // could not fit even a full page, which is what left a page three quarters
+    // empty and made the breaks look arbitrary. Splitting a long table across
+    // pages is ordinary in a contract; a 640px hole in the middle of one is not.
+    if (b.tagName === 'TABLE') { placeTable(b); continue; }
+    if (b.tagName === 'UL' || b.tagName === 'OL') { placeList(b); continue; }
+
+    if (page.children.length > 1) { newPage(); page.appendChild(b); }
   }
   flow.remove();
 
