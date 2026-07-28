@@ -263,9 +263,14 @@ for (const m of manifest) {
   const page = await browser.newPage({ viewport: { width: PAGE.w, height: PAGE.h } });
   await page.goto('file:///' + `${DIR}/${m.slug}.html`);
   const res = await page.evaluate(SCRIPT, PAGE);
+  // preferCSSPageSize makes the @page rule in build-docs decide the paper, so
+  // the print layout is the same width the DOM was measured at. Without it
+  // Chromium lays out for its own default sheet and scales the result to fit,
+  // which silently divorces the PDF from the coordinates.
   await page.pdf({
     path: `${DIR}/${m.slug}.pdf`,
     width: `${PAGE.w}px`, height: `${PAGE.h}px`,
+    preferCSSPageSize: true,
     printBackground: true, margin: { top: 0, bottom: 0, left: 0, right: 0 },
   });
   await page.close();

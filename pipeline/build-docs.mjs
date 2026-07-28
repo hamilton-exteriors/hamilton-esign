@@ -24,8 +24,17 @@ mkdirSync(OUT, { recursive: true });
 export const PAGE = { w: 420, h: 748, mt: 40, mb: 34, ml: 30, mr: 30 };
 export const PAGE_PRINT = { w: 816, h: 1056, mt: 120, mb: 96, ml: 144, mr: 120 };
 
+// @page MUST agree with PAGE. It said `size: Letter` while the pages were 420px
+// wide, so Chromium laid the document out for an 816px sheet and page.pdf() then
+// scaled the result down to fit 420px. The PDF ended up with the whole document
+// shrunk into the top-left ~38% x 45% of each page, while the coordinates were
+// measured against the unscaled DOM, so every field area sat high and left of
+// the rule it belonged to. The comment at the top of measure.mjs describes this
+// exact failure as already fixed; it was fixed in one of the two places.
+//
+// measure.mjs passes preferCSSPageSize, so this rule is what decides the paper.
 const CSS = `
-@page { size: Letter; margin: 0; }
+@page { size: ${PAGE.w * 0.75}pt ${PAGE.h * 0.75}pt; margin: 0; }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 /* Sizes are px, not pt: this page is read on a phone at ~0.89:1, so the number
