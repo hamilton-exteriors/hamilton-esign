@@ -385,7 +385,7 @@ td{padding:9px 6px;border-bottom:1px solid #e6e6e6;vertical-align:top}
 /* A blank in the reading view is a rule, not an input: filling happens in the
    guided prompt, and a second editable copy of a field would be a second source
    of truth for a signed document. */
-.ds{display:inline-block;min-width:120px;height:1.15em;vertical-align:-.2em;
+.ds{position:relative;display:inline-block;min-width:120px;height:1.15em;vertical-align:-.2em;
     border-bottom:1.5px solid #7a7a7a}
 .ds-sig{min-width:190px;height:1.6em}
 .ds-box{min-width:14px;width:14px;height:14px;border:1.5px solid #555;vertical-align:-.1em;margin-right:5px}
@@ -401,12 +401,58 @@ td .ds,td .ds-ini,td .ds-date{min-width:44px}
 .letterhead .lh-meta strong{display:block;font-size:10px;color:#1B3C2D;letter-spacing:.08em}
 `;
 
+/** Scope every rule under one id so the reading view can be injected into the
+ *  signer page without its print-derived styles leaking into DocuSeal's own UI.
+ *
+ *  It used to be an iframe, which isolated styles for free. Vue's Teleport
+ *  cannot cross into another document, so inline fields require the reflowed
+ *  content to live in the same DOM and the isolation has to happen here instead.
+ *  Generated rather than hand-written: there are around forty selectors and
+ *  missing one silently restyles the signing UI. */
+function scopeCss(css, scope) {
+  // Comments MUST go first. Anchoring on "start of string or }" silently skips
+  // any selector that follows a comment instead of a rule, which left .ds, .legal
+  // and .letterhead unscoped and free to restyle DocuSeal's own chrome. The
+  // assertion in assertScoped below is what caught it; the obvious regex test
+  // did not, because it had the same blind spot as the scoper.
+  const bare = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  return bare.replace(/(^|})\s*([^{}@]+?)\s*\{/g, (m, close, sel) => {
+    const scoped = sel.split(',').map((s) => {
+      const t = s.trim();
+      if (!t || t === 'html' || t === 'html,body') return '';
+      if (t === 'body') return scope;                 // the container itself
+      return `${scope} ${t}`;
+    }).filter(Boolean).join(', ');
+    return `${close}\n${scoped || `${scope} :not(*)`} {`;
+  });
+}
+
+/** Fail the build if any rule escaped the scope. A leaked selector does not look
+ *  like a bug in the reading view, it looks like DocuSeal's UI breaking. */
+function assertScoped(css, scope) {
+  const leaked = [];
+  const re = /(^|})\s*([^{}@]+?)\s*\{/g;
+  let m;
+  while ((m = re.exec(css))) {
+    for (const part of m[2].split(',')) {
+      const t = part.trim();
+      if (t && !t.startsWith(scope)) leaked.push(t);
+    }
+  }
+  if (leaked.length) {
+    throw new Error(`reading-view CSS not fully scoped, ${leaked.length} leaked: ` +
+      leaked.slice(0, 6).join(' | '));
+  }
+}
+
 function reflow(bodyHtml) {
   // Wrap tables so a wide one scrolls in place instead of widening the page.
   const wrapped = bodyHtml.replace(/<table/g, '<div class="tbl"><table').replace(/<\/table>/g, '</table></div>');
-  return `<!doctype html><html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>${REFLOW_CSS}</style></head><body>${letterhead()}${wrapped}</body></html>`;
+  // A FRAGMENT, not a document: the layout injects this into the signer page so
+  // Vue can teleport real fields into the anchors inside it.
+  const css = scopeCss(REFLOW_CSS, '#hx-read-doc');
+  assertScoped(css, '#hx-read-doc');
+  return `<style>${css}</style>\n${letterhead()}${wrapped}`;
 }
 
 /** Split flowed content into fixed-size .page divs is done in-browser; here we wrap once. */
