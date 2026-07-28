@@ -119,12 +119,12 @@ export const WORKER_TYPES = {
  *  and notice (sec 4, seven days either way). Those are now the template, not
  *  open questions. Check Drive before declaring something undrafted. */
 export const NEEDS_OWNER_DECISION = {
-  overseas_contractor: [
-    'Equipment or software stipend: the executed agreement is silent, so today ' +
-      'the answer is effectively none. Say so explicitly or add a clause.',
-    'Venue: section 8 sets California governing law but names no forum for a ' +
-      'dispute. Fine to leave, but it is a deliberate choice, not an oversight.',
-  ],
+  // Empty, and that is the finished state, not an unfilled stub. Owner ruled
+  // 2026-07-28: no equipment or software stipend (now section 7, stated
+  // explicitly rather than left silent), and venue is Alameda County, which is
+  // where Castro Valley sits, so it pairs with the California governing law the
+  // agreement already had (now section 9).
+  overseas_contractor: [],
 };
 
 /** Resolve a type, or refuse. No default — a guess here is the failure mode. */
