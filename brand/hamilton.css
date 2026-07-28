@@ -340,6 +340,29 @@ dialog textarea[name='reason'] {
   cursor: not-allowed;
 }
 
+/* Field markers inside the READING view.
+   The recolor above is scoped to page-container on purpose, so it cannot repaint
+   a genuine error elsewhere on the page. Inline fields live in #hx-read-doc
+   instead, which meant they arrived in DocuSeal's stock pink and red dashed
+   styling: on the reading view the very first field a signer saw looked like a
+   validation failure. Same treatment, same reasoning, second container. */
+#hx-read-doc [class*='bg-red-'] {
+  background-color: rgba(37, 99, 70, .10) !important;
+}
+#hx-read-doc [class*='border-red-'] { border-color: var(--hx-green) !important; }
+#hx-read-doc [class*='text-red-'] { color: var(--hx-green) !important; }
+#hx-read-doc [class*='outline-red'],
+#hx-read-doc [class*='outline-dashed'],
+#hx-read-doc [class*='border-dashed'] {
+  outline-color: var(--hx-green) !important;
+  border-color: var(--hx-green) !important;
+}
+#hx-read-doc [style*='rgb(239, 68, 68)'], #hx-read-doc [style*='rgb(220, 38, 38)'] {
+  outline-color: var(--hx-green) !important;
+  border-color: var(--hx-green) !important;
+}
+#hx-read-doc .field-area:hover { background-color: rgba(37, 99, 70, .18) !important; }
+
 /* ------------------------------------------------------- reading view -----
    The reflowed rendering of the document, shown on phones in place of the
    scaled page images. Chrome only; the document inside the frame carries its
