@@ -5,7 +5,8 @@ unsure I say so. Where I broke something, I say that too.
 
 **Repo:** `hamilton-exteriors/hamilton-esign` (PUBLIC, AGPL-3.0)
 **Baseline before remediation:** `c922c07`
-**Review branch:** `claude/review-inline-fields`; see the release status in §8.
+**Remediation release:** `59b311b` on `origin/master`; Railway deployment
+`95649ebd-cfb7-4025-9999-1ab2f32eefa3` succeeded on 2026-07-28.
 **Live:** <https://sign.hamilton-exteriors.com> and
 <https://docuseal-production-7617.up.railway.app> — same service, both 200.
 **Railway:** project `backoffice` `9ff3cd8c-…`, env `72326ee3-…`, service
@@ -235,9 +236,8 @@ assertions there pass off the footer chrome instead.
 
 ## 8. Release status and remaining work
 
-**Release status:** remediation is validated in the worktree but must not be called
-live until the Railway deployment and post-deploy browser checks below succeed.
-Git push alone does not deploy this service.
+**Release status:** live and post-deploy verified on 2026-07-28. Both production
+hosts returned 200. Git push alone still does not deploy this service.
 
 **Blocked on the owner, not code:**
 1. **Sign the 5 safety programs.** The private replacement links were emailed on
@@ -265,12 +265,13 @@ Git push alone does not deploy this service.
 - Docker bases, DocuSeal source, APK packages, Shakapacker, and Yarn lock resolution
   are pinned.
 
-**Required after deployment:**
-- Re-run disposable `ZZ TEST` phone/desktop checks for IIPP, roster, and acknowledgment.
-- Exercise Show Page, return to readable view, both sides of 768px, and stale-anchor
-  PDF fallback. Archive every disposable submission afterward.
-- Confirm the five private replacement links remain signable and the revoked links
-  remain deleted. Never record either URL set here.
+**Post-deploy verification completed:**
+- Disposable `ZZ TEST` IIPP, 65-anchor roster, and 33-anchor acknowledgment passed
+  phone, Show Page, return-to-readable, both viewport crossings, and fresh desktop.
+- The stale-anchor interception kept every signer field on the visible PDF.
+- All disposable submissions were archived; a residual sweep found zero active tests.
+- All five private replacement links remain pending and signable. Each revoked public
+  link renders the deleted form with zero fields. Bearer URLs remain private.
 
 ---
 
