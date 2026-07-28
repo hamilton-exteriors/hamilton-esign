@@ -6,23 +6,33 @@ const SRC = 'C:/Users/admin/.claude/skills/onboard-worker/references/documents';
 const OUT = 'C:/Users/admin/AppData/Local/Temp/claude/C--Users-admin/d1994a65-4339-4973-8fe3-b31c96359079/scratchpad/build';
 mkdirSync(OUT, { recursive: true });
 
-// PHONE geometry, deliberately not Letter.
+// LETTER geometry, and the trade-off behind it is worth stating.
 //
-// DocuSeal rasterises each page and scales the image to the container width. On
-// a 390px phone the container is ~374px, so a Letter page built at 816px lands
-// at 374/816 = 0.458 scale: 10.5pt body text renders at about 6.4 CSS px and a
-// 20px initials box becomes 9px tall. The worker cannot read the document he is
-// signing and cannot reliably hit the fields, which made every other
-// improvement chrome around an illegible page.
+// DocuSeal rasterises each page and scales it to the container width, so on a
+// 390px phone a Letter page renders at about 0.46 scale and 10.5pt body type
+// arrives near 6.4 CSS px. That is why this was built at phone size for a while.
 //
-// At 420px wide the same container renders ~0.89:1, so 15px body text arrives at
-// ~13px and a 44px field stays ~39px. measure.mjs normalises all coordinates to
-// 0-1, so the field mapping follows automatically, and it already asserts zero
-// page overflow, which makes the repagination self-checking.
+// It was the wrong call. The signer reads and fills through the step prompts at
+// the bottom of the screen, which quote each field and scroll to it, and the
+// document itself can be pinched. Meanwhile the PDF is permanent: it is the copy
+// the worker is owed under Labor Code 432, the file in Drive, and the exhibit a
+// Labor Commissioner would read. Optimising the artifact for one phone session
+// produced a 4.38in x 7.79in sheet with oversized type and a two page agreement
+// filed as twelve.
 //
-// Keep a Letter build for anything printed or filed: PAGE_PRINT below.
-export const PAGE = { w: 420, h: 748, mt: 40, mb: 34, ml: 30, mr: 30 };
-export const PAGE_PRINT = { w: 816, h: 1056, mt: 120, mb: 96, ml: 144, mr: 120 };
+// So: proper document, and legibility on the phone comes from the prompts.
+// US Letter at 96dpi, with the margins from the contractor document standard:
+// top 1.25in (letterhead zone), bottom 1in (footer), left 1.5in (binding),
+// right 1.25in. Content width lands at 5.75in, which is the 65-75 characters
+// per line where reading is easiest at 10.5pt.
+//
+// This was 420x748 for a long time, chosen so the document would be legible on
+// a phone during signing. It made the artifact wrong: the executed PDF came out
+// 4.38in x 7.79in, so 15px body type was proportionally enormous and a two page
+// agreement filed as twelve. That PDF is not just a signing surface, it is the
+// record that goes to the worker under Labor Code 432, into Drive, and in front
+// of a Labor Commissioner. It has to be a document first.
+export const PAGE = { w: 816, h: 1056, mt: 120, mb: 96, ml: 144, mr: 120 };
 
 // @page MUST agree with PAGE. It said `size: Letter` while the pages were 420px
 // wide, so Chromium laid the document out for an 816px sheet and page.pdf() then
@@ -37,11 +47,13 @@ const CSS = `
 @page { size: ${PAGE.w * 0.75}pt ${PAGE.h * 0.75}pt; margin: 0; }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-/* Sizes are px, not pt: this page is read on a phone at ~0.89:1, so the number
-   here is close to what the eye gets. Anything under 15px body lands illegible. */
+/* Type scale from the contractor document standard, converted pt -> px at 96dpi
+   (1pt = 4/3 px): body 10.5pt, title 24, H1 18, H2 14, H3 11, fine print 9,
+   caption 8. One family, hierarchy from weight and size. Vertical rhythm is the
+   6pt grid, so every margin below is a multiple of 8px. */
 body{
   font-family:"Helvetica Neue",Helvetica,Calibri,Arial,sans-serif;
-  font-size:15px; line-height:21px; color:#1a1a1a;
+  font-size:14px; line-height:20px; color:#1a1a1a;
   -webkit-font-smoothing:antialiased;
 }
 /* EXACT height, not min-height: a page div that grows even 1px spills into a
@@ -54,40 +66,70 @@ body{
 .page:last-child{page-break-after:auto;break-after:auto}
 .page>*:first-child{margin-top:0}
 .page>*:last-child{margin-bottom:0}
-h1{font-size:21px;line-height:26px;font-weight:700;letter-spacing:.2px;margin:0 0 8px}
-h2{font-size:17px;line-height:22px;font-weight:600;margin:22px 0 8px;
-   padding-bottom:4px;border-bottom:1px solid #d8d8d8}
-h3{font-size:15px;line-height:20px;font-weight:700;margin:16px 0 5px}
-p{margin:0 0 11px}
-ul,ol{margin:0 0 11px;padding-left:20px}
-li{margin:0 0 5px}
+/* Document title, 24pt bold with the wide tracking the standard calls for. */
+h1{font-size:32px;line-height:38px;font-weight:700;letter-spacing:.02em;margin:0 0 8px}
+/* Section, 18pt. The rule under it separates sections without a heavy band. */
+h2{font-size:24px;line-height:28px;font-weight:700;margin:32px 0 12px;
+   padding-bottom:6px;border-bottom:1px solid #c9c9c9}
+/* Subsection, 14pt semibold. */
+h3{font-size:18.5px;line-height:23px;font-weight:600;margin:24px 0 8px}
+h4{font-size:14.5px;line-height:19px;font-weight:700;margin:16px 0 6px}
+p{margin:0 0 12px}
+ul,ol{margin:0 0 12px;padding-left:24px}
+li{margin:0 0 6px}
 strong{font-weight:700}
-hr{border:0;border-top:1px solid #d8d8d8;margin:16px 0}
-table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:14px;line-height:19px}
-th{text-align:left;font-weight:600;font-size:12px;letter-spacing:.4px;text-transform:uppercase;
-   color:#555;border-bottom:1px solid #333;padding:6px 5px}
-td{padding:7px 5px;border-bottom:1px solid #e2e2e2;vertical-align:top}
-/* Was 8pt -> ~4.9 CSS px on a phone, i.e. unreadable. Fine print is still
-   print a worker is signing. */
-.legal{font-size:13px;line-height:18px;color:#4a4a4a}
-.doc-meta{font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:#5a5a5a;margin:0 0 14px}
-/* Field markers: invisible in print, measured in the browser. Heights are the
-   tap target — 20px here became 9px on a phone. 44px stays ~39px at 0.89:1. */
-.ds{display:inline-block;min-width:150px;height:44px;vertical-align:bottom;
+hr{border:0;border-top:1px solid #c9c9c9;margin:24px 0}
+/* Tables hold short labels and numbers. Slightly tighter leading for density. */
+table{width:100%;border-collapse:collapse;margin:12px 0 20px;font-size:13px;line-height:18px}
+th{text-align:left;font-weight:600;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+   color:#555;border-bottom:1px solid #333;padding:8px 6px}
+td{padding:8px 6px;border-bottom:1px solid #e2e2e2;vertical-align:top}
+/* Fine print, 9pt. Never smaller: below 8pt reads as hiding something. */
+.legal{font-size:12px;line-height:16px;color:#4a4a4a}
+/* Caption, 8pt medium all caps with wide tracking. */
+.doc-meta{font-size:10.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+          color:#5a5a5a;margin:0 0 16px}
+
+/* ---- letterhead (zone 1) --------------------------------------------------
+   Sits in the 1.25in top margin zone of page 1. Every prior build produced a
+   document with no mark on it at all, which for a signed employment record is
+   the first thing a reader looks for. */
+.letterhead{display:flex;align-items:flex-start;justify-content:space-between;
+            gap:24px;margin:0 0 24px;padding-bottom:16px;border-bottom:2px solid #1B3C2D}
+.letterhead img{height:46px;width:auto;display:block}
+.letterhead .lh-meta{text-align:right;font-size:10.5px;line-height:15px;color:#5a5a5a;
+                     letter-spacing:.06em;text-transform:uppercase}
+.letterhead .lh-meta strong{display:block;font-size:11px;color:#1B3C2D;letter-spacing:.1em}
+
+/* ---- running footer -------------------------------------------------------
+   Absolutely placed inside the bottom margin, so it never affects the flow the
+   pagination measures. measure.mjs stamps data-n / data-total. */
+.page::after{
+  content:attr(data-foot);
+  position:absolute; left:${PAGE.ml}px; right:${PAGE.mr}px; bottom:${Math.round(PAGE.mb / 2.5)}px;
+  font-size:10px; line-height:14px; color:#7a7a7a; letter-spacing:.04em;
+  border-top:1px solid #e2e2e2; padding-top:8px;
+  display:flex; justify-content:space-between; white-space:pre;
+}
+
+/* Field markers: invisible in print, measured in the browser. Sized as form
+   fields on a Letter sheet (about 0.22in tall) rather than as phone tap
+   targets, which is what made them tower over their own text line. */
+.ds{display:inline-block;min-width:180px;height:21px;vertical-align:bottom;
     border-bottom:1px solid #444}
-.ds-sig{min-width:230px;height:56px}
+.ds-sig{min-width:250px;height:34px}
 /* A checkbox occupies the glyph's own footprint, so it must NOT inherit the
-   150px prose min-width or it pushes the label off the line. */
-.ds-box{min-width:22px;width:22px;height:22px;border:1px solid #444;
-        border-bottom-width:1px;vertical-align:middle;margin-right:4px}
-.ds-ini{min-width:64px;height:44px}
-.ds-date{min-width:130px;height:44px}
-/* 150px is right for a blank in prose and far too wide for a table cell — the
-   4-column task table put an initials box 5% past the right edge of the page,
-   where DocuSeal would clip or mis-place it. Table cells get their own floor. */
-td .ds, th .ds{min-width:40px;max-width:100%}
-td .ds-ini{min-width:40px}
-td .ds-date{min-width:70px}
+   prose min-width or it pushes the label off the line. */
+.ds-box{min-width:13px;width:13px;height:13px;border:1px solid #444;
+        border-bottom-width:1px;vertical-align:baseline;margin-right:5px}
+.ds-ini{min-width:70px;height:21px}
+.ds-date{min-width:130px;height:21px}
+/* A prose min-width is far too wide for a table cell: the 4-column task table
+   put an initials box past the right edge, where DocuSeal clips or mis-places
+   it. Table cells get their own floor. */
+td .ds, th .ds{min-width:44px;max-width:100%}
+td .ds-ini{min-width:44px}
+td .ds-date{min-width:78px}
 td .ds-sig{min-width:90px}
 `;
 
@@ -262,10 +304,30 @@ function markFields(html, defaultOwner = 'worker') {
   return { html: out, fields };
 }
 
+/** Letterhead for page 1. The mark is inlined so the PDF carries no external
+ *  reference: a signed record that depends on a live URL to render its own logo
+ *  is a record that degrades. Same wordmark the signer page uses. */
+const LOGO = (() => {
+  const erb = readFileSync('C:/Users/admin/AppData/Local/Temp/claude/C--Users-admin/d1994a65-4339-4973-8fe3-b31c96359079/scratchpad/hamilton-esign/brand/_logo.html.erb', 'utf8');
+  const m = erb.match(/data:image\/[a-z+]+;base64,[A-Za-z0-9+/=]+/);
+  return m ? m[0] : null;
+})();
+
+function letterhead() {
+  const mark = LOGO
+    ? `<img src="${LOGO}" alt="Hamilton Exteriors">`
+    : '<strong style="font-size:20px;color:#1B3C2D">Hamilton Exteriors</strong>';
+  return `<div class="letterhead">${mark}<div class="lh-meta">` +
+    '<strong>ABR Quality Resources Inc</strong>dba Hamilton Exteriors<br>' +
+    '21634 Redwood Rd Unit F, Castro Valley, CA 94546<br>' +
+    'CSLB 1078806' +
+    '</div></div>';
+}
+
 /** Split flowed content into fixed-size .page divs is done in-browser; here we wrap once. */
 function wrap(title, bodyHtml) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
-<style>${CSS}</style></head><body><div class="flow">${bodyHtml}</div></body></html>`;
+<style>${CSS}</style></head><body><div class="flow">${letterhead()}${bodyHtml}</div></body></html>`;
 }
 
 // Company safety programs are signed once by Hamilton, not by a worker.

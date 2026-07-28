@@ -121,6 +121,14 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
     if (!moved) break;
   }
 
+  // Running footer. Written as a data attribute the CSS renders through
+  // ::after, and positioned inside the bottom margin, so adding it cannot change
+  // the flow this function just measured. A signed page with no identity and no
+  // "3 of 9" is hard to audit and easy to separate.
+  pages.forEach((p, i) => {
+    p.dataset.foot = `ABR Quality Resources Inc dba Hamilton Exteriors  ·  CSLB 1078806\tPage ${i + 1} of ${pages.length}`;
+  });
+
   // Hard check: nothing may overflow its page, or the PDF will clip it.
   const overflow = pages
     .map((p, i) => ({ i, over: p.scrollHeight - p.clientHeight }))

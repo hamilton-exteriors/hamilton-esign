@@ -18,9 +18,19 @@ const { chromium } = pw;
 const SEC = JSON.parse(readFileSync('C:/Users/admin/.claude/.hamilton-secrets/docuseal.json', 'utf8'));
 const api = (p) => fetch(`${SEC.url}${p}`, { headers: { 'X-Auth-Token': SEC.apiKey } }).then((r) => r.json());
 
-// A 420px page with 30px side margins puts content across ~86% of the width.
-// Anything under 70% means the sheet was larger than the layout and got scaled.
-const MIN_WIDTH_SPAN = 0.70;
+// Derived from the page geometry, never hardcoded. A fixed floor was written
+// against the old 420px page (content 86% of width) and then failed all 14
+// templates the day the page became Letter, where content is correctly 5.75in
+// of 8.5in = 68%. A check whose threshold assumes one layout stops being a check
+// the moment the layout changes.
+//
+// The real failure it exists to catch is content scaled into a corner, which
+// halves the span, so a relative band around the expected value separates the
+// two cleanly.
+import { PAGE } from './build-docs.mjs';
+const EXPECTED_SPAN = (PAGE.w - PAGE.ml - PAGE.mr) / PAGE.w;
+const MIN_WIDTH_SPAN = EXPECTED_SPAN * 0.8;
+const MAX_WIDTH_SPAN = EXPECTED_SPAN * 1.15;
 
 const inkBox = async (page, src) => page.evaluate(async (url) => {
   const img = new Image();
@@ -58,7 +68,7 @@ for (const t of templates.sort((a, b) => a.name.localeCompare(b.name))) {
   let r;
   try { r = await inkBox(page, src); } catch (e) { console.log(`  ERR   ${t.name}: ${e.message}`); bad++; continue; }
   const span = (r.maxX - r.minX) / r.w;
-  const ok = span >= MIN_WIDTH_SPAN && r.ink > 0;
+  const ok = span >= MIN_WIDTH_SPAN && span <= MAX_WIDTH_SPAN && r.ink > 0;
   if (!ok) bad++;
   console.log(`  ${ok ? 'ok  ' : 'FAIL'}  ${String(t.id).padStart(3)}  ${t.name.slice(0, 44).padEnd(45)} ink spans ${(span * 100).toFixed(0)}% of width`);
 }
