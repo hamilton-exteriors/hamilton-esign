@@ -117,6 +117,37 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
         next.insertBefore(victim, next.firstChild);
         moved = true;
       }
+
+      // Keep a heading with what it introduces. A section title alone at the
+      // foot of a page, its body overleaf, is the "weird page break" you notice
+      // immediately on a contract: the reader turns the page to find out what
+      // the heading was about. Same for a heading whose section then has only a
+      // single line under it.
+      const pushForward = (el) => {
+        let next = pages[i + 1];
+        if (!next) {
+          next = document.createElement('div');
+          next.className = 'page';
+          document.body.appendChild(next);
+          pages.push(next);
+        }
+        next.insertBefore(el, next.firstChild);
+        moved = true;
+      };
+      const last = p.lastElementChild;
+      // children.length > 1 guard: a page holding nothing but the heading has
+      // nowhere better to send it, and moving it forever would not converge.
+      if (last && /^H[2-6]$/.test(last.tagName) && p.children.length > 1) {
+        pushForward(last);
+      } else if (last && p.children.length > 2) {
+        // Orphaned heading + one line: move the pair, not just the line.
+        const prev = last.previousElementSibling;
+        if (prev && /^H[2-6]$/.test(prev.tagName)
+            && last.tagName === 'P' && last.getBoundingClientRect().height <= 24) {
+          pushForward(last);
+          pushForward(prev);
+        }
+      }
     }
     if (!moved) break;
   }
@@ -136,6 +167,20 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
 
   // Refine types using DOM context (table column headers etc.)
   const norm = (s) => (s || '').trim().toLowerCase();
+  /** Re-decide a field's type from the label the DOM pass just recovered.
+   *
+   *  build-docs classifies from the text node preceding the blank, which for
+   *  "**Carrier telephone:** ____" is only a space: the label lives inside a
+   *  separate <strong>. So the type has to be revisited wherever a name gets
+   *  repaired. This lived inline in three places and only ever checked date,
+   *  which is how a phone field stayed free text. One helper, called from each. */
+  const retype = (el, label) => {
+    const t = norm(label);
+    if (!t) return;
+    if (/\bdate\b|\bfecha\b/.test(t)) el.dataset.type = 'date';
+    else if (/signature|firma/.test(t)) el.dataset.type = 'signature';
+    else if (/\bphone\b|\btelephone\b|\btel[eé]fono\b|\bcelular\b/.test(t)) el.dataset.type = 'phone';
+  };
   /** Cut to max chars at a word boundary, so a prompt never ends mid-word. */
   const clip = (s, max) => {
     if (s.length <= max) return s;
@@ -187,8 +232,7 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
         const text = first && first !== td ? first.textContent.trim().replace(/\s+/g, ' ') : '';
         if (text && text.length <= 48 && !/^_+$/.test(text)) {
           el.dataset.name = text;
-          if (/date|fecha/i.test(text)) el.dataset.type = 'date';
-          else if (/signature|firma/i.test(text)) el.dataset.type = 'signature';
+          retype(el, text);
         }
       }
     }
@@ -202,7 +246,7 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
       }
       if (found) {
         el.dataset.name = found;
-        if (/date|fecha/i.test(found)) el.dataset.type = 'date';
+        retype(el, found);
       }
     }
   }

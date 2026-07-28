@@ -124,6 +124,8 @@ td{padding:8px 6px;border-bottom:1px solid #e2e2e2;vertical-align:top}
         border-bottom-width:1px;vertical-align:baseline;margin-right:5px}
 .ds-ini{min-width:70px;height:21px}
 .ds-date{min-width:130px;height:21px}
+/* Wide enough for a formatted "(650) 977-3241" without wrapping. */
+.ds-phone{min-width:150px;height:21px}
 /* A prose min-width is far too wide for a table cell: the 4-column task table
    put an initials box past the right edge, where DocuSeal clips or mis-places
    it. Table cells get their own floor. */
@@ -152,6 +154,12 @@ function classify(label, seg) {
   if (/signature|sign here|\bfirma\b/.test(c)) return 'signature';
   if (/initial|iniciales/.test(c)) return 'initials';
   if (/\bdate\b|\bfecha\b/.test(c)) return 'date';
+  // DocuSeal has a real phone type that formats as the signer types, so nobody
+  // has to enter the parentheses and the dash by hand.
+  //
+  // Word-bounded deliberately: a bare /tel/ matches "immediately" and typed a
+  // roster initials box as a phone number.
+  if (/\bphone\b|\btelephone\b|\btel[eé]fono\b|\bcelular\b/.test(c)) return 'phone';
   return 'text';
 }
 
@@ -254,7 +262,8 @@ function markFields(html, defaultOwner = 'worker') {
       fields.push({ id, name: label, type, owner: fieldOwner, section });
       const cls = type === 'signature' ? 'ds ds-sig'
         : type === 'initials' ? 'ds ds-ini'
-        : type === 'date' ? 'ds ds-date' : 'ds';
+        : type === 'date' ? 'ds ds-date'
+        : type === 'phone' ? 'ds ds-phone' : 'ds';
       return `<span class="${cls}" id="${id}" data-name="${label.replace(/"/g, '')}" data-type="${type}" data-owner="${fieldOwner}" data-section="${section.replace(/"/g, '')}"></span>`;
     });
     // Checkbox pass. Unlike a blank, the label FOLLOWS the glyph ("☐ Roofer"),
