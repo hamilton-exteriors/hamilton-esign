@@ -1,0 +1,285 @@
+# Handoff — Hamilton e-Sign, 2026-07-27/28
+
+For the next agent. Written to be reviewed and continued, not admired. Where I am
+unsure I say so. Where I broke something, I say that too.
+
+**Repo:** `hamilton-exteriors/hamilton-esign` (PUBLIC, AGPL-3.0)
+**HEAD at handoff:** `c922c07` + this file. Pushed, tree clean.
+**Live:** <https://sign.hamilton-exteriors.com> and
+<https://docuseal-production-7617.up.railway.app> — same service, both 200.
+**Railway:** project `backoffice` `9ff3cd8c-…`, env `72326ee3-…`, service
+`docuseal` `8f374fa6-…`
+
+---
+
+## 1. Read before touching anything
+
+| Fact | Why it bites |
+|---|---|
+| **`git push` does NOT deploy.** The service is not wired to GitHub. | Deploy with `railway up --service docuseal --detach`, then poll the deployment id. Pushing and assuming is how you ship nothing. |
+| **Rebuilding templates invalidates every signing link already sent.** | I did it three times and had to email the owner replacements each time. Use `pipeline/stamp-reflow.mjs` where possible. |
+| **DocuSeal is PINNED to 3.1.5 and we ship a PATCHED Vue bundle.** | An upgrade is a project, not a bump. See §5. |
+| **Never print secrets.** | I leaked `GODADDY_API_KEY`, `GODADDY_API_SECRET`, `CF_API_TOKEN`, `CF_ZONE_ID`, `CF_ACCOUNT_ID` via a bad regex whose error message echoed `~/.bashrc`. Owner has since rotated them. Read credentials line by line, validate shape before use, never interpolate into anything loggable. Pattern: `pipeline/safe.mjs`. |
+| **Legal entity is `ABR Quality Resources Inc dba Hamilton Exteriors`.** Never "LLC". | Hook-enforced (`guard-legal-entity.mjs`). |
+| **Owner is Alex Li, President.** Not "Alex Gutierrez". | The wrong name has re-entered memory repeatedly and once reached a real admin account. |
+| **Work in a worktree**, never the primary checkout on master. | `guard-main-edit.mjs` blocks it. It blocked me writing this file. |
+
+---
+
+## 2. What the system does
+
+Markdown → print HTML → Letter PDF + measured field coordinates → DocuSeal
+template → per-hire signing link over WhatsApp → signed PDF back to the worker
+(Labor Code §432) → filed to Google Drive.
+
+Source documents live **outside this repo**, in
+`~/.claude/skills/onboard-worker/references/documents/*.md` (15 files). The repo
+holds the pipeline, the branding overlays, and the generated reading views.
+
+```
+node pipeline/build-docs.mjs <slug…>   # md → print HTML + reflow HTML; emits manifest.json
+node pipeline/measure.mjs              # paginate, refine types, measure coords, emit PDF + fields.json
+node pipeline/build-templates.mjs      # create templates; stages brand/reflow/ + index.json
+node pipeline/verify-templates.mjs     # last-mile check against DocuSeal's own raster
+```
+
+`build-docs` takes slugs as arguments and everything downstream reads only what
+it produced, so a rebuild can be scoped to one document.
+
+---
+
+## 3. Live state, verified at handoff
+
+**14 templates, ids 351–364.** Rebuilding renumbers them. **Resolve by name.**
+
+```
+351 Independent Contractor Agreement 12f   358 Safety Training Roster        65f
+352 Employment Agreement              9f   359 Registro de Capacitación      65f
+353 Contrato de Empleo                9f   360 IIPP                           5f
+354 Wage Notice - Labor Code 2810.5  19f   361 Heat Illness Prevention Plan   4f
+355 Aviso de Salario                 18f   362 Plan de Prevención (ES)        4f
+356 New Hire Policy Acknowledgment   33f   363 Fall Protection Program        3f
+357 Acuse de Recibo de Políticas     33f   364 Code of Safe Practices         2f
+```
+
+**5 open submissions — the owner's safety programs, awaiting his signature.
+DO NOT archive these; they are the live links he was emailed.**
+
+```
+140 IIPP                     fn6f3r9RYruDAr    143 Fall Protection   F6ybdjBYiYsih8
+141 Heat Illness (EN)        7f4ABM2ittBwny    144 Code of Safe Pr.  UX2LxkFsu1Xfh9
+142 Plan de Prevención (ES)  5n2j9Xt9Aue3Ps
+```
+
+**Field ownership per document — diff after ANY layout change.** A layout change
+silently moved 4 trainer dates to the worker once (§6.2).
+
+```
+independent-contractor-agreement 10/2    policy-acknowledgment(-es)  30/3
+employment-agreement(-es)         5/4    safety-training-roster(-es) 54/11
+wage-notice-2810-5                5/14   iipp 0/5 · heat 0/4 (x2) · fall 0/3 · cosp 0/2
+wage-notice-2810-5-es             5/13
+```
+
+---
+
+## 4. What changed and why — 17 commits, `510adea..c922c07`
+
+```
+deff943 harden pipeline           4248550 make PDF match the measured DOM
+ea1efa5 polish signer surfaces    ee4e42d keep bare Date with its owner
+5531567 decline modal copy        beb7a7f real document, not phone screenshot
+6b54695 fix ERB comment leak      20ef762 phone type + heading breaks
+c932ac5 mint links on custom dom  9c7a96c split tables to fill the page
+be9f861 overseas packet           e487ca7 reflowed reading view
+55ac4ba contractor terms          2f000c6 / 3c2e599 inline-field plumbing
+                                  fca5d9a inline fields shipped
+                                  c922c07 recolor inline markers
+```
+
+**Hardening (`deff943`).** `pipeline/safe.mjs`: `loadRw`, `safeName`,
+`driveQuote`, `getJson`. Worst bug was a wrong **answer**, not a crash:
+`countersignLink(<bad id>)` returned *"this document has no countersigner"*,
+which would let someone conclude a document needs none. `safeName` deliberately
+**preserves** accents, apostrophes, emoji and CJK and only fixes genuinely broken
+filenames (`"///"`, `"CON"`, `".."`).
+
+**Polish (`ea1efa5`).** The decline confirm rendered byte-identical to the
+primary NEXT button while both were on screen ~40px apart. The rule meant to
+prevent it targeted `dialog .btn`; the element is `<button class="base-button">`.
+Third time CSS here was written against assumed markup. Tap targets are fixed
+with a `::after` hit area, never by resizing the box (resizing ate an 8px gutter).
+
+**Decline copy (`5531567`, `6b54695`).** The modal is server-rendered ERB, not
+Vue, so it is a one-partial overlay. Copy now states the consequence, localised
+via `I18n.locale`, with a labelled way back **below** the destructive action.
+`6b54695` fixes a bug I shipped: an ERB comment containing a closing delimiter
+ends early, so *"…is a syntax error and takes the whole page to a 500."* rendered
+at the top of the modal in both languages.
+
+**Custom domain (`c932ac5`).** Two independent faults. Cert stuck in
+`VALIDATING_OWNERSHIP` → `mutation{customDomainIssueCertificate(id:"c423a3e4-…")}`.
+**Look for that before ever deleting a domain**; deleting mints a new CNAME
+target. Then still 404 with `x-railway-fallback: true`: **a Railway custom domain
+needs a TXT ownership record and Railway's `dnsRecords` query does not list it.**
+The token is on `status { verified verificationDnsHost verificationToken }`.
+Worker-facing host and API host are deliberately separate (`publicUrl` vs
+`SEC.url`) — do not collapse them.
+
+**Overseas packet (`be9f861`, `55ac4ba`).** I reported it "not drafted". **Wrong.**
+The full set was in Drive under **"Fatmih Makburi"** — searching "Fatima" finds
+nothing. Five of six "blocking decisions" were already settled in the agreement
+she signed. Commercial terms are prefilled on the contractor's **own page and
+locked** via `readonly_fields`, not made employer-owned, which would show a blank
+rate and fill it in after signing.
+
+**PDF geometry (`4248550`, `beb7a7f`, `20ef762`, `9c7a96c`).**
+`@page { size: Letter }` while `PAGE` was 420×748 → Chromium laid out for an
+816px sheet and `page.pdf()` scaled it onto 420px, so content occupied **43% of
+the width** while coordinates came from the unscaled DOM. Every field sat high
+and left, on live templates, undetected. Fixed with `@page` derived from `PAGE`
+in **pt** (px is not honoured) plus `preferCSSPageSize: true`. Then the page
+itself was wrong (4.38×7.79in, IIPP was 12 pages) → US Letter, contractor type
+scale, letterhead, running footer. IIPP is 6 pages. Phone fields are DocuSeal
+`phone` type plus a nonce'd formatter in the layout (capture phase, so Vue reads
+the formatted value without a second event).
+
+---
+
+## 5. The DocuSeal fork — review this first
+
+**We ship a recompiled DocuSeal front end.** Highest-risk thing in the repo.
+
+- `patches/docuseal-inline-fields.mjs` — 7 edits to `areas.vue` and `area.vue`.
+  Every edit **asserts its anchor text** and throws if absent, so an upstream
+  change fails the build loudly instead of shipping a bundle where fields look
+  signable and capture nothing.
+- `Dockerfile` gained a `webpack` stage mirroring upstream's own: clone 3.1.5,
+  apply patch, `yarn install`, `./bin/shakapacker`, then
+  `COPY --from=webpack /src/public/packs /app/public/packs`.
+- The runtime image ships the Vue source but **no `package.json` and no node**,
+  so in-place recompilation is impossible. Hence multi-stage.
+- **Reproducibility proven first:** a NO-OP recompile of 3.1.5 produced packs
+  with the *same content hashes* as production, so a patched build differs only
+  by the patch. Re-run that if you ever doubt the build.
+
+**Mechanism.** `areas.vue` teleports field components into server-rendered
+`page-<attachment_uuid>-<n>` elements. The patch makes it prefer an element
+carrying `data-hx-uuid="<field uuid>"` when one is visible. `area.vue` gains an
+`inline` prop swapping page-percentage geometry for filling its anchor.
+
+**Reading view.** `brand/reflow/*.reflow.html`, served from `/reflow/`, generated
+by `build-docs`, scoped under `#hx-read-doc` at build time, injected by a nonce'd
+script in `brand/form.html.erb` below 768px. It is a **fragment, not an iframe** —
+Teleport cannot cross documents.
+
+**Ordering trap, handled.** The view arrives from an async fetch and can land
+after components have mounted and chosen page images. Injecting DOM is not a
+reactive change, so the patch listens for `hx-reflow-ready` and `$forceUpdate()`s.
+
+**`pipeline/stamp-reflow.mjs`** stamps **live** field uuids into the reading views
+so you need not rebuild templates to get them. Join key is the span id from
+`build-docs` (`f7`), not document order.
+
+Verified live at handoff:
+```
+phone    anchors=5 fieldsInline=5 fieldsOnPages=0 pagesHidden=true  steps=5
+desktop  anchors=0 fieldsInline=0 fieldsOnPages=5 pagesHidden=false steps=5
+```
+
+---
+
+## 6. Mistakes I made — verify I actually fixed them
+
+1. **ERB comment leaked into the decline modal**, both languages, live. **15 live
+   assertions passed** because every one checked that the right text was present
+   and none checked that no wrong text was.
+2. **A layout change silently moved field ownership.** Splitting
+   `Trainer: ___  Date: ___` onto separate lines moved 4 trainer dates per roster
+   to the Worker — a trainee certifying his own training dates. Caught only by
+   watching owner counts (54/11 → 58/7).
+3. **Killed the owner's signing links three times** by rebuilding templates.
+4. **Leaked five credentials** (§1).
+5. **A miscalibrated check I wrote then deleted**: parsing the PDF content stream
+   reported 417% on a provably correct build because it read Form XObject space.
+   Rasterise and count pixels instead (`verify-templates.mjs`).
+6. **`verify-templates` had a hardcoded 70% threshold** from the old page size and
+   failed all 14 the moment the page became Letter. It derives from `PAGE` now.
+7. **A CSS scoper that skipped selectors following a comment**, leaving `.ds`,
+   `.legal`, `.letterhead` free to restyle DocuSeal's UI. My first check reported
+   "unscoped selectors: none" because it shared the scoper's blind spot.
+8. **Inline fields shipped rendering red** (DocuSeal stock), because the green
+   recolor is scoped to `page-container` and they now live in `#hx-read-doc`.
+   Fixed in `c922c07`.
+
+---
+
+## 7. Verification
+
+```bash
+node pipeline/verify-templates.mjs        # every live template's raster fills its page
+node <scratchpad>/css-validate.mjs brand/hamilton.css
+# ERB — a bad layout 500s every signer page. The harness MUST wrap the compiled
+# template in a method, or a layout that legitimately yields reports "Invalid yield":
+docker run --rm -v "<dir>:/chk:ro" -v "<erbcheck2.rb>:/e.rb:ro" -w /app \
+  docuseal/docuseal:3.1.5 bundle exec ruby /e.rb
+```
+
+⚠️ **Verify document TEXT against `build/<slug>.html`, never the signer page.**
+DocuSeal rasterises the document, so `innerText` contains no contract text and
+assertions there pass off the footer chrome instead.
+
+---
+
+## 8. What still needs doing
+
+**Blocked on the owner, not code:**
+1. **Sign the 5 safety programs.** All 5 are `unsigned`. This gates the New Hire
+   Policy Acknowledgment by design, so onboarding stops at document 3. It is
+   **5, not 4** — the Spanish heat plan is a separate signature and Diego needs it.
+2. **Workers comp class 5552.** §6 of the wage notice is blank until bound, and
+   nobody goes on a roof until it is.
+
+**Code, roughly in priority order:**
+3. **Review the Vue fork** (§5). Independent eyes on a patched signing UI.
+4. **Inline fields are verified on the IIPP only** (5 fields, simple). Verify the
+   65-field Safety Training Roster and 33-field acknowledgment — table cells and
+   initials columns are the untested shapes.
+5. **No inline-field regression test.** `verify-templates.mjs` checks rasters, not
+   the reflow view. Worth a Playwright check asserting `fieldsInline == anchors`
+   on phone and `fieldsOnPages == fields` on desktop.
+6. **`advance()` has no automated trigger** — packet sequencing is manual. The
+   DocuSeal webhook is HMAC-capable and points at nothing.
+7. **Drive filing sweep is not scheduled** (`file-to-drive.mjs sweep`, idempotent
+   by filename).
+8. **Overseas packet has no Spanish variant**, deliberately: an unreviewed machine
+   translation of a contract is worse than none.
+9. **`run-packet.mjs plan` with no args** throws a raw 422 instead of usage.
+10. **Stock pack files linger** in the image because `COPY` merges rather than
+    replaces. Harmless — the manifest points at the patched bundle — but untidy.
+
+**Unverified claims. Re-check rather than trust:**
+- `assertScoped` in `build-docs.mjs` is **not proven to raise**. The positive path
+  passes and emits zero leaks, but my attempt to re-introduce the defect did not
+  modify the file, so the negative test never ran.
+- The reading view is verified on the IIPP and Employment Agreement only.
+
+---
+
+## 9. Where things live
+
+```
+hamilton-esign/
+  Dockerfile                  multi-stage: webpack (patched Vue) → docuseal 3.1.5 + overlays
+  patches/docuseal-inline-fields.mjs    7 asserting edits to areas.vue / area.vue
+  brand/                      hamilton.css, form.html.erb, _decline_form.html.erb, icons, fonts
+  brand/reflow/               generated reading views + index.json (template name → slug)
+  pipeline/                   build-docs, measure, build-templates, verify-templates,
+                              stamp-reflow, send-signing-link, send-pamphlets, send-programs,
+                              run-packet, worker-types, file-to-drive, safe
+~/.claude/skills/onboard-worker/references/documents/*.md   SOURCE OF TRUTH for content
+~/.claude/.hamilton-secrets/docuseal.json                   url, publicUrl, email, password, apiKey
+```
+
+Memory to read first: `project_esign_docuseal_build.md`,
+`reference_worker_packet_types.md`, `reference_hamilton_legal_entity_name.md`.
