@@ -15,6 +15,20 @@ import { loadRw, safeName, getJson } from './safe.mjs';
 
 const SEC = JSON.parse(readFileSync('C:/Users/admin/.claude/.hamilton-secrets/docuseal.json', 'utf8'));
 
+/** The host a WORKER sees. Deliberately separate from SEC.url, which every API
+ *  call uses.
+ *
+ *  Splitting them means a problem with the custom domain degrades a link to
+ *  ugly, not the automation to broken: minting, countersigning, Drive filing and
+ *  the signed-copy delivery all keep working on the stable Railway host. That
+ *  matters here because sign.hamilton-exteriors.com spent days unroutable while
+ *  looking perfectly configured, and because pointing everything at the pretty
+ *  host once broke every minted link for ~40 minutes.
+ *
+ *  Existing links are unaffected either way: the slug is host independent and
+ *  the Railway domain keeps serving. */
+const PUBLIC_URL = (SEC.publicUrl || SEC.url).replace(/\/+$/, '');
+
 const LANGS = { es: 'es', en: 'en' };
 
 /** Per-hire document set, in signing order. Company safety programs are not here:
@@ -163,7 +177,7 @@ export async function createSigningRequest(templateName, worker) {
   if (!res.ok) throw new Error(`submission failed ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const out = await res.json();
   const arr = Array.isArray(out) ? out : [out];
-  const url = (s, l) => `${SEC.url}/s/${s.slug}?lang=${l}`;
+  const url = (s, l) => `${PUBLIC_URL}/s/${s.slug}?lang=${l}`;
   const w = arr.find(s => /worker/i.test(s.role || '')) || arr[0];
   const h = arr.find(s => /hamilton/i.test(s.role || ''));
   // The countersigner is Alex; his link stays English even on a Spanish document.
@@ -199,7 +213,7 @@ export async function countersignLink(submissionId) {
   if (w && !w.completed_at) {
     return { ready: false, reason: `worker "${w.name}" has not signed yet`, link: null };
   }
-  return { ready: true, link: `${SEC.url}/s/${h.slug}?lang=en` };
+  return { ready: true, link: `${PUBLIC_URL}/s/${h.slug}?lang=en` };
 }
 
 /** Alex, first person, no sign-off, directive tied to a consequence. */
