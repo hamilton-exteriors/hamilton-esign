@@ -66,7 +66,8 @@ it produced, so a rebuild can be scoped to one document.
 357 Acuse de Recibo de Políticas     33f   364 Code of Safe Practices         2f
 ```
 
-**5 open safety-program submissions await the owner's signature.** The links sent
+**All 5 safety-program submissions were signed on 2026-07-29 and API-verified
+completed.** The links sent
 before the final signer repair are unavailable and expose zero fields. Five fresh
 submissions were created after the production walkthrough, then each was verified
 in a headed mobile browser for HTTP 200, exact field and readable-anchor parity,
@@ -268,11 +269,12 @@ Railway `0be07a92-8d07-470a-b696-f0af74822a16`. Both production hosts returned
 200. Git push alone still does not deploy this service.
 
 **Blocked on the owner, not code:**
-1. **Sign the 5 safety programs.** The final verified private links were emailed on
-   2026-07-29. Every previously emailed link is unavailable and exposes zero fields.
-   The Policy Acknowledgment stays gated.
-2. **Workers comp class 5552.** Section 6 of the wage notice remains blank until
+1. **Workers comp class 5552.** Section 6 of the wage notice remains blank until
    bound, and nobody goes on a roof until it is.
+
+**Completed operationally:** all five safety programs were signed on 2026-07-29;
+DocuSeal reports each submission and submitter `completed`. The Policy
+Acknowledgment signature gate is cleared.
 
 **Deliberately deferred:**
 - Webhook-driven packet advancement and scheduled Drive filing need a durable
