@@ -342,5 +342,27 @@
         }, true);
       })();
     </script>
+    <script nonce="<%= content_security_policy_nonce %>" data-hx-spanish-locale>
+      (function () {
+        // A Spanish template is an explicit language choice. Existing signing
+        // links predate locale-aware delivery, so send those templates through
+        // DocuSeal's own public `lang` path instead of translating a handful of
+        // controls after render and leaving the rest of the signer UI in English.
+        var spanishTitles = {
+          'Contrato de Empleo': true,
+          'Aviso de Salario - Código Laboral 2810.5': true,
+          'Acuse de Recibo de Políticas': true,
+          'Registro de Capacitación en Seguridad': true,
+          'Plan de Prevención de Enfermedades por Calor': true
+        };
+        var heading = document.querySelector('h1');
+        var title = heading ? heading.textContent.trim().replace(/\s+/g, ' ') : '';
+        if (!spanishTitles[title]) return;
+        var url = new URL(window.location.href);
+        if (url.searchParams.get('lang') === 'es') return;
+        url.searchParams.set('lang', 'es');
+        window.location.replace(url.toString());
+      })();
+    </script>
   </body>
 </html>

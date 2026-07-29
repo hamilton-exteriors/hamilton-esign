@@ -391,6 +391,11 @@ dialog textarea[name='reason'] {
   border-color: var(--hx-green) !important;
 }
 #hx-read-doc .field-area:hover { background-color: rgba(37, 99, 70, .18) !important; }
+/* The fixed signer tray already names the active field. Upstream's second label
+   floats 28px above the control, outside its generated anchor, and covers legal
+   text in readable mode. Keep that label on the PDF and remove only the
+   redundant inline copy. */
+#hx-read-doc .field-area-active-label { display: none !important; }
 /* Generated anchors reserve the complete 44px target in document flow. The real
    field remains constrained to that anchor instead of growing across nearby text. */
 #hx-read-doc .field-area {

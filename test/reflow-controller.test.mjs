@@ -137,6 +137,12 @@ test('PDF remains first until readable view is explicitly activated, then viewpo
     await page.waitForFunction((text) => document.querySelector('#hx-read-status')?.textContent === text, englishLabels.readable_view_shown);
     assert.equal(await page.locator('#hx-read-toggle').getAttribute('aria-expanded'), 'true');
     assert.equal(await page.locator('html').evaluate((node) => node.classList.contains('hx-readable-active')), true);
+    assert.equal(await page.locator('#hx-read-doc .field-area').evaluate((field) => {
+      const label = document.createElement('span');
+      label.className = 'field-area-active-label';
+      field.appendChild(label);
+      return getComputedStyle(label).display;
+    }), 'none');
     assert.deepEqual(requests.filter((path) => path.startsWith('/reflow/')), ['/reflow/index.json', '/reflow/fixture.reflow.html']);
 
     await page.locator('#hx-read-toggle').click();

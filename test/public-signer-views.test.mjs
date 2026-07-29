@@ -176,6 +176,45 @@ test('Hamilton signer labels exist in English and Spanish locale data', async ()
   assert.match(dockerfile, /COPY brand\/hamilton\.yml\s+\/app\/config\/locales\/hamilton\.yml/);
 });
 
+test('Spanish templates use DocuSeal public locale routing', async () => {
+  const layout = await read('brand/form.html.erb');
+  for (const title of [
+    'Contrato de Empleo',
+    'Aviso de Salario - Código Laboral 2810.5',
+    'Acuse de Recibo de Políticas',
+    'Registro de Capacitación en Seguridad',
+    'Plan de Prevención de Enfermedades por Calor',
+  ]) assert.match(layout, new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal((layout.match(/<script\b/g) || []).length, (layout.match(/<\/script>/g) || []).length);
+  assert.match(layout, /url\.searchParams\.set\('lang', 'es'\)/);
+  assert.match(layout, /window\.location\.replace\(url\.toString\(\)\)/);
+
+  const localeScript = layout.match(/data-hx-spanish-locale>([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(localeScript);
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    const requests = [];
+    await page.route('https://sign.test/**', (route) => {
+      const url = new URL(route.request().url());
+      requests.push(url.pathname + url.search);
+      const title = url.pathname.endsWith('/spanish')
+        ? 'Plan de Prevención de Enfermedades por Calor'
+        : 'Heat Illness Prevention Plan';
+      return route.fulfill({ contentType: 'text/html', body: `<h1>${title}</h1><script>${localeScript}</script>` });
+    });
+    await page.goto('https://sign.test/s/spanish');
+    await page.waitForURL('**/s/spanish?lang=es');
+    assert.deepEqual(requests, ['/s/spanish', '/s/spanish?lang=es']);
+    requests.length = 0;
+    await page.goto('https://sign.test/s/english');
+    await page.waitForTimeout(25);
+    assert.deepEqual(requests, ['/s/english']);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('patched signer fields expose UUIDs for complete fail-closed validation', async () => {
   const patch = await read('patches/docuseal-inline-fields.mjs');
   assert.match(patch, /:data-uuid="field\.uuid"/);
