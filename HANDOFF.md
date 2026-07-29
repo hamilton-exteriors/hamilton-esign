@@ -5,10 +5,10 @@ unsure I say so. Where I broke something, I say that too.
 
 **Repo:** `hamilton-exteriors/hamilton-esign` (PUBLIC, AGPL-3.0)
 **Baseline before remediation:** `c922c07`
-**Signer readiness release:** `d38e8e7` on `origin/master`; Railway deployment
-`3bd9cdcf-ff33-4022-be0b-7c9c7a74f85f` succeeded on 2026-07-29.
+**Current signer release:** `f14e3ed` on `origin/master`; Railway deployment
+`0be07a92-8d07-470a-b696-f0af74822a16` succeeded on 2026-07-29.
 **Live:** <https://sign.hamilton-exteriors.com> and
-<https://docuseal-production-7617.up.railway.app> — same service, both 200.
+<https://docuseal-production-7617.up.railway.app>, same service, both 200.
 **Railway:** project `backoffice` `9ff3cd8c-…`, env `72326ee3-…`, service
 `docuseal` `8f374fa6-…`
 
@@ -66,13 +66,15 @@ it produced, so a rebuild can be scoped to one document.
 357 Acuse de Recibo de Políticas     33f   364 Code of Safe Practices         2f
 ```
 
-**5 open safety-program submissions await the owner's signature.** The original
-bearer links were accidentally committed in this public handoff, then revoked and
-replaced on 2026-07-28. Those replacements froze the pre-refresh PDF and field
-schema, so they were revoked and replaced again on 2026-07-29 after the guarded
-14-template refresh. The five current links were headed-browser verified with the
-corrected PDFs, exact readable-field parity, and the IIPP native date/Today control,
-then delivered privately by email. They are intentionally not recorded in Git.
+**5 open safety-program submissions await the owner's signature.** The links sent
+before the final signer repair are unavailable and expose zero fields. Five fresh
+submissions were created after the production walkthrough, then each was verified
+in a headed mobile browser for HTTP 200, exact field and readable-anchor parity,
+no overflow, and no console errors. The Spanish plan was verified using its localized
+`Vista legible` control. The IIPP additionally passed ordinary-text administrative
+phone semantics, corrected signer copy, and legal H1/H2 hierarchy. The exact prior
+email was resent on 2026-07-29 with only the five URLs replaced (Gmail message
+`19faffb39a8da760`). Bearer links are intentionally absent from Git and this handoff.
 Never put signing slugs or bearer URLs in a tracked handoff.
 
 **Field ownership per document — diff after ANY layout change.** A layout change
@@ -87,20 +89,24 @@ wage-notice-2810-5-es             5/13
 
 ---
 
-## 3.1 Signer readiness release, 2026-07-29
+## 3.1 Final signer repair and walkthrough, 2026-07-29
 
-`d38e8e7` rebuilt the mobile signer header as a deliberate left/right layout,
-kept the readable-view toggle visible at 200% text, corrected phone/date/text
-field widths, made `Reviewed / updated` a native date field for new submissions,
-and split every PDF footer into a left legal identity plus right page count. A
-permanent generated-geometry gate now rejects narrow, overlapping, mistyped, or
-out-of-bounds fields. All 14 active templates were refreshed in place and preserve
-template IDs, submitter roles, and field UUIDs. The guarded migration's second dry
-run reported every template `current`; `verify-templates` passed 14/14; 48 tests,
-the pinned Docker build, Rails ERB compilation, and the changed migration files'
-Semgrep scan passed. Production headed checks covered all five current private
-links at phone/desktop and 200% text with exact readable UUID parity and zero
-console errors.
+Commits `3e4c9bf`, `5c64773`, and `f14e3ed` fixed the remaining real-user defects:
+IIPP Administrator phone is ordinary text with phone-sized presentation, downloads
+recover cleanly from failures, sticky mobile chrome no longer intercepts fields,
+fixed trays preserve bottom clearance, rapid typed/drawn signature switching no
+longer hits the upstream async font null-reference race, legal H1s remain above H2s,
+and signer copy no longer exposes an internal Markdown filename.
+
+The pinned Docker build applied all 14 asserted upstream edits. The final suite passed
+52/52 tests, all 14 templates verified, the scoped IIPP migration reported `current`,
+and the deterministic Impeccable detector returned zero findings. Independent baseline
+and adversarial assessments improved the public signer experience from 26/40 to 40/40
+with no unresolved P0-P3 findings. Production checks covered 320, 375, 390, 414, and
+767 px portrait, landscape, 1280 px desktop, English/Spanish, root/error/archived/
+decline/duplicate/completed states, 200% text, keyboard behavior, and a full disposable
+signing and six-page executed-PDF download. All disposable submissions were archived
+and verified unusable.
 
 ---
 
@@ -171,10 +177,7 @@ the formatted value without a second event).
 
 **We ship a recompiled DocuSeal front end.** Highest-risk thing in the repo.
 
-- `patches/docuseal-inline-fields.mjs` — 7 edits to `areas.vue` and `area.vue`.
-  Every edit **asserts its anchor text** and throws if absent, so an upstream
-  change fails the build loudly instead of shipping a bundle where fields look
-  signable and capture nothing.
+- `patches/docuseal-inline-fields.mjs` — 14 asserted edits across the pinned public signer components.
 - `Dockerfile` gained a `webpack` stage mirroring upstream's own: clone 3.1.5,
   apply patch, `yarn install`, `./bin/shakapacker`, then
   `COPY --from=webpack /src/public/packs /app/public/packs`.
@@ -260,12 +263,14 @@ assertions there pass off the footer chrome instead.
 
 ## 8. Release status and remaining work
 
-**Release status:** live and post-deploy verified on 2026-07-28. Both production
-hosts returned 200. Git push alone still does not deploy this service.
+**Release status:** live and post-deploy verified on 2026-07-29 at `f14e3ed` /
+Railway `0be07a92-8d07-470a-b696-f0af74822a16`. Both production hosts returned
+200. Git push alone still does not deploy this service.
 
 **Blocked on the owner, not code:**
-1. **Sign the 5 safety programs.** The private replacement links were emailed on
-   2026-07-28. Old public links are revoked. The Policy Acknowledgment stays gated.
+1. **Sign the 5 safety programs.** The final verified private links were emailed on
+   2026-07-29. Every previously emailed link is unavailable and exposes zero fields.
+   The Policy Acknowledgment stays gated.
 2. **Workers comp class 5552.** Section 6 of the wage notice remains blank until
    bound, and nobody goes on a roof until it is.
 
@@ -290,18 +295,17 @@ hosts returned 200. Git push alone still does not deploy this service.
   are pinned.
 
 **Post-deploy verification completed:**
-- Final headed, read-only walkthrough passed all five current private links at phone,
-  landscape, desktop, and 200% text scaling: exact field parity, 44px controls,
-  no page-level horizontal scroll, local table scrolling, final-field tray clearance,
-  Spanish signer controls, dialog focus containment/return, and zero browser errors.
-- The final release gates passed 44 tests, zero Semgrep findings, all 25 branded ERB
-  compilations, the pinned Docker build, and read-only verification of all 14 templates.
-- Disposable `ZZ TEST` IIPP, 65-anchor roster, and 33-anchor acknowledgment passed
-  phone, Show Page, return-to-readable, both viewport crossings, and fresh desktop.
-- The stale-anchor interception kept every signer field on the visible PDF.
-- All disposable submissions were archived; a residual sweep found zero active tests.
-- All five private replacement links remain pending and signable. Each revoked public
-  link renders the deleted form with zero fields. Bearer URLs remain private.
+- Final disposable walkthrough covered every public signer state and the responsive
+  matrix listed in §3.1 with no unresolved P0-P3 findings.
+- Release gates passed 52/52 tests, the 14-template verifier, scoped IIPP dry run,
+  deterministic Impeccable scan, and the pinned Docker build with 14 asserted edits.
+- One synthetic IIPP completed end to end without phone OTP; its six-page executed
+  PDF downloaded and contained the entered administrative phone.
+- Required validation, Today dates, typed signature, decline/Escape, duplicate tabs,
+  pending/completed downloads, archived routes, and rapid Type/Draw switching passed.
+- All disposable submissions were archived and API-verified unusable.
+- The final five private links were independently headed-browser verified before email.
+  Every previously emailed route remains unavailable with zero fields.
 
 ---
 
@@ -310,7 +314,7 @@ hosts returned 200. Git push alone still does not deploy this service.
 ```
 hamilton-esign/
   Dockerfile                  multi-stage: webpack (patched Vue) → docuseal 3.1.5 + overlays
-  patches/docuseal-inline-fields.mjs    8 asserting edits to areas.vue / area.vue
+  patches/docuseal-inline-fields.mjs    14 asserted signer-component edits
   brand/                      hamilton.css, form.html.erb, _decline_form.html.erb, icons, fonts
   brand/reflow/               generated reading views + index.json (template name → slug)
   pipeline/                   build-docs, measure, build-templates, verify-templates,
