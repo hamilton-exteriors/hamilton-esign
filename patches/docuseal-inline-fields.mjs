@@ -85,6 +85,12 @@ patch('areas.vue', [
 
 // ---- area.vue: render inline instead of positioned by page percentages -------
 patch('area.vue', [
+  ['expose field UUID for fail-closed parity checks',
+    `    class="flex absolute lg:text-base -outline-offset-1 focus-visible:outline-blue-500 focus-visible:outline-2 focus-visible:outline field-area"
+    dir="auto"`,
+    `    class="flex absolute lg:text-base -outline-offset-1 focus-visible:outline-blue-500 focus-visible:outline-2 focus-visible:outline field-area"
+    :data-uuid="field.uuid"
+    dir="auto"`],
   ['inline prop',
     `  props: {
 `,

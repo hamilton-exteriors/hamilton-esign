@@ -272,9 +272,7 @@ a[href^="https://docuseal.com"] {
    future upstream modal with a legitimate primary action is unaffected. No
    :has() — an old Android WebView must still get this right. */
 dialog form[action$='/decline'] .base-button,
-dialog form[action$='/decline'] button[type='submit'],
-dialog .btn:not([disabled]),
-[role='dialog'] .btn:not([disabled]) {
+dialog form[action$='/decline'] button[type='submit'] {
   background: transparent !important;
   background-color: transparent !important;
   color: var(--hx-danger) !important;
@@ -284,9 +282,7 @@ dialog .btn:not([disabled]),
   font-weight: 600 !important;
 }
 dialog form[action$='/decline'] .base-button:hover,
-dialog form[action$='/decline'] button[type='submit']:hover,
-dialog .btn:not([disabled]):hover,
-[role='dialog'] .btn:not([disabled]):hover {
+dialog form[action$='/decline'] button[type='submit']:hover {
   background-color: rgba(153, 27, 27, .07) !important;
 }
 
@@ -387,10 +383,15 @@ dialog textarea[name='reason'] {
   border-color: var(--hx-green) !important;
 }
 #hx-read-doc .field-area:hover { background-color: rgba(37, 99, 70, .18) !important; }
-/* Reflow turns document blanks into the actual signer controls. Their source
-   line boxes can be only 10-24px tall, so grow the control itself rather than
-   placing overlapping invisible hit areas over adjacent blanks. */
-#hx-read-doc .field-area { min-height: 44px !important; min-width: 44px; }
+/* Generated anchors reserve the complete 44px target in document flow. The real
+   field remains constrained to that anchor instead of growing across nearby text. */
+#hx-read-doc .field-area {
+  max-width: 100%;
+  scroll-margin-block-end: calc(var(--hx-form-clearance, 0px) + 24px + env(safe-area-inset-bottom));
+}
+html {
+  scroll-padding-block-end: calc(var(--hx-form-clearance, 0px) + 24px + env(safe-area-inset-bottom));
+}
 
 /* ------------------------------------------------------- reading view -----
    The reflowed rendering of the document, shown on phones in place of the
@@ -405,6 +406,17 @@ dialog textarea[name='reason'] {
   color: var(--hx-muted);
 }
 #hx-read .hx-read-bar span { min-width: 0; overflow-wrap: anywhere; }
+#hx-read .hx-read-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 #hx-read .hx-read-bar button {
   min-height: 44px; min-width: 44px; padding: 0 12px;
   border: 1px solid var(--hx-line); border-radius: 8px;
@@ -415,6 +427,7 @@ dialog textarea[name='reason'] {
 #hx-read .hx-read-bar button:disabled { cursor: wait; }
 #hx-read .hx-read-bar button:hover { background: rgba(37, 99, 70, .07); }
 #hx-read-doc {
+  box-sizing: border-box;
   width: 100%; border: 1px solid var(--hx-line); border-radius: 6px;
   background: #fff;
 }

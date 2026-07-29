@@ -4,7 +4,7 @@ import { createDocusealClient } from '../pipeline/docuseal-api.mjs';
 import { requireUniqueActiveTemplate, DEFAULT_DOCUMENT_SLUGS } from '../pipeline/registry.mjs';
 import { matchGeneratedFields } from '../pipeline/field-match.mjs';
 import { packetFor, validate } from '../pipeline/worker-types.mjs';
-import { scopeCss, assertScoped } from '../pipeline/build-docs.mjs';
+import { scopeCss, assertScoped, normalizeReflowTables, scopeDocumentLanguages } from '../pipeline/build-docs.mjs';
 
 const secrets = { url: 'https://docuseal.test', publicUrl: 'https://sign.test', apiKey: 'test' };
 
@@ -80,4 +80,34 @@ test('CSS scoping catches selectors after comments and rejects a bare selector',
   assert.match(scoped, /#hx-read-doc \.ds/);
   assert.doesNotThrow(() => assertScoped(scoped, '#hx-read-doc'));
   assert.throws(() => assertScoped('.ds{color:red}', '#hx-read-doc'), /not fully scoped/);
+});
+
+test('reflow tables expose real column headers and replace empty headers with row headers', () => {
+  const headed = normalizeReflowTables('<table><thead><tr><th>Name</th><th class="n">Value</th></tr></thead><tbody><tr><td>A</td><td>1</td></tr></tbody></table>');
+  assert.match(headed, /<th scope="col">Name<\/th>/);
+  assert.match(headed, /<th scope="col" class="n">Value<\/th>/);
+
+  const partial = normalizeReflowTables('<table><thead><tr><th></th><th>Value</th></tr></thead><tbody><tr><td>A</td><td>1</td></tr></tbody></table>');
+  assert.match(partial, /<td aria-hidden="true"><\/td>/);
+  assert.doesNotMatch(partial, /<th[^>]*>\s*<\/th>/);
+  assert.match(partial, /<th scope="col">Value<\/th>/);
+
+  const empty = normalizeReflowTables('<table><thead><tr><th></th><th>&nbsp;</th></tr></thead><tbody><tr><td><span id="f1"></span> Task</td><td>Done</td></tr></tbody></table>');
+  assert.doesNotMatch(empty, /<thead/);
+  assert.match(empty, /<th scope="row"><span id="f1"><\/span> Task<\/th>/);
+  assert.match(empty, /<td>Done<\/td>/);
+  assert.equal((empty.match(/id="f1"/g) || []).length, 1);
+});
+
+test('Code of Safe Practices scopes its Spanish section without changing other documents', () => {
+  const html = '<h1>ENGLISH</h1><p>Safe</p><h1>ESPAÑOL</h1><p>Seguro</p>';
+  assert.equal(
+    scopeDocumentLanguages(html, 'code-of-safe-practices'),
+    '<h1>ENGLISH</h1><p>Safe</p><h1 lang="es">ESPAÑOL</h1><p lang="es">Seguro</p>',
+  );
+  assert.equal(scopeDocumentLanguages(html, 'iipp'), html);
+  assert.throws(
+    () => scopeDocumentLanguages('<h1>ENGLISH</h1>', 'code-of-safe-practices'),
+    /missing its ESPAÑOL section/,
+  );
 });

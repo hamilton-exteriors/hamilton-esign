@@ -46,7 +46,11 @@
         var labels = <%= json_escape({
           readable_view: I18n.t('hamilton.signing.readable_view', default: I18n.locale.to_s.start_with?('es') ? 'Vista legible' : 'Readable view'),
           show_readable_view: I18n.t('hamilton.signing.show_readable_view', default: I18n.locale.to_s.start_with?('es') ? 'Mostrar vista legible' : 'Show readable view'),
-          show_page: I18n.t('hamilton.signing.show_page', default: I18n.locale.to_s.start_with?('es') ? 'Mostrar la página' : 'Show the page')
+          show_page: I18n.t('hamilton.signing.show_page', default: I18n.locale.to_s.start_with?('es') ? 'Mostrar la página' : 'Show the page'),
+          loading_readable_view: I18n.t('hamilton.signing.loading_readable_view', default: I18n.locale.to_s.start_with?('es') ? 'Cargando la vista legible.' : 'Loading readable view.'),
+          readable_view_shown: I18n.t('hamilton.signing.readable_view_shown', default: I18n.locale.to_s.start_with?('es') ? 'Se muestra la vista legible.' : 'Readable view shown.'),
+          page_shown: I18n.t('hamilton.signing.page_shown', default: I18n.locale.to_s.start_with?('es') ? 'Se muestra la página del documento.' : 'Document page shown.'),
+          readable_view_unavailable: I18n.t('hamilton.signing.readable_view_unavailable', default: I18n.locale.to_s.start_with?('es') ? 'La vista legible no está disponible. Usa la página del documento.' : 'Readable view is unavailable. Use the document page.')
         }.to_json).html_safe %>;
         var MOBILE = window.matchMedia('(max-width: 767px)');
         var mounted = false;
@@ -68,6 +72,27 @@
           return null;
         }
 
+        function syncProgressCurrent() {
+          var rail = document.querySelector('.form-container .steps-progress');
+          if (!rail) return;
+          var marker = rail.querySelector('.steps-progress-current');
+          if (!marker) return;
+          var current = marker.matches('button') ? marker : marker.closest('button') || marker.querySelector('button');
+          if (!current) return;
+          var buttons = rail.querySelectorAll('button');
+          for (var i = 0; i < buttons.length; i++) buttons[i].removeAttribute('aria-current');
+          current.setAttribute('aria-current', 'step');
+        }
+
+        var progressObserver = new MutationObserver(syncProgressCurrent);
+        progressObserver.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['class']
+        });
+        syncProgressCurrent();
+
         function mountControl() {
           if (mounted || document.getElementById('hx-read')) return;
           var host = signingHost();
@@ -76,35 +101,99 @@
           observer.disconnect();
           var wrap = document.createElement('div');
           wrap.id = 'hx-read';
-          wrap.innerHTML = '<div class="hx-read-bar"><span></span><button type="button" id="hx-read-toggle"></button></div><div id="hx-read-doc" hidden></div>';
+          wrap.innerHTML = '<div class="hx-read-bar"><span></span><button type="button" id="hx-read-toggle" aria-controls="hx-read-doc" aria-expanded="false"></button><span id="hx-read-status" class="hx-read-status" role="status" aria-live="polite" aria-atomic="true"></span></div><div id="hx-read-doc" hidden></div>';
           host.parentNode.insertBefore(wrap, host);
 
           var pages = document.querySelectorAll('page-container');
           var readDoc = wrap.querySelector('#hx-read-doc');
-          var label = wrap.querySelector('.hx-read-bar span');
+          var label = wrap.querySelector('.hx-read-bar > span');
           var toggle = wrap.querySelector('#hx-read-toggle');
+          var status = wrap.querySelector('#hx-read-status');
+          var tray = document.querySelector('.form-container');
           var loaded = false;
           var loading = false;
           var reflowInvalid = false;
           var showingReflow = false;
+          var expectedUuids = [];
           label.textContent = labels.readable_view;
           toggle.textContent = labels.show_readable_view;
+
+          var announce = function (message) {
+            status.textContent = '';
+            requestAnimationFrame(function () { status.textContent = message; });
+          };
+          var updateFormClearance = function () {
+            var height = 0;
+            if (MOBILE.matches && tray) {
+              var style = window.getComputedStyle(tray);
+              var rect = tray.getBoundingClientRect();
+              if (style.position === 'fixed' && style.display !== 'none' && style.visibility !== 'hidden') {
+                height = Math.ceil(rect.height);
+              }
+            }
+            document.documentElement.style.setProperty('--hx-form-clearance', height + 'px');
+          };
+          if (tray && window.ResizeObserver) {
+            new ResizeObserver(updateFormClearance).observe(tray);
+          }
+          window.addEventListener('resize', updateFormClearance);
+          if (window.visualViewport) window.visualViewport.addEventListener('resize', updateFormClearance);
+          updateFormClearance();
 
           var retarget = function () {
             // Vue's Teleports are not reactive to DOM visibility. Every view
             // transition must force the field components to choose targets again.
             window.dispatchEvent(new Event('hx-reflow-ready'));
           };
-          var showPdf = function () {
+          var focusPdfField = function () {
+            requestAnimationFrame(function () {
+              var field = document.querySelector('page-container .field-area, page-container .submitter-field');
+              if (!field || typeof field.focus !== 'function') return;
+              try { field.focus({ preventScroll: true }); }
+              catch (error) { field.focus(); }
+            });
+          };
+          var showPdf = function (announceChange) {
             for (var i = 0; i < pages.length; i++) pages[i].style.display = '';
             readDoc.hidden = true;
             showingReflow = false;
-            toggle.textContent = labels.show_readable_view;
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.removeAttribute('aria-busy');
+            if (!reflowInvalid) {
+              label.textContent = labels.readable_view;
+              toggle.hidden = false;
+              toggle.textContent = labels.show_readable_view;
+            }
             retarget();
+            updateFormClearance();
+            if (announceChange) announce(labels.page_shown);
+          };
+          var failReflow = function () {
+            reflowInvalid = true;
+            showPdf(false);
+            loading = false;
+            toggle.disabled = true;
+            toggle.hidden = true;
+            label.textContent = labels.readable_view_unavailable;
+            wrap.removeAttribute('aria-busy');
+            announce(labels.readable_view_unavailable);
+            focusPdfField();
+          };
+          var snapshotPdfFields = function () {
+            var fields = document.querySelectorAll('page-container .field-area, page-container .submitter-field');
+            var seen = {};
+            expectedUuids = [];
+            for (var i = 0; i < fields.length; i++) {
+              var uuid = fields[i].getAttribute('data-uuid');
+              if (!uuid || seen[uuid]) return false;
+              seen[uuid] = true;
+              expectedUuids.push(uuid);
+            }
+            return expectedUuids.length > 0;
           };
           var showReflow = function () {
             if (!MOBILE.matches || reflowInvalid || !loaded) {
-              showPdf();
+              showPdf(false);
               return;
             }
 
@@ -116,33 +205,51 @@
             requestAnimationFrame(function () {
               requestAnimationFrame(function () {
                 if (!MOBILE.matches) {
-                  showPdf();
+                  showPdf(false);
                   return;
                 }
-                var stranded = document.querySelector('page-container .field-area');
-                var inline = readDoc.querySelector('.field-area');
-                if (stranded || !inline) {
+                var stranded = document.querySelector('page-container .field-area, page-container .submitter-field');
+                var inlineFields = readDoc.querySelectorAll('.field-area, .submitter-field');
+                var inlineUuids = {};
+                var complete = inlineFields.length === expectedUuids.length;
+                for (var j = 0; j < inlineFields.length; j++) {
+                  var uuid = inlineFields[j].getAttribute('data-uuid');
+                  if (!uuid || inlineUuids[uuid]) complete = false;
+                  inlineUuids[uuid] = true;
+                }
+                for (var k = 0; k < expectedUuids.length; k++) {
+                  if (!inlineUuids[expectedUuids[k]]) complete = false;
+                }
+                if (stranded || !complete) {
                   // Reflow is an enhancement. Any field that failed to move makes
                   // the exact PDF the safe, signable fallback for this session.
-                  reflowInvalid = true;
-                  wrap.style.display = 'none';
-                  showPdf();
+                  failReflow();
                   return;
                 }
                 for (var i = 0; i < pages.length; i++) pages[i].style.display = 'none';
                 showingReflow = true;
+                toggle.setAttribute('aria-expanded', 'true');
                 toggle.textContent = labels.show_page;
+                announce(labels.readable_view_shown);
+                updateFormClearance();
               });
             });
           };
           var loadReflow = function () {
             if (loading || reflowInvalid) return;
+            if (!snapshotPdfFields()) {
+              failReflow();
+              return;
+            }
             if (loaded) {
               showReflow();
               return;
             }
             loading = true;
             toggle.disabled = true;
+            toggle.setAttribute('aria-busy', 'true');
+            wrap.setAttribute('aria-busy', 'true');
+            announce(labels.loading_readable_view);
             fetch('/reflow/index.json', { credentials: 'same-origin' })
               .then(function (r) { return r.ok ? r.json() : null; })
               .then(function (idx) {
@@ -152,28 +259,41 @@
                   .then(function (r) { return r.ok ? r.text() : null; });
               })
               .then(function (html) {
-                if (!html || !MOBILE.matches) return;
+                if (!MOBILE.matches) {
+                  showPdf(false);
+                  return;
+                }
+                if (!html) {
+                  failReflow();
+                  return;
+                }
                 // Injected into THIS document, not an iframe. Vue's Teleport
                 // cannot cross documents, and fields must land in the text.
                 readDoc.innerHTML = html;
                 loaded = true;
                 showReflow();
               })
-              .catch(function () { /* reading view is an enhancement; never block signing */ })
+              .catch(function () {
+                if (MOBILE.matches) failReflow();
+              })
               .finally(function () {
                 loading = false;
-                toggle.disabled = false;
+                wrap.removeAttribute('aria-busy');
+                toggle.removeAttribute('aria-busy');
+                if (!reflowInvalid) toggle.disabled = false;
               });
           };
 
           toggle.addEventListener('click', function () {
-            if (showingReflow) showPdf();
+            if (showingReflow) showPdf(true);
             else loadReflow();
           });
           MOBILE.addEventListener('change', function () {
             // Crossing 768px must always restore the PDF. Returning to mobile
             // remains PDF-first; a signer explicitly chooses readable view again.
-            showPdf();
+            var focusWasInside = wrap.contains(document.activeElement);
+            showPdf(showingReflow);
+            if (!MOBILE.matches && focusWasInside) focusPdfField();
           });
         }
 

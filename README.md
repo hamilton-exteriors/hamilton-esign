@@ -38,7 +38,7 @@ DocuSeal's builder — edit the markdown and re-run.
     node pipeline/build-docs.mjs        # md -> print HTML, blanks -> measurable spans
     node pipeline/measure.mjs           # paginate, type + own each field, emit PDF + coords
     node pipeline/build-templates.mjs   # create templates; refuses active-name collisions
-    node pipeline/stamp-reflow.mjs      # verify live UUID mapping without rebuilding
+    node pipeline/stamp-reflow.mjs      # publish generated reflow + verify/stamp live UUIDs
     node pipeline/file-to-drive.mjs sweep   # file completed submissions into Drive
 
 Generated artifacts default to `build/` in this repository. Override with

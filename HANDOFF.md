@@ -176,10 +176,12 @@ Teleport cannot cross documents.
 after components have mounted and chosen page images. Injecting DOM is not a
 reactive change, so the patch listens for `hx-reflow-ready` and `$forceUpdate()`s.
 
-**`pipeline/stamp-reflow.mjs`** stamps **live** field UUIDs into the reading views
-without rebuilding templates. It matches each generated field to the live field by
-normalised page, geometry, type, and signer role. Array order is never an identity;
-missing, duplicate, or ambiguous matches fail closed.
+**`pipeline/stamp-reflow.mjs`** publishes each freshly generated
+`build/<slug>.reflow.html` into `brand/reflow/` and stamps **live** field UUIDs
+without rebuilding templates. Run `build-docs` first. It matches each generated
+field to the live field by normalised page, geometry, type, and signer role.
+Array order is never an identity; missing build output, duplicate, stale, or
+ambiguous matches fail closed.
 
 Verified live at handoff:
 ```

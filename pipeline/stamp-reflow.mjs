@@ -27,8 +27,9 @@ for (const entry of TEMPLATE_REGISTRY) {
     const mapping = matchGeneratedFields(generated.fields, full);
 
     const path = new URL(`../brand/reflow/${entry.slug}.reflow.html`, import.meta.url);
-    if (!existsSync(path)) throw new Error('reading view file is missing');
-    let html = readFileSync(path, 'utf8').replace(/ data-hx-uuid="[^"]*"/g, '');
+    const generatedPath = `${BUILD_DIR}/${entry.slug}.reflow.html`;
+    if (!existsSync(generatedPath)) throw new Error('generated reading view file is missing');
+    let html = readFileSync(generatedPath, 'utf8').replace(/ data-hx-uuid="[^"]*"/g, '');
     let stamped = 0;
     for (const field of generated.fields) {
       const uuid = mapping.get(field.id);

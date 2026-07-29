@@ -15,6 +15,10 @@ en:
       readable_view: "Readable view"
       show_readable_view: "Show readable view"
       show_page: "Show the page"
+      loading_readable_view: "Loading readable view."
+      readable_view_shown: "Readable view shown."
+      page_shown: "Document page shown."
+      readable_view_unavailable: "Readable view is unavailable. Use the document page."
 es:
   hamilton:
     verify_email: "Verifica tu correo electrónico"
@@ -32,3 +36,7 @@ es:
       readable_view: "Vista legible"
       show_readable_view: "Mostrar vista legible"
       show_page: "Mostrar la página"
+      loading_readable_view: "Cargando la vista legible."
+      readable_view_shown: "Se muestra la vista legible."
+      page_shown: "Se muestra la página del documento."
+      readable_view_unavailable: "La vista legible no está disponible. Usa la página del documento."

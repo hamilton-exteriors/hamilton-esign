@@ -148,6 +148,8 @@ test('decline dialog gives both decisions explicit full-size controls', async ()
   assert.match(decline, /class="hx-decline-back"/);
   assert.match(css, /\.hx-decline-submit\s*\{[^}]*min-height:\s*44px\s*!important/s);
   assert.match(css, /\.hx-decline-back button\s*\{[^}]*height:\s*44px/s);
+  const rules = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(rules, /dialog \.btn|\[role='dialog'\] \.btn/);
 });
 
 test('Hamilton attribution keeps recovery, counters, and customer copy clean', async () => {
@@ -169,8 +171,15 @@ test('Hamilton signer labels exist in English and Spanish locale data', async ()
     'waiting_for_signers', 'document_declined', 'document_delegated',
     'signing_link_expired', 'form_unavailable', 'submitted_successfully',
     'document_submitted_successfully', 'readable_view', 'show_readable_view', 'show_page',
+    'loading_readable_view', 'readable_view_shown', 'page_shown', 'readable_view_unavailable',
   ]) assert.match(locale, new RegExp(`\\s${key}:`));
   assert.match(dockerfile, /COPY brand\/hamilton\.yml\s+\/app\/config\/locales\/hamilton\.yml/);
+});
+
+test('patched signer fields expose UUIDs for complete fail-closed validation', async () => {
+  const patch = await read('patches/docuseal-inline-fields.mjs');
+  assert.match(patch, /:data-uuid="field\.uuid"/);
+  assert.match(patch, /expose field UUID for fail-closed parity checks/);
 });
 
 test('Docker wires only public signer and error overrides', async () => {

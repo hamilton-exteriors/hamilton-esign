@@ -361,46 +361,47 @@ const REFLOW_CSS = `
 html,body{margin:0;padding:0}
 body{
   font-family:'DM Sans',"Helvetica Neue",Helvetica,Arial,sans-serif;
-  font-size:16px; line-height:1.55; color:#1a1a1a;
-  background:#fff; padding:20px 18px 32px;
-  -webkit-text-size-adjust:100%;
+  font-size:1rem; line-height:1.55; color:#1a1a1a;
+  background:#fff;
+  padding:1.25rem 1.125rem calc(2rem + var(--hx-form-clearance, 0px) + env(safe-area-inset-bottom));
 }
-h1{font-size:22px;line-height:1.25;font-weight:700;margin:0 0 12px;letter-spacing:-.01em;text-wrap:balance}
-h2{font-size:18px;line-height:1.3;font-weight:700;margin:28px 0 10px;padding-bottom:5px;
+h1{font-size:1.375rem;line-height:1.25;font-weight:700;margin:0 0 .75rem;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:1.125rem;line-height:1.3;font-weight:700;margin:1.75rem 0 .625rem;padding-bottom:.3125rem;
    border-bottom:1px solid #d8d8d8;text-wrap:balance}
-h3{font-size:16px;line-height:1.35;font-weight:600;margin:20px 0 8px}
-h4{font-size:15px;font-weight:700;margin:16px 0 6px}
-p{margin:0 0 12px}
-ul,ol{margin:0 0 12px;padding-left:22px}
-li{margin:0 0 7px}
+h3{font-size:1rem;line-height:1.35;font-weight:600;margin:1.25rem 0 .5rem}
+h4{font-size:.9375rem;font-weight:700;margin:1rem 0 .375rem}
+p{margin:0 0 .75rem}
+ul,ol{margin:0 0 .75rem;padding-left:1.375rem}
+li{margin:0 0 .4375rem}
 strong{font-weight:700}
-hr{border:0;border-top:1px solid #d8d8d8;margin:20px 0}
+hr{border:0;border-top:1px solid #d8d8d8;margin:1.25rem 0}
 /* Tables are the one thing that cannot simply reflow. Let them scroll inside
    their own box rather than forcing the page to scroll sideways. */
-.tbl{width:100%;min-width:0;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0 18px}
-table{width:max-content;min-width:100%;border-collapse:collapse;font-size:14px;line-height:1.4}
-th{text-align:left;font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
-   color:#555;border-bottom:1px solid #333;padding:8px 6px}
-td{padding:9px 6px;border-bottom:1px solid #e6e6e6;vertical-align:top}
-.legal{font-size:14px;line-height:1.5;color:#4a4a4a}
-.doc-meta{font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#5a5a5a;margin:0 0 14px}
-/* A blank in the reading view is a rule, not an input: filling happens in the
-   guided prompt, and a second editable copy of a field would be a second source
-   of truth for a signed document. */
-.ds{position:relative;display:inline-block;min-width:120px;height:1.15em;vertical-align:-.2em;
-    border-bottom:1.5px solid #7a7a7a}
-.ds-sig{min-width:190px;height:1.6em}
-.ds-box{min-width:14px;width:14px;height:14px;border:1.5px solid #555;vertical-align:-.1em;margin-right:5px}
-.ds-ini{min-width:56px}
-.ds-date{min-width:110px}
-.ds-phone{min-width:132px}
-td .ds,td .ds-ini,td .ds-date{min-width:44px}
-.letterhead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
-            margin:0 0 18px;padding-bottom:12px;border-bottom:2px solid #1B3C2D}
-.letterhead img{height:34px;width:auto;display:block}
-.letterhead .lh-meta{text-align:right;font-size:9.5px;line-height:1.4;color:#5a5a5a;
+.tbl{width:100%;min-width:0;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:.75rem 0 1.125rem}
+table{width:max-content;min-width:100%;border-collapse:collapse;font-size:.875rem;line-height:1.4}
+th{text-align:left;font-weight:600;font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase;
+   color:#555;border-bottom:1px solid #333;padding:.5rem .375rem}
+td{padding:.5625rem .375rem;border-bottom:1px solid #e6e6e6;vertical-align:top}
+.legal{font-size:.875rem;line-height:1.5;color:#4a4a4a}
+.doc-meta{font-size:.75rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#5a5a5a;margin:0 0 .875rem}
+/* The real signer fields are absolutely positioned inside these anchors. The
+   anchor itself must reserve the complete target in flow or a 44px child covers
+   nearby legal text without moving it out of the way. */
+.ds{position:relative;display:inline-block;min-width:7.5rem;width:auto;height:2.75rem;min-height:2.75rem;
+    vertical-align:middle;border-bottom:.09375rem solid #7a7a7a}
+.ds-sig{min-width:11.875rem}
+.ds-box{min-width:2.75rem;width:2.75rem;height:2.75rem;border:.09375rem solid #555;
+        vertical-align:middle;margin-right:.3125rem}
+.ds-ini{min-width:3.5rem}
+.ds-date{min-width:6.875rem}
+.ds-phone{min-width:8.25rem}
+td .ds,td .ds-ini,td .ds-date{min-width:2.75rem}
+.letterhead{display:flex;align-items:flex-start;justify-content:space-between;gap:.875rem;
+            margin:0 0 1.125rem;padding-bottom:.75rem;border-bottom:2px solid #1B3C2D}
+.letterhead img{height:2.125rem;width:auto;display:block}
+.letterhead .lh-meta{text-align:right;font-size:.59375rem;line-height:1.4;color:#5a5a5a;
                      letter-spacing:.05em;text-transform:uppercase}
-.letterhead .lh-meta strong{display:block;font-size:10px;color:#1B3C2D;letter-spacing:.08em}
+.letterhead .lh-meta strong{display:block;font-size:.625rem;color:#1B3C2D;letter-spacing:.08em}
 `;
 
 /** Scope every rule under one id so the reading view can be injected into the
@@ -447,9 +448,62 @@ export function assertScoped(css, scope) {
   }
 }
 
+export function normalizeReflowTables(html) {
+  const emptyCell = (value) =>
+    value.replace(/<[^>]+>/g, '').replace(/&nbsp;|&#160;/gi, '').trim() === '';
+
+  return html.replace(/<table\b[^>]*>[\s\S]*?<\/table>/gi, (table) => {
+    const thead = table.match(/<thead\b[^>]*>[\s\S]*?<\/thead>/i);
+    if (!thead) return table;
+
+    const headers = [...thead[0].matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/gi)];
+    const emptyHeaders = headers.length > 0 && headers.every((match) => emptyCell(match[1]));
+
+    if (!emptyHeaders) {
+      return table.replace(/<th\b([^>]*)>([\s\S]*?)<\/th>/gi, (cell, attrs, content) => {
+        if (emptyCell(content)) return `<td aria-hidden="true"${attrs}>${content}</td>`;
+        return /\bscope=/i.test(attrs) ? cell : `<th scope="col"${attrs}>${content}</th>`;
+      });
+    }
+
+    return table.replace(thead[0], '').replace(/<tbody\b([^>]*)>([\s\S]*?)<\/tbody>/i,
+      (body, attrs, rows) => `<tbody${attrs}>${rows.replace(/<tr\b([^>]*)>([\s\S]*?)<\/tr>/gi,
+        (row, rowAttrs, cells) => {
+          let rowHeader = false;
+          const semanticCells = cells.replace(/<td\b([^>]*)>([\s\S]*?)<\/td>/gi,
+            (cell, cellAttrs, content) => {
+              if (rowHeader) return cell;
+              if (emptyCell(content)) return `<td aria-hidden="true"${cellAttrs}>${content}</td>`;
+              rowHeader = true;
+              return `<th scope="row"${cellAttrs}>${content}</th>`;
+            });
+          return `<tr${rowAttrs}>${semanticCells}</tr>`;
+        })}</tbody>`);
+  });
+}
+
+export function scopeDocumentLanguages(html, slug) {
+  if (slug !== 'code-of-safe-practices') return html;
+  const heading = '<h1>ESPAÑOL</h1>';
+  const start = html.indexOf(heading);
+  if (start === -1) {
+    throw new Error('code-of-safe-practices is missing its ESPAÑOL section');
+  }
+  // The print paginator moves top-level nodes between fixed pages, so a wrapper
+  // around the whole Spanish half becomes one unsplittable 1,800px node. Mark
+  // every element in that half instead: language inheritance remains correct,
+  // while each paragraph/list can still paginate independently.
+  const spanish = html.slice(start).replace(
+    /<([a-z][\w-]*)(?![^>]*\blang=)([^>]*)>/gi,
+    '<$1 lang="es"$2>',
+  );
+  return html.slice(0, start) + spanish;
+}
+
 function reflow(bodyHtml) {
-  // Wrap tables so a wide one scrolls in place instead of widening the page.
-  const wrapped = bodyHtml.replace(/<table/g, '<div class="tbl"><table').replace(/<\/table>/g, '</table></div>');
+  // Normalize table headers before wrapping each table in its local scroller.
+  const semantic = normalizeReflowTables(bodyHtml);
+  const wrapped = semantic.replace(/<table/g, '<div class="tbl"><table').replace(/<\/table>/g, '</table></div>');
   // A FRAGMENT, not a document: the layout injects this into the signer page so
   // Vue can teleport real fields into the anchors inside it.
   const css = scopeCss(REFLOW_CSS, '#hx-read-doc');
@@ -471,11 +525,12 @@ export function buildOne(slug) {
   fieldSeq = 0;
   const md = readFileSync(`${SRC}/${slug}.md`, 'utf8');
   const rawHtml = marked.parse(md, { mangle: false, headerIds: false });
-  const { html, fields } = markFields(rawHtml, COMPANY_DOCS.has(slug) ? 'employer' : 'worker');
+  const markedDocument = markFields(rawHtml, COMPANY_DOCS.has(slug) ? 'employer' : 'worker');
+  const html = scopeDocumentLanguages(markedDocument.html, slug);
   const doc = wrap(slug, html);
   writeFileSync(`${OUT}/${slug}.html`, doc);
   writeFileSync(`${OUT}/${slug}.reflow.html`, reflow(html));
-  return { slug, fields };
+  return { slug, fields: markedDocument.fields };
 }
 
 // measure.mjs imports PAGE from this file. Without an entry-point guard that
