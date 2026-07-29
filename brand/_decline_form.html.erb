@@ -49,7 +49,7 @@
     <%= f.text_area :reason, required: true, class: 'base-input w-full py-2', dir: 'auto', placeholder: reason_hint, rows: '4' %>
   </div>
   <toggle-submit dir="auto" class="form-control mt-4">
-    <%= f.button button_title(title: decline_cta), class: 'base-button' %>
+    <%= f.button button_title(title: decline_cta), class: 'base-button hx-decline-submit' %>
   </toggle-submit>
 <% end %>
 <%# Nested forms are invalid, so the way back lives outside the decline form.

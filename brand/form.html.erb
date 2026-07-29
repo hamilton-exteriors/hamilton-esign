@@ -60,8 +60,12 @@
         // Completion, decline, and landing pages can share this layout. Do not
         // request a reflow asset unless DocuSeal has rendered signing fields.
         function signingHost() {
-          var host = document.querySelector('page-container');
-          return host && host.parentNode && host.querySelector('.field-area, .submitter-field') ? host : null;
+          var pages = document.querySelectorAll('page-container');
+          if (!pages.length || !pages[0].parentNode) return null;
+          for (var i = 0; i < pages.length; i++) {
+            if (pages[i].querySelector('.field-area, .submitter-field')) return pages[0];
+          }
+          return null;
         }
 
         function mountControl() {

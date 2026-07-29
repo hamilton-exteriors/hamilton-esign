@@ -93,6 +93,7 @@ header .group {
 }
 header download-button { max-width: 100%; }
 main .btn { max-width: 100%; white-space: normal; }
+.set-current-date-button { min-height: 44px !important; }
 
 /* ---------------------------------------------------------------- header --
    Was ~200px of an 844px phone viewport before any document was visible, with
@@ -215,21 +216,21 @@ page-container {
 }
 
 /* --------------------------------------------------------------- stepper --
-   Upstream gives the rail the language-neutral `steps-progress` class. Scope to
-   that class instead of translated copy or :has(), so older Android WebViews
-   receive the same target sizing as current browsers. */
-main nav > .steps-progress {
+   Upstream renders the rail inside the fixed `.form-container`, not inside the
+   page's main landmark. The class is the language-neutral hook; sizing the real
+   buttons instead of only their dots gives every step a 44px target. */
+.form-container .steps-progress {
   display: flex; flex-wrap: nowrap !important; gap: 6px;
   overflow-x: auto; scrollbar-width: none;
   max-width: 100%; padding: 2px 4px;
   scroll-snap-type: x proximity;
 }
-main nav > .steps-progress::-webkit-scrollbar { display: none; }
-main nav > .steps-progress button {
+.form-container .steps-progress::-webkit-scrollbar { display: none; }
+.form-container .steps-progress button {
   flex: 0 0 auto; scroll-snap-align: center;
   box-sizing: border-box;
   width: 44px !important; height: 44px !important; min-height: 44px !important;
-  margin: 0 !important; padding: 14px !important;
+  margin: 0 !important; padding: 16px !important;
   background-clip: content-box !important;
   border: 0 !important; border-radius: 999px;
 }
@@ -338,8 +339,10 @@ dialog textarea[name='reason'] {
    that says what it does. Sits BELOW the destructive action deliberately, so
    the bottom of the modal, where a thumb lands by habit, is the safe one. */
 .hx-decline-back { display: flex; justify-content: center; margin-top: 10px; }
+.hx-decline-submit { min-height: 44px !important; }
 .hx-decline-back button {
-  min-height: 44px;
+  height: 44px;
+  min-height: 44px !important;
   padding: 0 16px;
   border: 0;
   border-radius: 8px;
@@ -384,6 +387,10 @@ dialog textarea[name='reason'] {
   border-color: var(--hx-green) !important;
 }
 #hx-read-doc .field-area:hover { background-color: rgba(37, 99, 70, .18) !important; }
+/* Reflow turns document blanks into the actual signer controls. Their source
+   line boxes can be only 10-24px tall, so grow the control itself rather than
+   placing overlapping invisible hit areas over adjacent blanks. */
+#hx-read-doc .field-area { min-height: 44px !important; min-width: 44px; }
 
 /* ------------------------------------------------------- reading view -----
    The reflowed rendering of the document, shown on phones in place of the

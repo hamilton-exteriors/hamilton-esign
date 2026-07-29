@@ -141,6 +141,15 @@ test('phone formatting preserves international values', async () => {
   assert.doesNotMatch(layout, /d = d\.slice\(0, 10\)/);
 });
 
+test('decline dialog gives both decisions explicit full-size controls', async () => {
+  const decline = await read('brand/_decline_form.html.erb');
+  const css = await read('brand/hamilton.css');
+  assert.match(decline, /class: 'base-button hx-decline-submit'/);
+  assert.match(decline, /class="hx-decline-back"/);
+  assert.match(css, /\.hx-decline-submit\s*\{[^}]*min-height:\s*44px\s*!important/s);
+  assert.match(css, /\.hx-decline-back button\s*\{[^}]*height:\s*44px/s);
+});
+
 test('Hamilton attribution keeps recovery, counters, and customer copy clean', async () => {
   const footer = await read('brand/_powered_by.html.erb');
   assert.match(footer, /local_assigns\[:with_counter\]/);

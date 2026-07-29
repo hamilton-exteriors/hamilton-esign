@@ -29,7 +29,7 @@ function documentHtml(reflowUuid = 'u1', labels = englishLabels) {
   </style></head><body>
     <header><h1>Fixture Document</h1></header>
     <main>
-      <nav aria-label="Form progress"><div class="flex items-center flex-wrap steps-progress"><button type="button" aria-label="Step 1"></button><button type="button" aria-label="Step 2"></button><button type="button" aria-label="Step 3"></button></div></nav>
+      <div class="form-container"><nav aria-label="Form progress"><div class="flex items-center flex-wrap steps-progress"><button type="button" aria-label="Step 1"></button><button type="button" aria-label="Step 2"></button><button type="button" aria-label="Step 3"></button></div></nav></div>
       <page-container id="page-attachment-0"><div class="field-area" data-uuid="${reflowUuid}" tabindex="0">Field</div></page-container>
     </main>
     <script>
@@ -47,6 +47,7 @@ function documentHtml(reflowUuid = 'u1', labels = englishLabels) {
 async function fixture(fragment, {
   signing = true,
   asyncFields = false,
+  fieldOnLaterPage = false,
   viewport = { width: 390, height: 844 },
   labels = englishLabels,
   reducedMotion = false,
@@ -68,6 +69,12 @@ async function fixture(fragment, {
     if (path === '/s/test') {
       const field = `<div class="field-area" data-uuid="u1" tabindex="0">Field</div>`;
       let html = signing ? documentHtml('u1', labels) : documentHtml('u1', labels).replace(field, '<p>Completed</p>');
+      if (fieldOnLaterPage) {
+        html = html.replace(
+          `<page-container id="page-attachment-0">${field}</page-container>`,
+          `<page-container id="page-attachment-0"><p>Page without fields</p></page-container><page-container id="page-attachment-1">${field}</page-container>`,
+        );
+      }
       if (asyncFields) {
         html = html
           .replace(field, '<p>Loading signer…</p>')
@@ -133,6 +140,19 @@ test('deferred signing fields mount one readable-view control without fetching',
     await page.waitForSelector('#hx-read-toggle');
     assert.equal(await page.locator('#hx-read').count(), 1);
     assert.deepEqual(requests.filter((path) => path.startsWith('/reflow/')), []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('a document whose first page has no fields still mounts and activates readable view', async () => {
+  const { browser, page, requests } = await fixture('<span class="ds" data-hx-uuid="u1"></span>', { fieldOnLaterPage: true });
+  try {
+    await page.waitForSelector('#hx-read-toggle');
+    assert.deepEqual(requests.filter((path) => path.startsWith('/reflow/')), []);
+    await activateReadableView(page);
+    assert.equal(await page.locator('#hx-read-doc .field-area').count(), 1);
+    assert.equal(await page.locator('page-container .field-area').count(), 0);
   } finally {
     await browser.close();
   }
@@ -206,6 +226,14 @@ test('Spanish controls and progress targets retain full mobile sizing', async ()
       return [rect.width, rect.height];
     }));
     assert.ok(sizes.every(([width, height]) => width >= 44 && height >= 44), JSON.stringify(sizes));
+    await page.locator('.form-container').evaluate((container) => {
+      const button = document.createElement('button');
+      button.className = 'set-current-date-button';
+      button.textContent = 'Set Today';
+      container.appendChild(button);
+    });
+    const dateButton = await page.locator('.set-current-date-button').boundingBox();
+    assert.ok(dateButton && dateButton.height >= 44, JSON.stringify(dateButton));
     assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
   } finally {
     await browser.close();
@@ -281,7 +309,10 @@ test('wide reflow tables scroll locally while fields remain visible and focusabl
     assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
     const field = page.locator('#hx-read-doc .field-area');
     await field.focus();
-    assert.equal(await field.evaluate((node) => document.activeElement === node && node.getBoundingClientRect().width > 0), true);
+    assert.equal(await field.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return document.activeElement === node && rect.width >= 44 && rect.height >= 44;
+    }), true);
   } finally {
     await browser.close();
   }
