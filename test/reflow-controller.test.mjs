@@ -325,13 +325,22 @@ test('Spanish controls and progress targets retain full mobile sizing', async ()
     }));
     assert.ok(sizes.every(([width, height]) => width >= 44 && height >= 44), JSON.stringify(sizes));
     await page.locator('.form-container').evaluate((container) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-end;width:100%';
+      const fieldLabel = document.createElement('span');
+      fieldLabel.textContent = 'Fecha efectiva';
       const button = document.createElement('button');
       button.className = 'set-current-date-button';
-      button.textContent = 'Set Today';
-      container.appendChild(button);
+      button.textContent = 'Establecer hoy';
+      row.append(fieldLabel, button);
+      container.appendChild(row);
     });
     const dateButton = await page.locator('.set-current-date-button').boundingBox();
     assert.ok(dateButton && dateButton.height >= 44, JSON.stringify(dateButton));
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+    const scaledDate = await page.locator('.set-current-date-button').boundingBox();
+    assert.ok(scaledDate && scaledDate.x + scaledDate.width <= 320, JSON.stringify(scaledDate));
+    assert.equal(await page.evaluate(() => { window.scrollTo({ left: 9999 }); const x = window.scrollX; window.scrollTo({ left: 0 }); return x; }), 0);
     assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
   } finally {
     await browser.close();

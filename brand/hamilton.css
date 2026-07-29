@@ -93,7 +93,15 @@ header .group {
 }
 header download-button { max-width: 100%; }
 main .btn { max-width: 100%; white-space: normal; }
-.set-current-date-button { min-height: 44px !important; }
+.set-current-date-button {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 50%;
+  min-height: 44px !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
 
 /* ---------------------------------------------------------------- header --
    Was ~200px of an 844px phone viewport before any document was visible, with
