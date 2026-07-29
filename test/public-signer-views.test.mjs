@@ -221,6 +221,13 @@ test('patched signer fields expose UUIDs for complete fail-closed validation', a
   assert.match(patch, /expose field UUID for fail-closed parity checks/);
 });
 
+test('patched signature mode survives asynchronous font loading', async () => {
+  const patch = await read('patches/docuseal-inline-fields.mjs');
+  assert.match(patch, /guard typed-signature font race/);
+  assert.match(patch, /this\.\$refs\.textInput\?\.value/);
+  assert.match(patch, /Re-check the ref after the await/);
+});
+
 test('patched downloads recover from endpoint and proxy failures', async () => {
   const patch = await read('patches/docuseal-inline-fields.mjs');
   assert.match(patch, /reset pending download after a non-OK response/);

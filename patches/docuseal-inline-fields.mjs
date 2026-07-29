@@ -133,6 +133,25 @@ patch('area.vue', [
       let fontSize = ''`],
 ]);
 
+// ---- signature_step.vue: survive a fast Type/Draw mode change --------------
+patch('signature_step.vue', [
+  ['guard typed-signature font race',
+    `      await this.loadFont()
+
+      if (this.$refs.textInput.value) {
+        this.updateWrittenSignature({ target: this.$refs.textInput })
+      }`,
+    `      await this.loadFont()
+
+      // Hamilton: loading the signature font is asynchronous. If the signer
+      // switches back to drawing before it finishes, Vue removes textInput.
+      // Upstream then dereferences the vanished ref and strands the signature
+      // step. Re-check the ref after the await.
+      if (this.$refs.textInput?.value) {
+        this.updateWrittenSignature({ target: this.$refs.textInput })
+      }`],
+]);
+
 // ---- download_button.js: recover cleanly from backend/network failures -------
 patch('../elements/download_button.js', [
   ['reset pending download after a non-OK response',
