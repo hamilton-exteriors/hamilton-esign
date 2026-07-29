@@ -472,7 +472,16 @@ test('wide reflow tables scroll locally while fields remain visible and focusabl
     assert.ok(metrics.scroll > metrics.client, JSON.stringify(metrics));
     assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
     await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
-    assert.equal(await page.evaluate(() => document.scrollingElement.scrollWidth <= document.scrollingElement.clientWidth), true);
+    const scaledScroll = await page.evaluate(() => {
+      const table = document.querySelector('.tbl');
+      table.scrollLeft = table.scrollWidth;
+      window.scrollTo({ left: 9999 });
+      const result = { local: table.scrollLeft, page: window.scrollX };
+      window.scrollTo({ left: 0 });
+      return result;
+    });
+    assert.ok(scaledScroll.local > 0, JSON.stringify(scaledScroll));
+    assert.equal(scaledScroll.page, 0);
     const field = page.locator('#hx-read-doc .field-area');
     await field.focus();
     assert.equal(await field.evaluate((node) => {

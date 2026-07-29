@@ -398,6 +398,10 @@ dialog textarea[name='reason'] {
   scroll-margin-block-end: calc(var(--hx-form-clearance, 0px) + 24px + env(safe-area-inset-bottom));
 }
 html {
+  /* Wide legal tables own horizontal scrolling through `.tbl`. Keep their
+     scrollable contents from creating a second, 10px document-level axis at
+     200% text scaling after the browser reserves its vertical scrollbar. */
+  overflow-x: clip;
   scroll-padding-block-end: calc(var(--hx-form-clearance, 0px) + 24px + env(safe-area-inset-bottom));
 }
 
