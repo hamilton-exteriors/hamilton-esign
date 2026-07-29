@@ -244,6 +244,27 @@ test('200% text scaling keeps signer chrome reflowed without page overflow', asy
   }
 });
 
+test('200% Spanish header actions wrap without widening the page', async () => {
+  const labels = {
+    readable_view: 'Vista legible',
+    show_readable_view: 'Mostrar vista legible',
+    show_page: 'Mostrar la página',
+  };
+  const { browser, page } = await fixture('<span class="ds" data-hx-uuid="u1"></span>', { labels, viewport: { width: 390, height: 844 } });
+  try {
+    await page.waitForSelector('#hx-read-toggle');
+    await page.locator('header').evaluate((header) => {
+      header.innerHTML = '<div class="flex items-center gap-2 group"><h1>Contrato de Empleo</h1><download-button><button type="button">Descargar</button></download-button></div>';
+      document.documentElement.style.fontSize = '200%';
+    });
+    assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
+    const group = await page.locator('header .group').boundingBox();
+    assert.ok(group && group.x + group.width <= 390, JSON.stringify(group));
+  } finally {
+    await browser.close();
+  }
+});
+
 test('wide reflow tables scroll locally while fields remain visible and focusable', async () => {
   const fragment = `<style>
     #hx-read-doc .tbl{width:100%;min-width:0;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}

@@ -81,6 +81,18 @@ header, [role='banner'], main, main > * {
   max-width: 100%;
 }
 header, [role='banner'] { flex-wrap: wrap; }
+/* Upstream nests the title and download action in another flex row. At 200%
+   text scaling that inner row was 1px wider than the phone viewport in Spanish.
+   Give it an explicit containing width so the action wraps instead of widening
+   the page. */
+header .group {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+header download-button { max-width: 100%; }
 main .btn { max-width: 100%; white-space: normal; }
 
 /* ---------------------------------------------------------------- header --
