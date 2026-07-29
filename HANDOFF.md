@@ -1,12 +1,12 @@
-# Handoff — Hamilton e-Sign, 2026-07-27/28
+# Handoff — Hamilton e-Sign, 2026-07-27/29
 
 For the next agent. Written to be reviewed and continued, not admired. Where I am
 unsure I say so. Where I broke something, I say that too.
 
 **Repo:** `hamilton-exteriors/hamilton-esign` (PUBLIC, AGPL-3.0)
 **Baseline before remediation:** `c922c07`
-**Signer hardening release:** `19463f8` on `origin/master`; Railway deployment
-`bb546228-f942-416e-82e1-302a8f3d9793` succeeded on 2026-07-28.
+**Signer readiness release:** `d38e8e7` on `origin/master`; Railway deployment
+`3bd9cdcf-ff33-4022-be0b-7c9c7a74f85f` succeeded on 2026-07-29.
 **Live:** <https://sign.hamilton-exteriors.com> and
 <https://docuseal-production-7617.up.railway.app> — same service, both 200.
 **Railway:** project `backoffice` `9ff3cd8c-…`, env `72326ee3-…`, service
@@ -43,6 +43,8 @@ node pipeline/build-docs.mjs <slug…>   # md → print HTML + reflow HTML; emit
 node pipeline/measure.mjs              # paginate, refine types, measure coords, emit PDF + fields.json
 node pipeline/build-templates.mjs      # create templates; stages brand/reflow/ + index.json
 node pipeline/verify-templates.mjs     # last-mile check against DocuSeal's own raster
+node pipeline/migrate-generated-templates.mjs          # dry-run guarded in-place refresh
+node pipeline/migrate-generated-templates.mjs --apply  # preserve template/field UUIDs
 ```
 
 `build-docs` takes slugs as arguments and everything downstream reads only what
@@ -68,7 +70,13 @@ it produced, so a rebuild can be scoped to one document.
 bearer links were accidentally committed in this public handoff, then revoked and
 replaced on 2026-07-28. The current links were delivered privately by email and are
 intentionally not recorded in Git. Never put signing slugs or bearer URLs in a
-tracked handoff.
+tracked handoff. DocuSeal freezes field definitions and source attachments when a
+submission is created even though its REST representation exposes no
+`template_fields` or `template_schema`. The 2026-07-29 in-place template refresh
+therefore fixed all future submissions without revoking these links, but the current
+IIPP link still has the old text-style `Reviewed / updated` control and the five
+current links retain their pre-refresh PDF snapshots. Rotate or resend only with the
+owner's explicit approval.
 
 **Field ownership per document — diff after ANY layout change.** A layout change
 silently moved 4 trainer dates to the worker once (§6.2).
@@ -79,6 +87,23 @@ employment-agreement(-es)         5/4    safety-training-roster(-es) 54/11
 wage-notice-2810-5                5/14   iipp 0/5 · heat 0/4 (x2) · fall 0/3 · cosp 0/2
 wage-notice-2810-5-es             5/13
 ```
+
+---
+
+## 3.1 Signer readiness release, 2026-07-29
+
+`d38e8e7` rebuilt the mobile signer header as a deliberate left/right layout,
+kept the readable-view toggle visible at 200% text, corrected phone/date/text
+field widths, made `Reviewed / updated` a native date field for new submissions,
+and split every PDF footer into a left legal identity plus right page count. A
+permanent generated-geometry gate now rejects narrow, overlapping, mistyped, or
+out-of-bounds fields. All 14 active templates were refreshed in place and preserve
+template IDs, submitter roles, and field UUIDs. The guarded migration's second dry
+run reported every template `current`; `verify-templates` passed 14/14; 48 tests,
+the pinned Docker build, Rails ERB compilation, and the changed migration files'
+Semgrep scan passed. Production headed checks covered all five current private
+links at phone/desktop and 200% text with exact readable UUID parity and zero
+console errors.
 
 ---
 
