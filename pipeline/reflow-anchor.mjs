@@ -23,12 +23,14 @@ export function stampReflowAnchors(html, fields, mapping) {
       if (matched) throw new Error(`duplicate reflow anchor ${field.id}`);
       matched = true;
 
-      let next = tag.replace(/\bdata-type="[^"]*"/, `data-type="${field.type}"`);
-      if (next === tag) next = next.replace(/>$/, ` data-type="${field.type}">`);
+      let next = tag.replace(/\sdata-presentation="[^"]*"/g, '');
+      next = next.replace(/\bdata-type="[^"]*"/, `data-type="${field.type}"`);
+      if (!next.includes(`data-type="${field.type}"`)) next = next.replace(/>$/, ` data-type="${field.type}">`);
+      if (field.presentation) next = next.replace(/>$/, ` data-presentation="${field.presentation}">`);
       next = next.replace(/\bclass="([^"]*)"/, (attribute, classes) => {
         const tokens = classes.split(/\s+/).filter(Boolean)
           .filter((token) => !Object.values(TYPE_CLASS).includes(token));
-        const typeClass = TYPE_CLASS[field.type];
+        const typeClass = field.presentation === 'phone' ? TYPE_CLASS.phone : TYPE_CLASS[field.type];
         if (typeClass) tokens.push(typeClass);
         return `class="${[...new Set(tokens)].join(' ')}"`;
       });

@@ -68,8 +68,8 @@ test('field matching is independent of API array order', () => {
   assert.throws(() => matchGeneratedFields(generated, live), /no live field matches/);
 });
 
-test('IIPP administrative fields classify as phone and date controls', () => {
-  assert.equal(classify('Administrator phone', ''), 'phone');
+test('IIPP administrative phone is plain text while review fields remain dates', () => {
+  assert.equal(classify('Administrator phone', ''), 'text');
   assert.equal(classify('Reviewed / updated', ''), 'date');
   assert.equal(classify('Effective date', ''), 'date');
   assert.equal(classify('Program administrator', ''), 'text');
@@ -79,12 +79,12 @@ test('reflow stamping synchronizes measured field types and classes', () => {
   const source = '<span class="ds" id="f1" data-type="text"></span>' +
     '<span class="ds ds-date" id="f2" data-type="date" data-hx-uuid="stale"></span>';
   const fields = [
-    { id: 'f1', type: 'phone' },
+    { id: 'f1', type: 'text', presentation: 'phone' },
     { id: 'f2', type: 'date' },
   ];
   const result = stampReflowAnchors(source, fields, new Map([['f1', 'u1'], ['f2', 'u2']]));
   assert.equal(result.stamped, 2);
-  assert.match(result.html, /class="ds ds-phone" id="f1" data-hx-uuid="u1" data-type="phone"/);
+  assert.match(result.html, /class="ds ds-phone" id="f1" data-hx-uuid="u1" data-type="text" data-presentation="phone"/);
   assert.match(result.html, /class="ds ds-date" id="f2" data-hx-uuid="u2" data-type="date"/);
   assert.doesNotMatch(result.html, /stale/);
   assert.throws(() => stampReflowAnchors(source, fields, new Map([['f1', 'u1']])), /missing live UUID/);
@@ -94,7 +94,7 @@ test('generated geometry rejects narrow, overlapping, and semantically mistyped 
   const valid = {
     pageCount: 1,
     fields: [
-      { name: 'Administrator phone', type: 'phone', page: 0, x: 0.2, y: 0.2, w: 150 / 816, h: 21 / 1056 },
+      { name: 'Administrator phone', type: 'text', presentation: 'phone', page: 0, x: 0.2, y: 0.2, w: 150 / 816, h: 21 / 1056 },
       { name: 'Reviewed / updated', type: 'date', page: 0, x: 0.5, y: 0.3, w: 130 / 816, h: 21 / 1056 },
     ],
   };
@@ -132,7 +132,8 @@ function iippMigrationFixture() {
     fields: definitions.map(([name, type, y, _oldWidth, targetWidth]) => ({
       id: `id-${name}`,
       name,
-      type: name === 'Reviewed / updated' ? 'date' : type,
+      type: name === 'Reviewed / updated' ? 'date' : name === 'Administrator phone' ? 'text' : type,
+      ...(name === 'Administrator phone' ? { presentation: 'phone' } : {}),
       owner: 'employer',
       page: name === 'Signature' || name === 'Date' ? 5 : 0,
       x: 0.25,
@@ -155,12 +156,24 @@ test('IIPP migration preserves identity and UUIDs while changing only guarded fi
   const { template, generated } = iippMigrationFixture();
   const plan = planIippMigration(template, generated);
   assert.equal(plan.alreadyApplied, false);
+  assert.ok(plan.changes.some((change) => /Administrator phone: type phone -> text/.test(change)));
   assert.ok(plan.changes.some((change) => /Reviewed \/ updated: type text -> date/.test(change)));
   const fields = buildMigratedFields(template, generated, 'new-attachment');
   assert.deepEqual(fields.map((field) => field.uuid), template.fields.map((field) => field.uuid));
   assert.ok(fields.every((field) => field.areas[0].attachment_uuid === 'new-attachment'));
   const after = { ...template, schema: [{ name: 'iipp.pdf', attachment_uuid: 'new-attachment' }], fields };
   assert.doesNotThrow(() => assertIippPostflight(template, after, generated, 'new-attachment'));
+  const partiallyApplied = iippMigrationFixture();
+  partiallyApplied.template.fields.find((field) => field.name === 'Reviewed / updated').type = 'date';
+  const partialPlan = planIippMigration(partiallyApplied.template, partiallyApplied.generated);
+  assert.deepEqual(partialPlan.changes.filter((change) => change.includes('type')), [
+    'Administrator phone: type phone -> text',
+  ]);
+  partiallyApplied.template.fields.find((field) => field.name === 'Reviewed / updated').type = 'phone';
+  assert.throws(
+    () => planIippMigration(partiallyApplied.template, partiallyApplied.generated),
+    /outside the guarded baseline or generated target/,
+  );
   const changed = structuredClone(template);
   changed.fields.find((field) => field.name === 'Signature').areas[0].x += 0.01;
   assert.throws(() => planIippMigration(changed, generated), /Signature generated geometry changed unexpectedly/);

@@ -14,7 +14,10 @@ const generatedDocuments = JSON.parse(readFileSync(`${BUILD_DIR}/fields.json`, '
 const generatedBySlug = new Map(generatedDocuments.map((document) => [document.slug, document]));
 const inventory = await client.listAll('/api/templates', { what: 'template inventory' });
 
-const TYPE_EXCEPTIONS = new Set(['iipp:Reviewed / updated']);
+const TYPE_EXCEPTIONS = new Set([
+  'iipp:Administrator phone',
+  'iipp:Reviewed / updated',
+]);
 const geometry = ({ page, x, y, w, h }) => ({ page, x, y, w, h });
 const areaGeometry = (area) => geometry(area);
 const sameGeometry = (left, right) => ['page', 'x', 'y', 'w', 'h'].every((key) => left[key] === right[key]);

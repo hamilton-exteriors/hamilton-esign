@@ -221,6 +221,15 @@ test('patched signer fields expose UUIDs for complete fail-closed validation', a
   assert.match(patch, /expose field UUID for fail-closed parity checks/);
 });
 
+test('patched downloads recover from endpoint and proxy failures', async () => {
+  const patch = await read('patches/docuseal-inline-fields.mjs');
+  assert.match(patch, /reset pending download after a non-OK response/);
+  assert.match(patch, /reject failed document proxy responses/);
+  assert.match(patch, /announce Safari document failures/);
+  assert.match(patch, /Download could not start\. Please try again\./);
+  assert.match(patch, /Download could not finish\. Please try again\./);
+});
+
 test('Docker wires only public signer and error overrides', async () => {
   const dockerfile = await read('Dockerfile');
   for (const target of [

@@ -133,4 +133,53 @@ patch('area.vue', [
       let fontSize = ''`],
 ]);
 
+// ---- download_button.js: recover cleanly from backend/network failures -------
+patch('../elements/download_button.js', [
+  ['reset pending download after a non-OK response',
+    `      } else {
+        alert('Failed to download files')
+      }
+    })`,
+    `      } else {
+        this.toggleState()
+        alert('Download could not start. Please try again.')
+      }
+    }).catch(() => {
+      this.toggleState()
+      alert('Download could not start. Please try again.')
+    })`],
+  ['reject failed document proxy responses',
+    `        return fetch(url).then(async (resp) => {
+          const blobUrl = URL.createObjectURL(await resp.blob())`,
+    `        return fetch(url).then(async (resp) => {
+          if (!resp.ok) throw new Error('document download failed')
+          const blobUrl = URL.createObjectURL(await resp.blob())`],
+  ['announce document proxy failures',
+    `      Promise.resolve()
+    ).finally(() => {`,
+    `      Promise.resolve()
+    ).catch(() => {
+      alert('Download could not finish. Please try again.')
+    }).finally(() => {`],
+  ['reject failed Safari document responses',
+    `      return fetch(url).then(async (resp) => {
+        const blob = await resp.blob()`,
+    `      return fetch(url).then(async (resp) => {
+        if (!resp.ok) throw new Error('document download failed')
+        const blob = await resp.blob()`],
+  ['announce Safari document failures',
+    `    }).finally(() => {
+      this.toggleState()
+    })
+  }
+})`,
+    `    }).catch(() => {
+      alert('Download could not finish. Please try again.')
+    }).finally(() => {
+      this.toggleState()
+    })
+  }
+})`],
+]);
+
 console.log(`\n${edits} edit(s) applied`);

@@ -11,6 +11,7 @@ const MINIMUM_PX = {
 
 function semanticType(name) {
   const value = String(name || '').toLowerCase();
+  if (/^administrator phone$/i.test(value.trim())) return 'text';
   if (/\bphone\b|\btelephone\b|\btel[eé]fono\b|\bcelular\b/.test(value)) return 'phone';
   if (/\binitials?\b|\binicial(?:es)?\b/.test(value)) return 'initials';
   if (/\bsignature\b|\bfirma\b/.test(value)) return 'signature';
@@ -37,11 +38,11 @@ export function validateGeneratedGeometry(document, page = PAGE) {
         field.y + field.h > (page.h - page.mb + tolerance) / page.h) {
       problems.push(`${field.name}: outside page content bounds`);
     }
-    const minimum = MINIMUM_PX[field.type];
+    const minimum = field.presentation === 'phone' ? MINIMUM_PX.phone : MINIMUM_PX[field.type];
     if (!minimum) {
       problems.push(`${field.name}: unsupported type ${field.type}`);
     } else if (field.w * page.w + tolerance < minimum.w || field.h * page.h + tolerance < minimum.h) {
-      problems.push(`${field.name}: ${Math.round(field.w * page.w)}x${Math.round(field.h * page.h)}px is too small for ${field.type}`);
+      problems.push(`${field.name}: ${Math.round(field.w * page.w)}x${Math.round(field.h * page.h)}px is too small for ${field.presentation || field.type}`);
     }
     const expected = semanticType(field.name);
     if (expected && expected !== field.type) {

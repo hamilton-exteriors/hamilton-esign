@@ -430,9 +430,11 @@ dialog textarea[name='reason'] {
    field remains constrained to that anchor instead of growing across nearby text. */
 #hx-read-doc .field-area {
   max-width: 100%;
+  scroll-margin-block-start: calc(var(--hx-header-clearance, 0px) + 24px + env(safe-area-inset-top));
   scroll-margin-block-end: calc(var(--hx-form-clearance, 0px) + 24px + env(safe-area-inset-bottom));
 }
 html {
+  scroll-padding-block-start: calc(var(--hx-header-clearance, 0px) + 24px + env(safe-area-inset-top));
   scroll-padding-block-end: calc(var(--hx-form-clearance, 0px) + 24px + env(safe-area-inset-bottom));
 }
 /* Wide legal tables own horizontal scrolling through `.tbl`. Clip the document

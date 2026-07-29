@@ -506,6 +506,35 @@ test('the last readable field scrolls above the fixed signer tray', async () => 
   }
 });
 
+test('readable fields scroll below the sticky signer header', async () => {
+  const fragment = `<style>
+    #hx-read-doc .spacer{height:50rem}
+    #hx-read-doc .ds{position:relative;display:inline-block;min-width:7.5rem;height:2.75rem;min-height:2.75rem}
+  </style><div class="spacer"></div><span class="ds" data-hx-uuid="u1"></span><div class="spacer"></div>`;
+  const { browser, page } = await fixture(fragment, { viewport: { width: 390, height: 844 } });
+  try {
+    await page.locator('#signing_form_header').evaluate((header) => {
+      header.style.position = 'sticky';
+      header.style.top = '0';
+      header.style.zIndex = '50';
+    });
+    await page.setViewportSize({ width: 800, height: 844 });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await activateReadableView(page);
+    await page.waitForFunction(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hx-header-clearance')) > 0);
+    const field = page.locator('#hx-read-doc .field-area');
+    await field.click();
+    const positions = await page.evaluate(() => ({
+      fieldTop: document.querySelector('#hx-read-doc .field-area').getBoundingClientRect().top,
+      headerBottom: document.querySelector('#signing_form_header').getBoundingClientRect().bottom,
+      clearance: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hx-header-clearance')),
+    }));
+    assert.ok(positions.fieldTop >= positions.headerBottom + 20, JSON.stringify(positions));
+  } finally {
+    await browser.close();
+  }
+});
+
 test('wide reflow tables scroll locally while fields remain visible and focusable', async () => {
   const fragment = `<style>
     #hx-read-doc .tbl{width:100%;min-width:0;max-width:100%;overflow-x:auto;contain:inline-size;-webkit-overflow-scrolling:touch}

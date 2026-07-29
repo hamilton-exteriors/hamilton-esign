@@ -81,8 +81,8 @@ export function planIippMigration(template, generated) {
     if (live.submitter_uuid !== roleUuid || live.areas?.length !== 1) {
       throw new Error(`${name} changed owner or area count`);
     }
-    if (!alreadyApplied && live.type !== CURRENT_TYPES.get(name)) {
-      throw new Error(`${name} type is outside the guarded baseline`);
+    if (!alreadyApplied && ![CURRENT_TYPES.get(name), target.type].includes(live.type)) {
+      throw new Error(`${name} type is outside the guarded baseline or generated target`);
     }
     if (target.owner !== 'employer') throw new Error(`${name} generated owner is not employer`);
     if (!CHANGEABLE_GEOMETRY.has(name) && !sameGeometry(areaGeometry(live.areas[0]), generatedGeometry(target))) {

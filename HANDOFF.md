@@ -68,15 +68,12 @@ it produced, so a rebuild can be scoped to one document.
 
 **5 open safety-program submissions await the owner's signature.** The original
 bearer links were accidentally committed in this public handoff, then revoked and
-replaced on 2026-07-28. The current links were delivered privately by email and are
-intentionally not recorded in Git. Never put signing slugs or bearer URLs in a
-tracked handoff. DocuSeal freezes field definitions and source attachments when a
-submission is created even though its REST representation exposes no
-`template_fields` or `template_schema`. The 2026-07-29 in-place template refresh
-therefore fixed all future submissions without revoking these links, but the current
-IIPP link still has the old text-style `Reviewed / updated` control and the five
-current links retain their pre-refresh PDF snapshots. Rotate or resend only with the
-owner's explicit approval.
+replaced on 2026-07-28. Those replacements froze the pre-refresh PDF and field
+schema, so they were revoked and replaced again on 2026-07-29 after the guarded
+14-template refresh. The five current links were headed-browser verified with the
+corrected PDFs, exact readable-field parity, and the IIPP native date/Today control,
+then delivered privately by email. They are intentionally not recorded in Git.
+Never put signing slugs or bearer URLs in a tracked handoff.
 
 **Field ownership per document — diff after ANY layout change.** A layout change
 silently moved 4 trainer dates to the worker once (§6.2).

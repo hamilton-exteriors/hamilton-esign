@@ -160,9 +160,12 @@ export function classify(label, seg) {
   if (/signature|sign here|\bfirma\b/.test(c)) return 'signature';
   if (/initial|iniciales/.test(c)) return 'initials';
   if (/\bdate\b|\bfecha\b|\breviewed\s*\/\s*updated\b/.test(c)) return 'date';
-  // DocuSeal has a real phone type that formats as the signer types, so nobody
-  // has to enter the parentheses and the dash by hand.
-  //
+  // DocuSeal's phone field is an identity-verification control, not merely a
+  // formatted telephone input. The IIPP Administrator phone is administrative
+  // data, so it must remain ordinary text and use a separate phone-sized
+  // presentation marker recovered during measurement.
+  if (/^administrator phone$/i.test(c.trim())) return 'text';
+  // Other phone fields intentionally retain DocuSeal's verification semantics.
   // Word-bounded deliberately: a bare /tel/ matches "immediately" and typed a
   // roster initials box as a phone number.
   if (/\bphone\b|\btelephone\b|\btel[eé]fono\b|\bcelular\b/.test(c)) return 'phone';

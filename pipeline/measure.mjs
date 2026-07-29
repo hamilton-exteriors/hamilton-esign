@@ -197,15 +197,19 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
     checkbox: 'ds-box', date: 'ds-date', initials: 'ds-ini',
     phone: 'ds-phone', signature: 'ds-sig', text: '',
   };
-  const setType = (el, type) => {
+  const setType = (el, type, presentation = '') => {
     for (const className of Object.values(TYPE_CLASS)) if (className) el.classList.remove(className);
-    if (TYPE_CLASS[type]) el.classList.add(TYPE_CLASS[type]);
+    const className = presentation === 'phone' ? TYPE_CLASS.phone : TYPE_CLASS[type];
+    if (className) el.classList.add(className);
     el.dataset.type = type;
+    if (presentation) el.dataset.presentation = presentation;
+    else delete el.dataset.presentation;
   };
   const retype = (el, label) => {
     const t = norm(label);
     if (!t) return;
-    if (/\bdate\b|\bfecha\b|\breviewed\s*\/\s*updated\b/.test(t)) setType(el, 'date');
+    if (/^administrator phone$/i.test(t)) setType(el, 'text', 'phone');
+    else if (/\bdate\b|\bfecha\b|\breviewed\s*\/\s*updated\b/.test(t)) setType(el, 'date');
     else if (/signature|firma/.test(t)) setType(el, 'signature');
     else if (/\bphone\b|\btelephone\b|\btel[eé]fono\b|\bcelular\b/.test(t)) setType(el, 'phone');
   };
@@ -342,6 +346,7 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
         name: el.dataset.name,
         section: el.dataset.section || '',
         type: el.dataset.type,
+        ...(el.dataset.presentation ? { presentation: el.dataset.presentation } : {}),
         owner: el.dataset.owner || 'worker',
         page: pi,
         x: +((r.left - pr.left) / w).toFixed(5),
