@@ -421,6 +421,13 @@ dialog textarea[name='reason'] {
   border-color: var(--hx-green) !important;
 }
 #hx-read-doc .field-area:hover { background-color: rgba(37, 99, 70, .18) !important; }
+/* The compact app-chrome H1 rule above must not flatten the generated legal
+   document hierarchy. Generated H1s are larger than H2s by design. */
+#hx-read-doc h1 {
+  font-size: 1.375rem !important;
+  line-height: 1.25 !important;
+  font-weight: 700 !important;
+}
 /* The fixed signer tray already names the active field. Upstream's second label
    floats 28px above the control, outside its generated anchor, and covers legal
    text in readable mode. Keep that label on the PDF and remove only the

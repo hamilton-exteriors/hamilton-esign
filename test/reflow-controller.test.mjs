@@ -449,6 +449,24 @@ test('Spanish signer actions stay split right of the identity without widening t
   }
 });
 
+test('readable legal title remains larger than section headings', async () => {
+  const fragment = `<style>
+    #hx-read-doc h1{font-size:1.375rem;line-height:1.25;font-weight:700}
+    #hx-read-doc h2{font-size:1.125rem;line-height:1.3;font-weight:700}
+  </style><h1>Injury and Illness Prevention Program</h1><h2>Responsibility</h2><span data-hx-uuid="u1"></span>`;
+  const { browser, page } = await fixture(fragment, { viewport: { width: 390, height: 844 } });
+  try {
+    await activateReadableView(page);
+    const sizes = await page.evaluate(() => ({
+      title: parseFloat(getComputedStyle(document.querySelector('#hx-read-doc h1')).fontSize),
+      section: parseFloat(getComputedStyle(document.querySelector('#hx-read-doc h2')).fontSize),
+    }));
+    assert.ok(sizes.title > sizes.section, JSON.stringify(sizes));
+  } finally {
+    await browser.close();
+  }
+});
+
 test('readable anchors reserve the full field target without covering adjacent text at 200%', async () => {
   const fragment = `<style>
     #hx-read-doc{font-size:1rem;padding:1.25rem 1.125rem calc(2rem + var(--hx-form-clearance,0px))}

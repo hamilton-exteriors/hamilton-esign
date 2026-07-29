@@ -8,6 +8,16 @@ import { TEMPLATE_REGISTRY, requireUniqueActiveTemplate } from './registry.mjs';
 import { createAdminSession } from './migrate-iipp.mjs';
 
 const apply = process.argv.includes('--apply');
+const slugFlag = process.argv.find((value) => value.startsWith('--slug='));
+const slugIndex = process.argv.indexOf('--slug');
+const requestedSlug = slugFlag?.slice('--slug='.length) || (slugIndex >= 0 ? process.argv[slugIndex + 1] : '');
+if (slugIndex >= 0 && (!requestedSlug || requestedSlug.startsWith('--'))) {
+  throw new Error('--slug requires a document slug');
+}
+const registry = requestedSlug
+  ? TEMPLATE_REGISTRY.filter((entry) => entry.slug === requestedSlug)
+  : TEMPLATE_REGISTRY;
+if (!registry.length) throw new Error(`unknown document slug: ${requestedSlug}`);
 const secrets = loadDocusealSecrets();
 const client = createDocusealClient(secrets);
 const generatedDocuments = JSON.parse(readFileSync(`${BUILD_DIR}/fields.json`, 'utf8'));
@@ -117,7 +127,7 @@ function assertPostflight(before, after, plan, attachmentUuid) {
 }
 
 const plans = [];
-for (const entry of TEMPLATE_REGISTRY) {
+for (const entry of registry) {
   const summary = requireUniqueActiveTemplate(inventory, entry.title);
   const template = await client.request(`/api/templates/${summary.id}`, {}, `template ${summary.id}`);
   const generated = generatedBySlug.get(entry.slug);
