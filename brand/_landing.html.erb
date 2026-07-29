@@ -12,24 +12,22 @@
   #  2. an ERB comment cannot contain a closing tag delimiter or the comment
   #     ends early and the rest of the prose renders as visible text. Hence a
   #     plain Ruby block with # comments rather than the <%# ... form.
-  es = I18n.locale.to_s.start_with?('es')
+  es = params[:lang].to_s == 'es' || I18n.locale.to_s.start_with?('es')
   heading = es ? 'Firma de documentos de Hamilton Exteriors' : 'Hamilton Exteriors document signing'
-  body = if es
-    'Esta página no es para firmar. Si tienes que firmar algo, usa el enlace que Alex te mandó por WhatsApp.'
-  else
-    'There is nothing to sign on this page. If you need to sign something, use the link Alex sent you on WhatsApp.'
-  end
-  call_label = es ? 'Llamar al' : 'Call'
+  body = es ? 'Esta página no es para firmar. Usa el enlace que Alex te mandó por WhatsApp.' : 'There is nothing to sign on this page. Use the link Alex sent you on WhatsApp.'
+  call_label = es ? 'Llamar al (650) 977-3241' : 'Call (650) 977-3241'
+  whatsapp_label = es ? 'Escribir por WhatsApp' : 'Message us on WhatsApp'
 %>
-<section class="flex items-center justify-center">
-  <div class="py-10 mx-auto max-w-xl px-4">
-    <div class="text-center">
-      <div class="relative flex flex-col items-center">
-        <%= render 'shared/logo', height: 88 %>
-      </div>
-      <h1 class="mt-6 mb-2 text-xl font-semibold" style="color:rgb(13,43,29)"><%= heading %></h1>
-      <p class="mb-6" style="color:rgb(74,74,76)"><%= body %></p>
-      <p><a href="tel:+16509773241" class="hx-phone"><%= call_label %> (650) 977-3241</a></p>
+<main class="flex items-center justify-center" aria-labelledby="landing-heading">
+  <section class="py-10 mx-auto max-w-xl px-4 text-center">
+    <div class="relative flex flex-col items-center">
+      <%= render 'shared/logo', height: 88 %>
     </div>
-  </div>
-</section>
+    <h1 id="landing-heading" class="mt-6 mb-2 text-xl font-semibold" style="color:rgb(13,43,29)"><%= heading %></h1>
+    <p class="mb-6" style="color:rgb(45,45,48)"><%= body %></p>
+    <nav aria-label="<%= es ? 'Opciones de ayuda' : 'Help options' %>" class="flex flex-col sm:flex-row gap-3 justify-center">
+      <a href="tel:+16509773241" class="hx-phone inline-flex items-center justify-center px-5" style="min-height:44px"><%= call_label %></a>
+      <a href="https://wa.me/16509773241" class="hx-phone inline-flex items-center justify-center px-5" style="min-height:44px"><%= whatsapp_label %></a>
+    </nav>
+  </section>
+</main>

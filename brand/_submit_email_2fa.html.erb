@@ -1,0 +1,48 @@
+<% verify_heading = t('hamilton.verify_email', default: I18n.locale.to_s.start_with?('es') ? 'Verifica tu correo electrónico' : 'Verify your email') %>
+<% code_label = t('hamilton.one_time_code', default: I18n.locale.to_s.start_with?('es') ? 'Código de un solo uso' : 'One-time code') %>
+<% code_error = flash[:alert].present? %>
+<% content_for(:html_title, "#{verify_heading} | Hamilton Signing") %>
+<% I18n.with_locale(@submitter.account.locale) do %>
+  <% content_for(:html_description, t('account_name_has_invited_you_to_fill_and_sign_documents_online_effortlessly_with_a_secure_fast_and_user_friendly_digital_document_signing_solution', account_name: @submitter.account.name)) %>
+<% end %>
+<main class="max-w-md mx-auto px-2 mt-12 mb-4" aria-labelledby="verification-heading">
+  <div class="space-y-6 mx-auto">
+    <div class="space-y-6">
+      <div class="flex items-center justify-center"><%= render 'start_form/banner' %></div>
+      <h1 id="verification-heading" class="text-xl font-semibold text-center"><%= verify_heading %></h1>
+      <div class="flex items-center bg-base-200 rounded-xl p-4 mb-4">
+        <div class="flex items-center">
+          <div class="mr-3"><%= svg_icon('writing_sign', class: 'w-10 h-10') %></div>
+          <div>
+            <p dir="auto" class="text-lg font-bold mb-1"><%= @submitter.submission.name || @submitter.submission.template&.name %></p>
+            <% last_submitter = @submitter.submission.submitters.completed.order(:completed_at).last %>
+            <% if last_submitter %><p dir="auto" class="text-sm"><%= t(last_submitter.with_signature_fields? ? 'signed_on_time' : 'completed_on_time', time: l(last_submitter.completed_at.to_date, format: :long)) %></p><% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% if @submitter.email.present? %>
+      <div><%= t('the_sender_has_requested_a_two_factor_authentication_via_one_time_password_sent_to_your_email_html', email: TextUtils.mask_email(@submitter.email, 2)) %></div>
+      <% if params[:status] == 'sent' || params[:status] == 'error' %>
+        <%= form_for '', url: submit_form_email_2fa_path, method: :post, html: { class: 'space-y-4', id: 'code_form' } do |f| %>
+          <div dir="auto" class="form-control !mt-0">
+            <%= f.hidden_field :submitter_slug, value: @submitter.slug %>
+            <%= f.label :one_time_code, code_label, class: 'label' %>
+            <%= f.text_field :one_time_code, required: true, autocomplete: 'one-time-code', inputmode: 'numeric', class: 'base-input text-center', placeholder: 'XXX-XXX', aria: { describedby: 'code-status', invalid: code_error } %>
+            <p id="code-status" role="status" aria-live="polite" class="mt-1 <%= 'text-red-500' if code_error %>"><%= flash[:alert] || flash[:notice] %></p>
+          </div>
+          <toggle-submit dir="auto" class="form-control"><%= f.button button_title(title: t('submit')), class: 'base-button' %></toggle-submit>
+        <% end %>
+        <%= button_to t(:re_send_email), submit_form_email_2fa_path, params: { submitter_slug: @submitter.slug, resend: true }, method: :put, class: 'link inline-flex items-center mt-1', style: 'min-height:44px', form: { id: 'resend_code_form' } %>
+      <% else %>
+        <% if params[:t] %>
+          <fetch-form data-onload="true"><%= button_to '', api_submitter_email_clicks_path, params: { submitter_slug: @submitter.slug, t: params[:t] }, method: :post, class: 'hidden' %></fetch-form>
+        <% end %>
+        <toggle-submit dir="auto" class="form-control"><%= button_to button_title(title: t('send_verification_code')), submit_form_email_2fa_path, params: { submitter_slug: @submitter.slug }, method: :put, class: 'base-button w-full' %></toggle-submit>
+      <% end %>
+    <% else %>
+      <div><%= t('please_contact_the_requester_to_specify_your_email_for_two_factor_authentication') %></div>
+    <% end %>
+  </div>
+  <%= render 'shared/signer_recovery' %>
+</main>

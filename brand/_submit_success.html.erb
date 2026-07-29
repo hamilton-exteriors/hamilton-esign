@@ -1,0 +1,4 @@
+<% heading = t('hamilton.submitted_successfully', default: I18n.locale.to_s.start_with?('es') ? 'Enviado correctamente' : 'Submitted successfully') %>
+<% message = t('hamilton.document_submitted_successfully', default: I18n.locale.to_s.start_with?('es') ? 'Tu documento se envió correctamente.' : 'Your document was submitted successfully.') %>
+<% content_for(:html_title, "#{heading} | Hamilton Signing") %>
+<%= render 'shared/terminal_state', heading:, message:, link_path: '/start' %>

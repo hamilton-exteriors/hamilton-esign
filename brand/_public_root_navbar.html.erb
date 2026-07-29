@@ -1,0 +1,7 @@
+<% es = params[:lang].to_s == 'es' || I18n.locale.to_s.start_with?('es') %>
+<% home_label = es ? 'Inicio de Hamilton Exteriors' : 'Hamilton Exteriors home' %>
+<% sign_in_label = es ? 'Iniciar sesión' : t('sign_in') %>
+<nav class="max-w-6xl mb-4 mx-auto px-4 md:px-2 py-3 flex items-center justify-between" aria-label="Hamilton Exteriors">
+  <%= link_to root_path(lang: params[:lang]), aria: { label: home_label }, class: 'inline-flex items-center', style: 'min-height:44px' do %><%= render 'shared/title' %><% end %>
+  <%= link_to new_user_session_path({ lang: params[:lang] }.compact_blank), class: 'font-medium text-lg inline-flex items-center px-3', style: 'min-height:44px' do %><%= sign_in_label %><% end %>
+</nav>

@@ -2,7 +2,7 @@
 # Only the signer-facing surface is modified; the admin UI is upstream.
 # PINNED, deliberately. Every CSS selector and ERB override in brand/ is written
 # against this specific build's markup — the field-marker recolor targets
-# page-container, the stepper targets nav[aria-label='Form progress'], the
+# page-container, the stepper targets the language-neutral .steps-progress class,
 # completion attribution targets a docuseal.com anchor. Upstream shipped 3.1.6 on
 # 2026-07-27; on :latest the next deploy would silently pull it and any markup
 # change would break the branding with no error anywhere. Bump this on purpose,
@@ -58,6 +58,7 @@ FROM docuseal/docuseal:3.1.5@sha256:d20b62c1eac8719d2ffa31188d83866cf1b0d41c1aee
 COPY --from=webpack /src/public/packs /app/public/packs
 
 COPY brand/hamilton.css            /app/app/assets/hamilton.css
+COPY brand/hamilton.yml            /app/config/locales/hamilton.yml
 COPY brand/form.html.erb           /app/app/views/layouts/form.html.erb
 COPY brand/_logo.html.erb          /app/app/views/shared/_logo.html.erb
 COPY brand/_powered_by.html.erb    /app/app/views/shared/_powered_by.html.erb
@@ -90,6 +91,27 @@ COPY brand/_decline_form.html.erb  /app/app/views/submit_form/_decline_form.html
 
 # Root page: upstream is a DocuSeal product page under Hamilton's logo.
 COPY brand/_landing.html.erb       /app/app/views/pages/landing.html.erb
+COPY brand/application.html.erb      /app/app/views/layouts/application.html.erb
+COPY brand/_public_root_navbar.html.erb /app/app/views/shared/_public_root_navbar.html.erb
+
+# Public signer recovery, verification, terminal states and Rails error pages.
+# These map only to public routes, leaving authenticated admin views upstream.
+COPY brand/_signer_recovery.html.erb /app/app/views/shared/_signer_recovery.html.erb
+COPY brand/_terminal_state.html.erb  /app/app/views/shared/_terminal_state.html.erb
+COPY brand/_submit_email_2fa.html.erb /app/app/views/submit_form/email_2fa.html.erb
+COPY brand/_start_email_verification.html.erb /app/app/views/start_form/email_verification.html.erb
+COPY brand/_start_show.html.erb      /app/app/views/start_form/show.html.erb
+COPY brand/_submit_awaiting.html.erb /app/app/views/submit_form/awaiting.html.erb
+COPY brand/_submit_completed.html.erb /app/app/views/submit_form/completed.html.erb
+COPY brand/_submit_declined.html.erb /app/app/views/submit_form/declined.html.erb
+COPY brand/_submit_delegated.html.erb /app/app/views/submit_form/delegated.html.erb
+COPY brand/_submit_expired.html.erb  /app/app/views/submit_form/expired.html.erb
+COPY brand/_submit_archived.html.erb /app/app/views/submit_form/archived.html.erb
+COPY brand/_submit_success.html.erb  /app/app/views/submit_form/success.html.erb
+COPY brand/_start_completed.html.erb /app/app/views/start_form/completed.html.erb
+COPY brand/404.html                  /app/app/views/errors/404.html
+COPY brand/422.html                  /app/app/views/errors/422.html
+COPY brand/500.html                  /app/app/views/errors/500.html
 
 # Browser tab: title, meta and favicons.
 COPY brand/_head_tags.html.erb     /app/app/views/layouts/_head_tags.html.erb

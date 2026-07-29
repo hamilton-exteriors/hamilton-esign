@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-28T22:16:53Z",
+  "title": "Design System: Hamilton e-Sign",
+  "extensions": {
+    "colorMeta": {
+      "hamilton-green": {
+        "role": "primary",
+        "displayName": "Hamilton Green",
+        "canonical": "#256346",
+        "tonalRamp": ["#071B12", "#0D2B1D", "#17452F", "#256346", "#3D7D5E", "#6E9F86", "#A7C6B5", "#E4EFE9"]
+      },
+      "hamilton-deep": {
+        "role": "primary",
+        "displayName": "Hamilton Deep",
+        "canonical": "#0D2B1D",
+        "tonalRamp": ["#04100A", "#081B12", "#0D2B1D", "#17452F", "#286348", "#568A70", "#95B7A5", "#E1ECE6"]
+      },
+      "light-green": {
+        "role": "secondary",
+        "displayName": "Light Field Green",
+        "canonical": "#E3EFD3",
+        "tonalRamp": ["#17200D", "#2B3A19", "#465D2B", "#6F884C", "#9CAF78", "#C3D3A8", "#E3EFD3", "#F6FAEF"]
+      },
+      "cream-surface": {
+        "role": "neutral",
+        "displayName": "Cream Surface",
+        "canonical": "#F4F1EB",
+        "tonalRamp": ["#201E1A", "#3B3832", "#5D5850", "#817A70", "#AAA298", "#D0CAC2", "#F4F1EB", "#FCFBF8"]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Decline Red",
+        "canonical": "#991B1B",
+        "tonalRamp": ["#280606", "#4B0C0C", "#711313", "#991B1B", "#BA3434", "#D65D5D", "#E9A0A0", "#F9E5E5"]
+      }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Chrome Title", "purpose": "Compact document title in application chrome." },
+      "body": { "displayName": "Readable Body", "purpose": "Phone-first legal-document reading and instructions." },
+      "label": { "displayName": "Utility Label", "purpose": "Short controls and document-view utility chrome." }
+    },
+    "shadows": [
+      { "name": "document-edge", "value": "0 1px 2px rgba(13, 43, 29, 0.06)", "purpose": "Separates a white legal page from the cream application surface." }
+    ],
+    "motion": [
+      { "name": "state-ease", "value": "180ms cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Fast button and border state feedback." },
+      { "name": "reduced-motion", "value": "0.01ms", "purpose": "Effectively disables nonessential animation when reduced motion is requested." }
+    ],
+    "breakpoints": [
+      { "name": "document-view", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Step Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single decisive action for the current signing step.",
+      "html": "<button class=\"ds-btn-primary\">Continue signing</button>",
+      "css": ".ds-btn-primary { min-height: 44px; padding: 0 16px; border: 0; border-radius: 8px; background: #0D2B1D; color: #FFFFFF; font: 600 15px/1.2 'DM Sans', system-ui, sans-serif; cursor: pointer; transition: background-color 180ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-primary:hover { background: #081B12; } .ds-btn-primary:focus-visible { outline: 2px solid #256346; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A quiet secondary action that never competes with the signing step.",
+      "html": "<button class=\"ds-btn-secondary\">Download document</button>",
+      "css": ".ds-btn-secondary { min-height: 44px; padding: 0 16px; border: 1px solid #C4BFB6; border-radius: 8px; background: transparent; color: #0D2B1D; font: 500 15px/1.2 'DM Sans', system-ui, sans-serif; cursor: pointer; transition: background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-secondary:hover { background: rgba(37, 99, 70, 0.07); border-color: #256346; } .ds-btn-secondary:focus-visible { outline: 2px solid #256346; outline-offset: 2px; }"
+    },
+    {
+      "name": "Decline Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "A destructive action kept visually distinct from continuation.",
+      "html": "<button class=\"ds-btn-danger\">Decline document</button>",
+      "css": ".ds-btn-danger { min-height: 44px; padding: 0 16px; border: 1px solid #991B1B; border-radius: 8px; background: transparent; color: #991B1B; font: 600 15px/1.2 'DM Sans', system-ui, sans-serif; cursor: pointer; transition: background-color 180ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-danger:hover { background: rgba(153, 27, 27, 0.07); } .ds-btn-danger:focus-visible { outline: 2px solid #991B1B; outline-offset: 2px; }"
+    },
+    {
+      "name": "Signable Field",
+      "kind": "input",
+      "description": "A legal-document field marker that reads as actionable, not erroneous.",
+      "html": "<label class=\"ds-field\"><span>Employee name</span><input placeholder=\"Type here\"></label>",
+      "css": ".ds-field { display: grid; gap: 6px; color: #1A1A1A; font: 600 13px/1.3 'DM Sans', system-ui, sans-serif; } .ds-field input { min-height: 44px; padding: 0 12px; border: 1px solid #256346; border-radius: 6px; background: rgba(37, 99, 70, 0.10); color: #1A1A1A; font: 400 16px/1.4 'DM Sans', system-ui, sans-serif; } .ds-field input::placeholder { color: #5A5A5C; opacity: 1; } .ds-field input:focus-visible { outline: 2px solid #256346; outline-offset: 2px; }"
+    },
+    {
+      "name": "Document Surface",
+      "kind": "card",
+      "refersTo": "document-surface",
+      "description": "The white legal page separated structurally from cream application chrome.",
+      "html": "<article class=\"ds-document\"><h2>Employment Agreement</h2><p>Readable document content stays dominant.</p></article>",
+      "css": ".ds-document { max-width: 70ch; padding: 16px; border: 1px solid #C4BFB6; border-radius: 6px; background: #FFFFFF; color: #1A1A1A; box-shadow: 0 1px 2px rgba(13, 43, 29, 0.06); font: 400 16px/1.55 'DM Sans', system-ui, sans-serif; } .ds-document h2 { margin: 0 0 12px; color: #0D2B1D; font-size: 18px; line-height: 1.3; } .ds-document p { margin: 0; }"
+    },
+    {
+      "name": "Recovery Link",
+      "kind": "nav",
+      "description": "A direct human recovery action available from terminal states.",
+      "html": "<a class=\"ds-recovery\" href=\"tel:+16509773241\">Call Hamilton Exteriors</a>",
+      "css": ".ds-recovery { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; color: #256346; font: 600 14px/1.3 'DM Sans', system-ui, sans-serif; text-decoration: underline; text-underline-offset: 3px; } .ds-recovery:hover { color: #0D2B1D; } .ds-recovery:focus-visible { outline: 2px solid #256346; outline-offset: 2px; border-radius: 4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Field-ready paperwork",
+    "overview": "Hamilton e-Sign should feel prepared for a worker opening important paperwork from WhatsApp, often outdoors or away from a desk. The visual system is calm and familiar so attention stays on reading, filling, and signing. Brand recognition comes from Hamilton green, the mark, and a consistent human voice rather than decorative UI. The component character is direct and reassuring.",
+    "keyCharacteristics": [
+      "Phone-first document readability with a visible PDF escape hatch",
+      "Restrained Hamilton palette with semantic danger kept separate",
+      "Familiar controls sized for a thumb and explicit about consequences",
+      "One self-hosted sans family across chrome and document reflow",
+      "Structural borders and nearly flat elevation"
+    ],
+    "rules": [
+      { "name": "The Error Color Rule", "body": "Danger red is forbidden for ordinary signable fields. Green identifies work to complete; red means an actual error or destructive action.", "section": "colors" },
+      { "name": "The Document Contrast Rule", "body": "The white legal page must remain visibly separate from the cream application surface through a line border, not a decorative shadow.", "section": "colors" },
+      { "name": "The Chrome Is Not the Document Rule", "body": "App titles stay compact and stable; legal-document hierarchy belongs inside the document surface.", "section": "typography" },
+      { "name": "The Structural Flat Rule", "body": "A border or tonal surface must explain depth before a shadow is introduced. Wide ambient shadows are prohibited.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep the document as the dominant surface and application chrome visually quiet.",
+      "Do use Hamilton Green for focus, links, and signable fields, and Danger only for decline or genuine errors.",
+      "Do preserve 44px touch targets, 2px focus outlines, readable placeholders, and reduced-motion behavior.",
+      "Do test every state at 390px, 768px crossings, desktop width, 200% text zoom, keyboard-only input, English, and Spanish.",
+      "Do keep a direct human recovery path on active, completed, declined, expired, archived, and awaiting pages."
+    ],
+    "donts": [
+      "Don't add DocuSeal product marketing, white-label theater, or any page that promotes signing software during an employment task.",
+      "Don't present a dense scaled-down Letter PDF as the only mobile reading experience.",
+      "Don't style destructive decline controls like the primary continuation action.",
+      "Don't use red or pink ordinary field markers that look like validation errors.",
+      "Don't add decorative display typography, glass effects, gradients, oversized cards, or motion that distracts from reading and signing.",
+      "Don't strand a worker in a recovery state without a clear phone or WhatsApp path to a person.",
+      "Don't hide the PDF until every responsive field target is proven valid."
+    ]
+  }
+}

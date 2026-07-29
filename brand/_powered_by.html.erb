@@ -10,6 +10,10 @@
            : 'Hi Alex, I need a new link to sign my documents.'
 %>
 <div class="hx-footer">
+  <% if local_assigns[:with_counter] %>
+    <% count = CompletedSubmitter.distinct.count(:submission_id) %>
+    <% if count > 1 %><span class="hx-entity"><%= t('count_documents_signed_with_html', count:) %></span><% end %>
+  <% end %>
   <span class="hx-entity">ABR Quality Resources Inc dba Hamilton Exteriors</span>
   <span class="hx-help">
     <%= es ? '¿Preguntas o necesitas un enlace nuevo?' : 'Questions, or need a new link?' %>
@@ -24,6 +28,6 @@
     <a href="https://github.com/hamilton-exteriors/hamilton-esign" rel="noopener">Hamilton e-Sign</a>,
     <%= es ? 'una versión modificada de' : 'a modified version of' %>
     <a href="https://github.com/docusealco/docuseal" rel="noopener">DocuSeal</a>
-    (AGPL-3.0) &mdash; <%= es ? 'código fuente en el enlace de arriba' : 'source at the link above' %>.
+    (AGPL-3.0). <%= es ? 'Código fuente en el enlace de arriba' : 'Source at the link above' %>.
   </span>
 </div>

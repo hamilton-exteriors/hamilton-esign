@@ -1,0 +1,3 @@
+<% heading = t('hamilton.document_declined', default: I18n.locale.to_s.start_with?('es') ? 'Documento rechazado' : 'Document declined') %>
+<% content_for(:html_title, "#{heading} | Hamilton Signing") %>
+<%= render 'shared/terminal_state', heading:, message: t('form_has_been_declined_on_html', time: l(@submitter.declined_at, format: :long)), account: @submitter.account, link_path: '/start' %>

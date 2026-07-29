@@ -43,40 +43,48 @@
         the print coordinates either way, so the record does not depend on this. %>
     <script nonce="<%= content_security_policy_nonce %>">
       (function () {
+        var labels = <%= json_escape({
+          readable_view: I18n.t('hamilton.signing.readable_view', default: I18n.locale.to_s.start_with?('es') ? 'Vista legible' : 'Readable view'),
+          show_readable_view: I18n.t('hamilton.signing.show_readable_view', default: I18n.locale.to_s.start_with?('es') ? 'Mostrar vista legible' : 'Show readable view'),
+          show_page: I18n.t('hamilton.signing.show_page', default: I18n.locale.to_s.start_with?('es') ? 'Mostrar la página' : 'Show the page')
+        }.to_json).html_safe %>;
         var MOBILE = window.matchMedia('(max-width: 767px)');
-        if (!MOBILE.matches) return;
+        var mounted = false;
+        var observer;
 
         function titleOf() {
           var h = document.querySelector('h1');
           return h ? h.textContent.trim().replace(/\s+/g, ' ') : '';
         }
 
-        function mount(html) {
+        // Completion, decline, and landing pages can share this layout. Do not
+        // request a reflow asset unless DocuSeal has rendered signing fields.
+        function signingHost() {
           var host = document.querySelector('page-container');
-          if (!host || !host.parentNode) return;
+          return host && host.parentNode && host.querySelector('.field-area, .submitter-field') ? host : null;
+        }
+
+        function mountControl() {
+          if (mounted || document.getElementById('hx-read')) return;
+          var host = signingHost();
+          if (!host || !MOBILE.matches) return;
+          mounted = true;
+          observer.disconnect();
           var wrap = document.createElement('div');
           wrap.id = 'hx-read';
-          // Injected into THIS document, not an iframe. Vue's Teleport cannot
-          // cross documents, and the fields have to be able to land in the text.
-          // The fragment carries its own stylesheet, scoped under #hx-read-doc at
-          // build time so it cannot restyle DocuSeal's UI.
-          wrap.innerHTML =
-            '<div class="hx-read-bar">' +
-            '<span>Readable view</span>' +
-            '<button type="button" id="hx-read-toggle">Show the page</button>' +
-            '</div><div id="hx-read-doc"></div>';
+          wrap.innerHTML = '<div class="hx-read-bar"><span></span><button type="button" id="hx-read-toggle"></button></div><div id="hx-read-doc" hidden></div>';
           host.parentNode.insertBefore(wrap, host);
-          wrap.querySelector('#hx-read-doc').innerHTML = html;
-          // The anchors exist now. Tell the signing components to re-resolve
-          // their Teleport targets, or the fields stay on the hidden page images
-          // until the next step change.
-          window.dispatchEvent(new Event('hx-reflow-ready'));
 
           var pages = document.querySelectorAll('page-container');
           var readDoc = wrap.querySelector('#hx-read-doc');
+          var label = wrap.querySelector('.hx-read-bar span');
           var toggle = wrap.querySelector('#hx-read-toggle');
-          var prefersPage = false;
+          var loaded = false;
+          var loading = false;
           var reflowInvalid = false;
+          var showingReflow = false;
+          label.textContent = labels.readable_view;
+          toggle.textContent = labels.show_readable_view;
 
           var retarget = function () {
             // Vue's Teleports are not reactive to DOM visibility. Every view
@@ -85,24 +93,25 @@
           };
           var showPdf = function () {
             for (var i = 0; i < pages.length; i++) pages[i].style.display = '';
-            readDoc.style.display = 'none';
-            toggle.textContent = 'Show readable view';
+            readDoc.hidden = true;
+            showingReflow = false;
+            toggle.textContent = labels.show_readable_view;
             retarget();
           };
           var showReflow = function () {
-            if (!MOBILE.matches || prefersPage || reflowInvalid) {
+            if (!MOBILE.matches || reflowInvalid || !loaded) {
               showPdf();
               return;
             }
 
             // Keep the PDF visible while Vue retargets. Hiding it first turns a
             // missing or stale UUID into an invisible required field.
-            readDoc.style.display = '';
+            readDoc.hidden = false;
             for (var i = 0; i < pages.length; i++) pages[i].style.display = '';
             retarget();
             requestAnimationFrame(function () {
               requestAnimationFrame(function () {
-                if (!MOBILE.matches || prefersPage) {
+                if (!MOBILE.matches) {
                   showPdf();
                   return;
                 }
@@ -117,44 +126,73 @@
                   return;
                 }
                 for (var i = 0; i < pages.length; i++) pages[i].style.display = 'none';
-                toggle.textContent = 'Show the page';
+                showingReflow = true;
+                toggle.textContent = labels.show_page;
               });
             });
           };
+          var loadReflow = function () {
+            if (loading || reflowInvalid) return;
+            if (loaded) {
+              showReflow();
+              return;
+            }
+            loading = true;
+            toggle.disabled = true;
+            fetch('/reflow/index.json', { credentials: 'same-origin' })
+              .then(function (r) { return r.ok ? r.json() : null; })
+              .then(function (idx) {
+                var slug = idx && idx[titleOf()];
+                if (!slug) return null;
+                return fetch('/reflow/' + slug + '.reflow.html', { credentials: 'same-origin' })
+                  .then(function (r) { return r.ok ? r.text() : null; });
+              })
+              .then(function (html) {
+                if (!html || !MOBILE.matches) return;
+                // Injected into THIS document, not an iframe. Vue's Teleport
+                // cannot cross documents, and fields must land in the text.
+                readDoc.innerHTML = html;
+                loaded = true;
+                showReflow();
+              })
+              .catch(function () { /* reading view is an enhancement; never block signing */ })
+              .finally(function () {
+                loading = false;
+                toggle.disabled = false;
+              });
+          };
 
-          showReflow();
           toggle.addEventListener('click', function () {
-            prefersPage = !prefersPage;
-            if (prefersPage) showPdf();
-            else showReflow();
+            if (showingReflow) showPdf();
+            else loadReflow();
           });
           MOBILE.addEventListener('change', function () {
-            // Crossing 768px used to let CSS hide reflow while the script kept the
-            // PDF hidden inline, leaving a blank signing screen after rotation.
-            if (MOBILE.matches) showReflow();
-            else showPdf();
+            // Crossing 768px must always restore the PDF. Returning to mobile
+            // remains PDF-first; a signer explicitly chooses readable view again.
+            showPdf();
           });
         }
 
-        fetch('/reflow/index.json', { credentials: 'same-origin' })
-          .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (idx) {
-            if (!idx) return;
-            var slug = idx[titleOf()];
-            if (!slug) return;
-            return fetch('/reflow/' + slug + '.reflow.html', { credentials: 'same-origin' })
-              .then(function (r) { return r.ok ? r.text() : null; })
-              .then(function (html) { if (html) mount(html); });
-          })
-          .catch(function () { /* reading view is an enhancement; never block signing */ });
+        observer = new MutationObserver(function () { mountControl(); });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        // The form bundle is deferred. Watch for its fields, and also cover a
+        // desktop-first session that rotates or resizes into the mobile view.
+        MOBILE.addEventListener('change', function () {
+          if (MOBILE.matches) mountControl();
+        });
+        mountControl();
       })();
     </script>
     <script nonce="<%= content_security_policy_nonce %>">
       (function () {
         function fmt(raw) {
-          var d = String(raw == null ? '' : raw).replace(/\D/g, '');
+          var value = String(raw == null ? '' : raw);
+          // Shared-link phone inputs require international numbers to retain the
+          // leading +. Only prettify a recognizable US number.
+          if (value.trim().charAt(0) === '+') return value;
+          var d = value.replace(/\D/g, '');
           if (d.length === 11 && d.charAt(0) === '1') d = d.slice(1);
-          d = d.slice(0, 10);
+          if (d.length > 10) return value;
           if (d.length <= 3) return d;
           if (d.length <= 6) return '(' + d.slice(0, 3) + ') ' + d.slice(3);
           return '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6);

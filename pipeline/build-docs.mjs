@@ -377,8 +377,8 @@ strong{font-weight:700}
 hr{border:0;border-top:1px solid #d8d8d8;margin:20px 0}
 /* Tables are the one thing that cannot simply reflow. Let them scroll inside
    their own box rather than forcing the page to scroll sideways. */
-.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0 18px}
-table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.4;min-width:min(100%,420px)}
+.tbl{width:100%;min-width:0;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0 18px}
+table{width:max-content;min-width:100%;border-collapse:collapse;font-size:14px;line-height:1.4}
 th{text-align:left;font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
    color:#555;border-bottom:1px solid #333;padding:8px 6px}
 td{padding:9px 6px;border-bottom:1px solid #e6e6e6;vertical-align:top}

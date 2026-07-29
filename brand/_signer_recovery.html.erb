@@ -1,0 +1,8 @@
+<% es = I18n.locale.to_s.start_with?('es') %>
+<aside class="mt-6 text-center" aria-label="<%= es ? 'Ayuda' : 'Need help' %>">
+  <p class="mb-3 text-sm" style="color:rgb(45,45,48)"><%= es ? '¿Necesitas ayuda con este documento?' : 'Need help with this document?' %></p>
+  <div class="flex flex-col sm:flex-row gap-3 justify-center">
+    <a href="tel:+16509773241" class="hx-phone inline-flex items-center justify-center px-5" style="min-height:44px"><%= es ? 'Llamar al (650) 977-3241' : 'Call (650) 977-3241' %></a>
+    <a href="https://wa.me/16509773241" class="hx-phone inline-flex items-center justify-center px-5" style="min-height:44px"><%= es ? 'WhatsApp' : 'WhatsApp' %></a>
+  </div>
+</aside>

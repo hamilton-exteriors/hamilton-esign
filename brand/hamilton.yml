@@ -1,0 +1,34 @@
+en:
+  hamilton:
+    verify_email: "Verify your email"
+    one_time_code: "One-time code"
+    document_completed: "Document completed"
+    form_already_completed: "Form already completed"
+    waiting_for_signers: "Waiting for other signers"
+    document_declined: "Document declined"
+    document_delegated: "Document delegated"
+    signing_link_expired: "Signing link expired"
+    form_unavailable: "Form unavailable"
+    submitted_successfully: "Submitted successfully"
+    document_submitted_successfully: "Your document was submitted successfully."
+    signing:
+      readable_view: "Readable view"
+      show_readable_view: "Show readable view"
+      show_page: "Show the page"
+es:
+  hamilton:
+    verify_email: "Verifica tu correo electrónico"
+    one_time_code: "Código de un solo uso"
+    document_completed: "Documento completado"
+    form_already_completed: "Formulario ya completado"
+    waiting_for_signers: "Esperando a los demás firmantes"
+    document_declined: "Documento rechazado"
+    document_delegated: "Documento delegado"
+    signing_link_expired: "El enlace para firmar venció"
+    form_unavailable: "Formulario no disponible"
+    submitted_successfully: "Enviado correctamente"
+    document_submitted_successfully: "Tu documento se envió correctamente."
+    signing:
+      readable_view: "Vista legible"
+      show_readable_view: "Mostrar vista legible"
+      show_page: "Mostrar la página"

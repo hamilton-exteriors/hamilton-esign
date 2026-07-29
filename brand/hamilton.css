@@ -70,7 +70,18 @@ body {
   background: var(--hx-cream);
   color: var(--hx-ink);
   -webkit-font-smoothing: antialiased;
+  max-width: 100%;
 }
+
+/* Keep the signer chrome usable at narrow widths and 200% zoom. These are the
+   stable semantic containers in the pinned signer layout; avoid clipping as a
+   substitute for reflow, because clipped controls would only hide the defect. */
+header, [role='banner'], main, main > * {
+  min-width: 0;
+  max-width: 100%;
+}
+header, [role='banner'] { flex-wrap: wrap; }
+main .btn { max-width: 100%; white-space: normal; }
 
 /* ---------------------------------------------------------------- header --
    Was ~200px of an 844px phone viewport before any document was visible, with
@@ -98,6 +109,7 @@ h1 {
   overflow: visible !important;
   text-overflow: clip !important;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 @media (min-width: 768px) { h1 { font-size: 1.125rem !important; } }
 
@@ -192,22 +204,21 @@ page-container {
 }
 
 /* --------------------------------------------------------------- stepper --
-   One dot per field is fine at 4 fields. The safety roster has 63 and the
-   acknowledgment 30; the dot row becomes an unreadable smear and pushes the
-   primary button toward the fold. Shrink and scroll it instead. */
-nav[aria-label='Form progress'],
-nav[aria-label='Form progress'] > div {
-  display: flex; flex-wrap: nowrap; gap: 6px;
+   Upstream gives the rail the language-neutral `steps-progress` class. Scope to
+   that class instead of translated copy or :has(), so older Android WebViews
+   receive the same target sizing as current browsers. */
+main nav > .steps-progress {
+  display: flex; flex-wrap: nowrap !important; gap: 6px;
   overflow-x: auto; scrollbar-width: none;
   max-width: 100%; padding: 2px 4px;
   scroll-snap-type: x proximity;
 }
-nav[aria-label='Form progress']::-webkit-scrollbar { display: none; }
-nav[aria-label='Form progress'] button {
+main nav > .steps-progress::-webkit-scrollbar { display: none; }
+main nav > .steps-progress button {
   flex: 0 0 auto; scroll-snap-align: center;
   box-sizing: border-box;
-  width: 28px !important; height: 28px !important; min-height: 0 !important;
-  padding: 10px !important;          /* 8px visual dot, 28px tap area */
+  width: 44px !important; height: 44px !important; min-height: 44px !important;
+  margin: 0 !important; padding: 14px !important;
   background-clip: content-box !important;
   border: 0 !important; border-radius: 999px;
 }
@@ -367,24 +378,27 @@ dialog textarea[name='reason'] {
    The reflowed rendering of the document, shown on phones in place of the
    scaled page images. Chrome only; the document inside the frame carries its
    own stylesheet. */
-#hx-read { margin: 0 0 4px; }
+#hx-read { margin: 0 0 4px; max-width: 100%; }
 #hx-read .hx-read-bar {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px;
   padding: 8px 16px;
+  max-width: 100%;
   font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
   color: var(--hx-muted);
 }
+#hx-read .hx-read-bar span { min-width: 0; overflow-wrap: anywhere; }
 #hx-read .hx-read-bar button {
-  min-height: 36px; padding: 0 10px;
+  min-height: 44px; min-width: 44px; padding: 0 12px;
   border: 1px solid var(--hx-line); border-radius: 8px;
   background: transparent; color: var(--hx-deep);
   font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: none;
   cursor: pointer;
 }
+#hx-read .hx-read-bar button:disabled { cursor: wait; }
 #hx-read .hx-read-bar button:hover { background: rgba(37, 99, 70, .07); }
-#hx-read-frame {
-  display: block; width: 100%; border: 1px solid var(--hx-line); border-radius: 6px;
-  background: #fff; overflow: hidden;
+#hx-read-doc {
+  width: 100%; border: 1px solid var(--hx-line); border-radius: 6px;
+  background: #fff;
 }
 @media (min-width: 768px) { #hx-read { display: none !important; } }
 
