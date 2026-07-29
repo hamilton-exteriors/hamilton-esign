@@ -163,6 +163,7 @@
             });
           };
           var showPdf = function (announceChange) {
+            document.documentElement.classList.remove('hx-readable-active');
             for (var i = 0; i < pages.length; i++) pages[i].style.display = '';
             readDoc.hidden = true;
             showingReflow = false;
@@ -236,6 +237,7 @@
                   return;
                 }
                 for (var i = 0; i < pages.length; i++) pages[i].style.display = 'none';
+                document.documentElement.classList.add('hx-readable-active');
                 showingReflow = true;
                 toggle.setAttribute('aria-expanded', 'true');
                 toggle.textContent = labels.show_page;

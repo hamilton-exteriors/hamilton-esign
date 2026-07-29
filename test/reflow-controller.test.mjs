@@ -136,17 +136,20 @@ test('PDF remains first until readable view is explicitly activated, then viewpo
     await activateReadableView(page);
     await page.waitForFunction((text) => document.querySelector('#hx-read-status')?.textContent === text, englishLabels.readable_view_shown);
     assert.equal(await page.locator('#hx-read-toggle').getAttribute('aria-expanded'), 'true');
+    assert.equal(await page.locator('html').evaluate((node) => node.classList.contains('hx-readable-active')), true);
     assert.deepEqual(requests.filter((path) => path.startsWith('/reflow/')), ['/reflow/index.json', '/reflow/fixture.reflow.html']);
 
     await page.locator('#hx-read-toggle').click();
     await page.waitForSelector('page-container .field-area');
     await page.waitForFunction((text) => document.querySelector('#hx-read-status')?.textContent === text, englishLabels.page_shown);
     assert.equal(await page.locator('#hx-read-toggle').getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.locator('html').evaluate((node) => node.classList.contains('hx-readable-active')), false);
     assert.notEqual(await page.locator('page-container').evaluate((node) => getComputedStyle(node).display), 'none');
 
     await activateReadableView(page);
     await page.setViewportSize({ width: 768, height: 390 });
     await page.waitForSelector('page-container .field-area');
+    assert.equal(await page.locator('html').evaluate((node) => node.classList.contains('hx-readable-active')), false);
     assert.notEqual(await page.locator('page-container').evaluate((node) => getComputedStyle(node).display), 'none');
 
     await page.setViewportSize({ width: 767, height: 844 });
