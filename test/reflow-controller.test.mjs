@@ -30,13 +30,14 @@ function documentHtml(reflowUuid = 'u1', labels = englishLabels) {
   return `<!doctype html><html lang="en"><head><style>
     ${hamiltonCss}
     page-container{display:block;width:100%;height:520px}
-    .form-container{position:fixed;z-index:20;right:0;bottom:0;left:0;min-height:96px;background:#fff}
+    .tray-shell{position:fixed;z-index:20;right:0;bottom:0;left:0;height:0}
+    .form-container{position:absolute;right:0;bottom:0;left:0;min-height:96px;background:#fff}
     #hx-read-doc [data-hx-uuid]{position:relative;display:inline-block;width:130px;min-height:44px}
     #hx-read-doc [data-hx-uuid]>.field-area{position:absolute;inset:0;width:100%;height:100%}
   </style></head><body>
     <header><h1>Fixture Document</h1></header>
     <main>
-      <div class="form-container"><nav aria-label="Form progress"><div class="flex items-center flex-wrap steps-progress"><button type="button" aria-label="Step 1"><span class="steps-progress-current"></span></button><button type="button" aria-label="Step 2"><span></span></button><button type="button" aria-label="Step 3"><span></span></button></div></nav></div>
+      <div class="tray-shell"><div class="form-container"><nav aria-label="Form progress"><div class="flex items-center flex-wrap steps-progress"><button type="button" aria-label="Step 1"><span class="steps-progress-current"></span></button><button type="button" aria-label="Step 2"><span></span></button><button type="button" aria-label="Step 3"><span></span></button></div></nav></div></div>
       <page-container id="page-attachment-0"><div class="field-area" data-uuid="${reflowUuid}" tabindex="0">Field</div></page-container>
     </main>
     <script>
@@ -396,7 +397,7 @@ test('readable anchors reserve the full field target without covering adjacent t
   const fragment = `<style>
     #hx-read-doc{font-size:1rem;padding:1.25rem 1.125rem calc(2rem + var(--hx-form-clearance,0px))}
     #hx-read-doc p{font-size:1rem;line-height:1.55}
-    #hx-read-doc .ds{position:relative;display:inline-block;min-width:7.5rem;height:2.75rem;min-height:2.75rem;vertical-align:middle}
+    #hx-read-doc .ds{position:relative;display:inline-block;box-sizing:content-box;min-width:min(7.5rem,100%);max-width:100%;height:2.75rem;min-height:2.75rem;vertical-align:middle;border-bottom:.09375rem solid #777}
   </style><p><span class="ds" data-hx-uuid="u1"></span><span id="adjacent">Adjacent legal text</span></p>`;
   const { browser, page } = await fixture(fragment, { viewport: { width: 320, height: 640 } });
   try {
@@ -451,7 +452,7 @@ test('the last readable field scrolls above the fixed signer tray', async () => 
 
 test('wide reflow tables scroll locally while fields remain visible and focusable', async () => {
   const fragment = `<style>
-    #hx-read-doc .tbl{width:100%;min-width:0;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    #hx-read-doc .tbl{width:100%;min-width:0;max-width:100%;overflow-x:auto;contain:inline-size;-webkit-overflow-scrolling:touch}
     #hx-read-doc table{width:max-content;min-width:100%;border-collapse:collapse}
     #hx-read-doc td{white-space:nowrap;padding:8px}
   </style><div class="tbl"><table><tr><td><span data-hx-uuid="u1"></span></td><td>Extremely wide table content that must stay inside its local horizontal scroller</td></tr></table></div>`;
@@ -461,6 +462,8 @@ test('wide reflow tables scroll locally while fields remain visible and focusabl
     const metrics = await page.locator('.tbl').evaluate((table) => ({ client: table.clientWidth, scroll: table.scrollWidth }));
     assert.ok(metrics.scroll > metrics.client, JSON.stringify(metrics));
     assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+    assert.equal(await page.evaluate(() => document.scrollingElement.scrollWidth <= document.scrollingElement.clientWidth), true);
     const field = page.locator('#hx-read-doc .field-area');
     await field.focus();
     assert.equal(await field.evaluate((node) => {
@@ -478,10 +481,10 @@ test('all generated reflow fragments contain scoped, scalable, semantic document
   assert.equal(files.length, 14);
   for (const file of files) {
     const html = readFileSync(new URL(file, reflowDir), 'utf8');
-    assert.match(html, /#hx-read-doc \.tbl\s*\{width:100%;min-width:0;max-width:100%;overflow-x:auto/);
+    assert.match(html, /#hx-read-doc \.tbl\s*\{[^}]*overflow-x:auto;contain:inline-size/);
     assert.match(html, /#hx-read-doc table\s*\{width:max-content;min-width:100%/);
     assert.match(html, /#hx-read-doc\s*\{[\s\S]*font-size:1rem/);
-    assert.match(html, /#hx-read-doc \.ds\s*\{[^}]*height:2\.75rem;min-height:2\.75rem/);
+    assert.match(html, /#hx-read-doc \.ds\s*\{[^}]*box-sizing:content-box;[^}]*height:2\.75rem;min-height:2\.75rem/);
     assert.match(html, /var\(--hx-form-clearance, 0px\)/);
     assert.doesNotMatch(html, /-webkit-text-size-adjust|<th[^>]*>\s*<\/th>/);
     assert.doesNotMatch(html, /(?:^|})\s*body\s*\{/m);

@@ -127,7 +127,16 @@
             if (MOBILE.matches && tray) {
               var style = window.getComputedStyle(tray);
               var rect = tray.getBoundingClientRect();
-              if (style.position === 'fixed' && style.display !== 'none' && style.visibility !== 'hidden') {
+              var fixedToViewport = false;
+              var parent = tray;
+              while (parent && parent !== document.body) {
+                if (window.getComputedStyle(parent).position === 'fixed') {
+                  fixedToViewport = true;
+                  break;
+                }
+                parent = parent.parentElement;
+              }
+              if (fixedToViewport && style.display !== 'none' && style.visibility !== 'hidden') {
                 height = Math.ceil(rect.height);
               }
             }

@@ -377,7 +377,7 @@ strong{font-weight:700}
 hr{border:0;border-top:1px solid #d8d8d8;margin:1.25rem 0}
 /* Tables are the one thing that cannot simply reflow. Let them scroll inside
    their own box rather than forcing the page to scroll sideways. */
-.tbl{width:100%;min-width:0;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:.75rem 0 1.125rem}
+.tbl{width:100%;min-width:0;max-width:100%;overflow-x:auto;contain:inline-size;-webkit-overflow-scrolling:touch;margin:.75rem 0 1.125rem}
 table{width:max-content;min-width:100%;border-collapse:collapse;font-size:.875rem;line-height:1.4}
 th{text-align:left;font-weight:600;font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase;
    color:#555;border-bottom:1px solid #333;padding:.5rem .375rem}
@@ -387,15 +387,15 @@ td{padding:.5625rem .375rem;border-bottom:1px solid #e6e6e6;vertical-align:top}
 /* The real signer fields are absolutely positioned inside these anchors. The
    anchor itself must reserve the complete target in flow or a 44px child covers
    nearby legal text without moving it out of the way. */
-.ds{position:relative;display:inline-block;min-width:7.5rem;width:auto;height:2.75rem;min-height:2.75rem;
+.ds{position:relative;display:inline-block;box-sizing:content-box;min-width:min(7.5rem,100%);max-width:100%;width:auto;height:2.75rem;min-height:2.75rem;
     vertical-align:middle;border-bottom:.09375rem solid #7a7a7a}
-.ds-sig{min-width:11.875rem}
-.ds-box{min-width:2.75rem;width:2.75rem;height:2.75rem;border:.09375rem solid #555;
+.ds-sig{min-width:min(11.875rem,100%)}
+.ds-box{box-sizing:content-box;min-width:2.75rem;width:2.75rem;height:2.75rem;border:.09375rem solid #555;
         vertical-align:middle;margin-right:.3125rem}
-.ds-ini{min-width:3.5rem}
-.ds-date{min-width:6.875rem}
-.ds-phone{min-width:8.25rem}
-td .ds,td .ds-ini,td .ds-date{min-width:2.75rem}
+.ds-ini{min-width:min(3.5rem,100%)}
+.ds-date{min-width:min(6.875rem,100%)}
+.ds-phone{min-width:min(8.25rem,100%)}
+td .ds,td .ds-ini,td .ds-date{min-width:min(2.75rem,100%)}
 .letterhead{display:flex;align-items:flex-start;justify-content:space-between;gap:.875rem;
             margin:0 0 1.125rem;padding-bottom:.75rem;border-bottom:2px solid #1B3C2D}
 .letterhead img{height:2.125rem;width:auto;display:block}
