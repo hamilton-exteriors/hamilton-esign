@@ -5,8 +5,8 @@ unsure I say so. Where I broke something, I say that too.
 
 **Repo:** `hamilton-exteriors/hamilton-esign` (PUBLIC, AGPL-3.0)
 **Baseline before remediation:** `c922c07`
-**Remediation release:** `59b311b` on `origin/master`; Railway deployment
-`95649ebd-cfb7-4025-9999-1ab2f32eefa3` succeeded on 2026-07-28.
+**Signer hardening release:** `19463f8` on `origin/master`; Railway deployment
+`bb546228-f942-416e-82e1-302a8f3d9793` succeeded on 2026-07-28.
 **Live:** <https://sign.hamilton-exteriors.com> and
 <https://docuseal-production-7617.up.railway.app> — same service, both 200.
 **Railway:** project `backoffice` `9ff3cd8c-…`, env `72326ee3-…`, service
@@ -268,6 +268,12 @@ hosts returned 200. Git push alone still does not deploy this service.
   are pinned.
 
 **Post-deploy verification completed:**
+- Final headed, read-only walkthrough passed all five current private links at phone,
+  landscape, desktop, and 200% text scaling: exact field parity, 44px controls,
+  no page-level horizontal scroll, local table scrolling, final-field tray clearance,
+  Spanish signer controls, dialog focus containment/return, and zero browser errors.
+- The final release gates passed 44 tests, zero Semgrep findings, all 25 branded ERB
+  compilations, the pinned Docker build, and read-only verification of all 14 templates.
 - Disposable `ZZ TEST` IIPP, 65-anchor roster, and 33-anchor acknowledgment passed
   phone, Show Page, return-to-readable, both viewport crossings, and fresh desktop.
 - The stale-anchor interception kept every signer field on the visible PDF.
@@ -282,7 +288,7 @@ hosts returned 200. Git push alone still does not deploy this service.
 ```
 hamilton-esign/
   Dockerfile                  multi-stage: webpack (patched Vue) → docuseal 3.1.5 + overlays
-  patches/docuseal-inline-fields.mjs    7 asserting edits to areas.vue / area.vue
+  patches/docuseal-inline-fields.mjs    8 asserting edits to areas.vue / area.vue
   brand/                      hamilton.css, form.html.erb, _decline_form.html.erb, icons, fonts
   brand/reflow/               generated reading views + index.json (template name → slug)
   pipeline/                   build-docs, measure, build-templates, verify-templates,
