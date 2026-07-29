@@ -87,9 +87,8 @@ header, [role='banner'] { flex-wrap: wrap; }
    the page. */
 header .group {
   box-sizing: border-box;
-  width: 100%;
   min-width: 0;
-  max-width: 100%;
+  max-width: calc(100vw - 2rem);
   flex-wrap: wrap;
 }
 header download-button { max-width: 100%; }

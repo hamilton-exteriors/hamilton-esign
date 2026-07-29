@@ -254,9 +254,11 @@ test('200% Spanish header actions wrap without widening the page', async () => {
   try {
     await page.waitForSelector('#hx-read-toggle');
     await page.locator('header').evaluate((header) => {
+      header.style.paddingInline = '28px';
       header.innerHTML = '<div class="flex items-center gap-2 group"><h1>Contrato de Empleo</h1><download-button><button type="button">Descargar</button></download-button></div>';
-      document.documentElement.style.fontSize = '200%';
     });
+    assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
     assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
     const group = await page.locator('header .group').boundingBox();
     assert.ok(group && group.x + group.width <= 390, JSON.stringify(group));
