@@ -13,6 +13,7 @@ const DIR = BUILD_DIR;
 // canvas, and every "we fixed legibility" claim was false at the last mile.
 // Two constants for one fact is the bug; there is now one.
 import { PAGE } from './build-docs.mjs';
+import { validateGeneratedGeometry } from './field-geometry.mjs';
 const manifest = JSON.parse(readFileSync(`${DIR}/manifest.json`, 'utf8'));
 
 // Injected: flow content into fixed pages, refine types, measure.
@@ -159,12 +160,23 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
     if (!moved) break;
   }
 
-  // Running footer. Written as a data attribute the CSS renders through
-  // ::after, and positioned inside the bottom margin, so adding it cannot change
-  // the flow this function just measured. A signed page with no identity and no
-  // "3 of 9" is hard to audit and easy to separate.
+  // Running footer. Two real children are required: a tab inside one generated
+  // string remains one flex item and leaves the page count beside the left copy.
+  // Appended after pagination and absolutely positioned in the bottom margin, so
+  // it cannot change the flow this function just measured.
   pages.forEach((p, i) => {
-    p.dataset.foot = `ABR Quality Resources Inc dba Hamilton Exteriors  ·  CSLB 1078806\tPage ${i + 1} of ${pages.length}`;
+    const footer = document.createElement('footer');
+    footer.className = 'page-footer';
+    const identity = document.createElement('span');
+    identity.className = 'page-footer-identity';
+    identity.textContent = 'ABR Quality Resources Inc dba Hamilton Exteriors · CSLB 1078806';
+    const number = document.createElement('span');
+    number.className = 'page-footer-number';
+    number.textContent = `Page ${i + 1} of ${pages.length}`;
+    footer.append(identity, number);
+    const contentLast = p.lastElementChild;
+    if (contentLast) contentLast.classList.add('page-content-last');
+    p.appendChild(footer);
   });
 
   // Hard check: nothing may overflow its page, or the PDF will clip it.
@@ -181,12 +193,21 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
    *  separate <strong>. So the type has to be revisited wherever a name gets
    *  repaired. This lived inline in three places and only ever checked date,
    *  which is how a phone field stayed free text. One helper, called from each. */
+  const TYPE_CLASS = {
+    checkbox: 'ds-box', date: 'ds-date', initials: 'ds-ini',
+    phone: 'ds-phone', signature: 'ds-sig', text: '',
+  };
+  const setType = (el, type) => {
+    for (const className of Object.values(TYPE_CLASS)) if (className) el.classList.remove(className);
+    if (TYPE_CLASS[type]) el.classList.add(TYPE_CLASS[type]);
+    el.dataset.type = type;
+  };
   const retype = (el, label) => {
     const t = norm(label);
     if (!t) return;
-    if (/\bdate\b|\bfecha\b/.test(t)) el.dataset.type = 'date';
-    else if (/signature|firma/.test(t)) el.dataset.type = 'signature';
-    else if (/\bphone\b|\btelephone\b|\btel[eé]fono\b|\bcelular\b/.test(t)) el.dataset.type = 'phone';
+    if (/\bdate\b|\bfecha\b|\breviewed\s*\/\s*updated\b/.test(t)) setType(el, 'date');
+    else if (/signature|firma/.test(t)) setType(el, 'signature');
+    else if (/\bphone\b|\btelephone\b|\btel[eé]fono\b|\bcelular\b/.test(t)) setType(el, 'phone');
   };
   /** Cut to max chars at a word boundary, so a prompt never ends mid-word. */
   const clip = (s, max) => {
@@ -212,7 +233,7 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
       // contain the English string "initial" (no t) — without this every
       // initials box on the Spanish roster would type as free text.
       if (/initial|inicial/.test(label)) {
-        el.dataset.type = 'initials';
+        setType(el, 'initials');
         // Name the initial after WHAT is being acknowledged, not the row number.
         // The signer is attesting to receiving a specific document; a prompt
         // reading "Initials r2" asks them to initial 14 legal receipts blind.
@@ -225,8 +246,8 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
         // produced prompts like "...de médico personal (compensación de traba".
         el.dataset.name = item ? clip(item, 70) : `Initials r${tr.rowIndex}`;
       }
-      else if (/date|fecha/.test(label)) { el.dataset.type = 'date'; }
-      else if (/signature|firma/.test(label)) { el.dataset.type = 'signature'; }
+      else if (/date|fecha/.test(label)) { setType(el, 'date'); }
+      else if (/signature|firma/.test(label)) { setType(el, 'signature'); }
       else if (label) { el.dataset.name = (th.textContent.trim() + ' r' + tr.rowIndex).slice(0, 60); }
 
       // Label/value tables ("Effective date | ____") put the label in the row's
@@ -330,7 +351,32 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
       });
     }
   });
-  return { pageCount: pages.length, fields: out, overflow };
+  const footers = pages.map((p, pageIndex) => {
+    const pageRect = p.getBoundingClientRect();
+    const footer = p.querySelector('.page-footer');
+    const identity = footer && footer.querySelector('.page-footer-identity');
+    const number = footer && footer.querySelector('.page-footer-number');
+    const footerRect = footer && footer.getBoundingClientRect();
+    const identityRect = identity && identity.getBoundingClientRect();
+    const numberRect = number && number.getBoundingClientRect();
+    return {
+      page: pageIndex,
+      count: p.querySelectorAll('.page-footer').length,
+      identity: identity && identity.textContent,
+      number: number && number.textContent,
+      left: identityRect && +(identityRect.left - pageRect.left).toFixed(2),
+      right: numberRect && +(pageRect.right - numberRect.right).toFixed(2),
+      top: footerRect && +(footerRect.top - pageRect.top).toFixed(2),
+      bottom: footerRect && +(pageRect.bottom - footerRect.bottom).toFixed(2),
+    };
+  });
+  const footerProblems = footers.filter((footer) =>
+    footer.count !== 1 ||
+    footer.identity !== 'ABR Quality Resources Inc dba Hamilton Exteriors · CSLB 1078806' ||
+    footer.number !== `Page ${footer.page + 1} of ${pages.length}` ||
+    Math.abs(footer.left - ml) > 1 || Math.abs(footer.right - mr) > 1 ||
+    footer.top < h - mb || footer.bottom < 0);
+  return { pageCount: pages.length, fields: out, overflow, footers, footerProblems };
 };
 
 const browser = await chromium.launch();
@@ -353,15 +399,20 @@ for (const m of manifest) {
   await page.close();
   // Verify the PDF paginated to exactly the pages we measured against.
   const pdfPages = (readFileSync(`${DIR}/${m.slug}.pdf`).toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
-  const ok = pdfPages === res.pageCount && res.overflow.length === 0 && res.fields.length === m.fields.length;
+  const geometryProblems = validateGeneratedGeometry({ pageCount: res.pageCount, fields: res.fields });
+  const ok = pdfPages === res.pageCount && res.overflow.length === 0 &&
+    res.footerProblems.length === 0 && geometryProblems.length === 0 &&
+    res.fields.length === m.fields.length;
   const details = [];
   if (pdfPages !== res.pageCount) details.push(`PDF=${pdfPages} vs ${res.pageCount}`);
   if (res.overflow.length) details.push(`overflow:${JSON.stringify(res.overflow)}`);
+  if (res.footerProblems.length) details.push(`footer:${JSON.stringify(res.footerProblems)}`);
+  if (geometryProblems.length) details.push(`geometry:${JSON.stringify(geometryProblems)}`);
   if (res.fields.length !== m.fields.length) details.push(`fields=${res.fields.length} vs ${m.fields.length}`);
   const flag = ok ? 'ok' : details.join(' ');
   console.log(`${m.slug.padEnd(34)} pages=${String(res.pageCount).padStart(2)} fields=${String(res.fields.length).padStart(3)}  ${flag}`);
   if (!ok) failures.push(`${m.slug}: ${flag}`);
-  results.push({ slug: m.slug, pageCount: res.pageCount, pdfPages, fields: res.fields });
+  results.push({ slug: m.slug, pageCount: res.pageCount, pdfPages, footers: res.footers, fields: res.fields });
 }
 await browser.close();
 if (failures.length) {

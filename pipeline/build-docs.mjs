@@ -68,6 +68,7 @@ body{
 .page:last-child{page-break-after:auto;break-after:auto}
 .page>*:first-child{margin-top:0}
 .page>*:last-child{margin-bottom:0}
+.page > .page-content-last{margin-bottom:0}
 /* Document title, 24pt bold with the wide tracking the standard calls for. */
 h1{font-size:32px;line-height:38px;font-weight:700;letter-spacing:.02em;margin:0 0 8px}
 /* Section, 18pt. The rule under it separates sections without a heavy band. */
@@ -105,14 +106,15 @@ td{padding:8px 6px;border-bottom:1px solid #e2e2e2;vertical-align:top}
 
 /* ---- running footer -------------------------------------------------------
    Absolutely placed inside the bottom margin, so it never affects the flow the
-   pagination measures. measure.mjs stamps data-n / data-total. */
-.page::after{
-  content:attr(data-foot);
+   pagination measures. measure.mjs appends two real children after pagination;
+   a single pseudo-element string cannot align the page count independently. */
+.page-footer{
   position:absolute; left:${PAGE.ml}px; right:${PAGE.mr}px; bottom:${Math.round(PAGE.mb / 2.5)}px;
+  display:flex; align-items:flex-start; justify-content:space-between; gap:18px;
   font-size:10px; line-height:14px; color:#7a7a7a; letter-spacing:.04em;
-  border-top:1px solid #e2e2e2; padding-top:8px;
-  display:flex; justify-content:space-between; white-space:pre;
+  border-top:1px solid #e2e2e2; padding-top:8px; pointer-events:none;
 }
+.page-footer-number{margin-left:auto;text-align:right;white-space:nowrap}
 
 /* Field markers: invisible in print, measured in the browser. Sized as form
    fields on a Letter sheet (about 0.22in tall) rather than as phone tap
@@ -132,8 +134,10 @@ td{padding:8px 6px;border-bottom:1px solid #e2e2e2;vertical-align:top}
    put an initials box past the right edge, where DocuSeal clips or mis-places
    it. Table cells get their own floor. */
 td .ds, th .ds{min-width:44px;max-width:100%}
+td .ds:not(.ds-box):not(.ds-ini):not(.ds-date):not(.ds-phone):not(.ds-sig){min-width:180px}
 td .ds-ini{min-width:44px}
-td .ds-date{min-width:78px}
+td .ds-date{min-width:130px}
+td .ds-phone{min-width:150px}
 td .ds-sig{min-width:90px}
 `;
 
@@ -151,11 +155,11 @@ const RE_BLANK = /_{4,}/g;
 // instead ("Meals: none claimed") — a box beside an answer implies a question.
 const RE_CHECKBOX = /☐/g;
 
-function classify(label, seg) {
+export function classify(label, seg) {
   const c = (label + ' ' + seg).toLowerCase();
   if (/signature|sign here|\bfirma\b/.test(c)) return 'signature';
   if (/initial|iniciales/.test(c)) return 'initials';
-  if (/\bdate\b|\bfecha\b/.test(c)) return 'date';
+  if (/\bdate\b|\bfecha\b|\breviewed\s*\/\s*updated\b/.test(c)) return 'date';
   // DocuSeal has a real phone type that formats as the signer types, so nobody
   // has to enter the parentheses and the dash by hand.
   //
@@ -395,7 +399,10 @@ td{padding:.5625rem .375rem;border-bottom:1px solid #e6e6e6;vertical-align:top}
 .ds-ini{min-width:min(3.5rem,100%)}
 .ds-date{min-width:min(6.875rem,100%)}
 .ds-phone{min-width:min(8.25rem,100%)}
-td .ds,td .ds-ini,td .ds-date{min-width:min(2.75rem,100%)}
+td .ds,td .ds-ini{min-width:min(2.75rem,100%)}
+td .ds:not(.ds-box):not(.ds-ini):not(.ds-date):not(.ds-phone):not(.ds-sig){min-width:min(11.25rem,100%)}
+td .ds-date{min-width:min(6.875rem,100%)}
+td .ds-phone{min-width:min(8.25rem,100%)}
 .letterhead{display:flex;align-items:flex-start;justify-content:space-between;gap:.875rem;
             margin:0 0 1.125rem;padding-bottom:.75rem;border-bottom:2px solid #1B3C2D}
 .letterhead img{height:2.125rem;width:auto;display:block}

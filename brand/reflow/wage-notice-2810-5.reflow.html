@@ -32,7 +32,10 @@
 #hx-read-doc .ds-ini {min-width:min(3.5rem,100%)}
 #hx-read-doc .ds-date {min-width:min(6.875rem,100%)}
 #hx-read-doc .ds-phone {min-width:min(8.25rem,100%)}
-#hx-read-doc td .ds, #hx-read-doc td .ds-ini, #hx-read-doc td .ds-date {min-width:min(2.75rem,100%)}
+#hx-read-doc td .ds, #hx-read-doc td .ds-ini {min-width:min(2.75rem,100%)}
+#hx-read-doc td .ds:not(.ds-box):not(.ds-ini):not(.ds-date):not(.ds-phone):not(.ds-sig) {min-width:min(11.25rem,100%)}
+#hx-read-doc td .ds-date {min-width:min(6.875rem,100%)}
+#hx-read-doc td .ds-phone {min-width:min(8.25rem,100%)}
 #hx-read-doc .letterhead {display:flex;align-items:flex-start;justify-content:space-between;gap:.875rem;
             margin:0 0 1.125rem;padding-bottom:.75rem;border-bottom:2px solid #1B3C2D}
 #hx-read-doc .letterhead img {height:2.125rem;width:auto;display:block}
@@ -47,8 +50,8 @@ days</strong> of any change to the information below unless the change is shown 
 statement. Employee gets a signed copy; Hamilton keeps the original in the personnel file.</p>
 <hr>
 <p><strong>EMPLOYEE</strong></p>
-<p>Name: <span class="ds" id="f1" data-hx-uuid="f3b24864-9162-4358-961a-cbf4c1ed8a20" data-name="Name" data-type="text" data-owner="worker" data-section=""></span></p>
-<p>Start date: <span class="ds ds-date" id="f2" data-hx-uuid="f30f809b-433c-4105-bc00-97f6b25ca33e" data-name="Start date" data-type="date" data-owner="worker" data-section=""></span></p>
+<p>Name: <span class="ds" id="f1" data-hx-uuid="f3b24864-9162-4358-961a-cbf4c1ed8a20" data-name="Name" data-type="text" data-owner="worker" data-section="" data-type="text"></span></p>
+<p>Start date: <span class="ds ds-date" id="f2" data-hx-uuid="f30f809b-433c-4105-bc00-97f6b25ca33e" data-name="Start date" data-type="date" data-owner="worker" data-section="" data-type="date"></span></p>
 <h2>1. Rate(s) of pay</h2>
 <p><strong>Hourly rate:</strong> <strong>$16.90 per hour</strong> (California minimum wage), paid for every hour worked.</p>
 <p><strong>Local minimum wage:</strong> If the Employee works in a city whose local minimum wage is higher
@@ -102,11 +105,11 @@ a completed, approved job, in addition to the hourly rate above:</p>
 </tr>
 </thead>
 <tbody><tr>
-<td><span class="ds ds-box" id="f3" data-hx-uuid="55cc8a5c-06f7-43d0-b295-396fa77639b5" data-name="Roofer" data-type="checkbox" data-owner="employer" data-section=""></span> Roofer</td>
+<td><span class="ds ds-box" id="f3" data-hx-uuid="55cc8a5c-06f7-43d0-b295-396fa77639b5" data-name="Roofer" data-type="checkbox" data-owner="employer" data-section="" data-type="checkbox"></span> Roofer</td>
 <td><strong>$14.90 per square</strong></td>
 </tr>
 <tr>
-<td><span class="ds ds-box" id="f4" data-hx-uuid="e45016dd-2e7f-4187-a08b-d826abd11d24" data-name="Foreman" data-type="checkbox" data-owner="employer" data-section=""></span> Foreman</td>
+<td><span class="ds ds-box" id="f4" data-hx-uuid="e45016dd-2e7f-4187-a08b-d826abd11d24" data-name="Foreman" data-type="checkbox" data-owner="employer" data-section="" data-type="checkbox"></span> Foreman</td>
 <td><strong>$29.90 per square</strong></td>
 </tr>
 </tbody></table></div>
@@ -133,10 +136,10 @@ Is a staffing agency / business: <strong>NO</strong></p>
 <strong>Telephone:</strong> (650) 977-3241
 <strong>CSLB license:</strong> 1078806  <strong>FEIN:</strong> 87-2389370</p>
 <h2>6. Workers compensation carrier</h2>
-<p><strong>Carrier name:</strong> <span class="ds" id="f5" data-hx-uuid="2bde8091-4627-42f7-99db-07d8a8c45176" data-name="Field 5" data-type="text" data-owner="worker" data-section="6. Workers compensation carrier"></span></p>
-<p><strong>Policy number:</strong> <span class="ds" id="f6" data-hx-uuid="a6751608-04c5-4092-9873-b40eda7bf439" data-name="Field 6" data-type="text" data-owner="worker" data-section="6. Workers compensation carrier"></span></p>
-<p><strong>Carrier address:</strong> <span class="ds" id="f7" data-hx-uuid="3f14e829-6c92-4490-b5ae-f2fcdd4e2e0a" data-name="Field 7" data-type="text" data-owner="worker" data-section="6. Workers compensation carrier"></span></p>
-<p><strong>Carrier telephone:</strong> <span class="ds" id="f8" data-hx-uuid="172b1b10-d528-4539-91d4-e4986bbe8ffb" data-name="Field 8" data-type="text" data-owner="worker" data-section="6. Workers compensation carrier"></span></p>
+<p><strong>Carrier name:</strong> <span class="ds" id="f5" data-hx-uuid="2bde8091-4627-42f7-99db-07d8a8c45176" data-name="Field 5" data-type="text" data-owner="worker" data-section="6. Workers compensation carrier" data-type="text"></span></p>
+<p><strong>Policy number:</strong> <span class="ds" id="f6" data-hx-uuid="a6751608-04c5-4092-9873-b40eda7bf439" data-name="Field 6" data-type="text" data-owner="worker" data-section="6. Workers compensation carrier" data-type="text"></span></p>
+<p><strong>Carrier address:</strong> <span class="ds" id="f7" data-hx-uuid="3f14e829-6c92-4490-b5ae-f2fcdd4e2e0a" data-name="Field 7" data-type="text" data-owner="worker" data-section="6. Workers compensation carrier" data-type="text"></span></p>
+<p><strong>Carrier telephone:</strong> <span class="ds ds-phone" id="f8" data-hx-uuid="172b1b10-d528-4539-91d4-e4986bbe8ffb" data-name="Field 8" data-type="phone" data-owner="worker" data-section="6. Workers compensation carrier"></span></p>
 <p><strong>If this section is blank, Hamilton has not yet bound the roofing coverage and you must
 not be put on a roof.</strong> Ask before you start. Hamilton fills this in and re-issues this
 notice within 7 days of the policy binding, as Labor Code §2810.5(b) requires.</p>
@@ -145,8 +148,8 @@ notice within 7 days of the policy binding, as Labor Code §2810.5(b) requires.<
 per year under Labor Code §246. The Employee may accrue and use sick leave, may not be
 retaliated against for using it, and may file a complaint with the Labor Commissioner if
 retaliated against.</p>
-<p><span class="ds ds-box" id="f9" data-hx-uuid="c9fa4af0-7e18-4f07-8f32-a5a52e51f7e4" data-name="Sick leave: accrual" data-type="checkbox" data-owner="employer" data-section="7. Paid sick leave"></span> Accrual: 1 hour per 30 hours worked, 40-hour/5-day cap per year
-<span class="ds ds-box" id="f10" data-hx-uuid="f3cd017e-1250-4825-8395-9780e1c2bc29" data-name="Sick leave: front load" data-type="checkbox" data-owner="employer" data-section="7. Paid sick leave"></span> Front load: 40 hours / 5 days at the start of each year</p>
+<p><span class="ds ds-box" id="f9" data-hx-uuid="c9fa4af0-7e18-4f07-8f32-a5a52e51f7e4" data-name="Sick leave: accrual" data-type="checkbox" data-owner="employer" data-section="7. Paid sick leave" data-type="checkbox"></span> Accrual: 1 hour per 30 hours worked, 40-hour/5-day cap per year
+<span class="ds ds-box" id="f10" data-hx-uuid="f3cd017e-1250-4825-8395-9780e1c2bc29" data-name="Sick leave: front load" data-type="checkbox" data-owner="employer" data-section="7. Paid sick leave" data-type="checkbox"></span> Front load: 40 hours / 5 days at the start of each year</p>
 <h2>8. Emergency or disaster declaration</h2>
 <p>The Employee is required to report to a worksite covered by an emergency or disaster
 declaration issued within 30 days of the start date — <strong>NO</strong></p>
@@ -158,15 +161,15 @@ forms or other employment records as required by Labor Code §90.2.</p>
 <p>The Employee acknowledges receipt of this notice. The Employee&#39;s signature confirms receipt
 only; it is not an agreement that the information is correct and it does not waive any
 right. If any information above is wrong, tell Hamilton management immediately.</p>
-<p><span class="ds ds-box" id="f11" data-hx-uuid="697b70e6-04bf-4a75-8a80-11d36d2737ef" data-name="Language: English" data-type="checkbox" data-owner="employer" data-section="Acknowledgment of receipt"></span> The Employee&#39;s primary language is English and this notice was provided in English.
-<span class="ds ds-box" id="f12" data-hx-uuid="0054d6b1-f919-4e8f-8e60-774e6679672f" data-name="Language: Spanish" data-type="checkbox" data-owner="employer" data-section="Acknowledgment of receipt"></span> The Employee&#39;s primary language is Spanish and the Spanish version was also provided.</p>
+<p><span class="ds ds-box" id="f11" data-hx-uuid="697b70e6-04bf-4a75-8a80-11d36d2737ef" data-name="Language: English" data-type="checkbox" data-owner="employer" data-section="Acknowledgment of receipt" data-type="checkbox"></span> The Employee&#39;s primary language is English and this notice was provided in English.
+<span class="ds ds-box" id="f12" data-hx-uuid="0054d6b1-f919-4e8f-8e60-774e6679672f" data-name="Language: Spanish" data-type="checkbox" data-owner="employer" data-section="Acknowledgment of receipt" data-type="checkbox"></span> The Employee&#39;s primary language is Spanish and the Spanish version was also provided.</p>
 <p><strong>Employee</strong></p>
-<p>Signature: <span class="ds ds-sig" id="f13" data-hx-uuid="8a6a2ce9-9dd4-4c23-8fa5-30aec57a0342" data-name="Signature" data-type="signature" data-owner="worker" data-section=""></span></p>
-<p>Print name: <span class="ds" id="f14" data-hx-uuid="bca67e42-875d-4882-b93a-3c784a447715" data-name="Print name" data-type="text" data-owner="worker" data-section=""></span></p>
-<p>Date: <span class="ds ds-date" id="f15" data-hx-uuid="fc4edc77-8985-4eb3-a4fa-ae78c785dce6" data-name="Date" data-type="date" data-owner="worker" data-section=""></span></p>
+<p>Signature: <span class="ds ds-sig" id="f13" data-hx-uuid="8a6a2ce9-9dd4-4c23-8fa5-30aec57a0342" data-name="Signature" data-type="signature" data-owner="worker" data-section="" data-type="signature"></span></p>
+<p>Print name: <span class="ds" id="f14" data-hx-uuid="bca67e42-875d-4882-b93a-3c784a447715" data-name="Print name" data-type="text" data-owner="worker" data-section="" data-type="text"></span></p>
+<p>Date: <span class="ds ds-date" id="f15" data-hx-uuid="fc4edc77-8985-4eb3-a4fa-ae78c785dce6" data-name="Date" data-type="date" data-owner="worker" data-section="" data-type="date"></span></p>
 <p><strong>ABR Quality Resources Inc dba Hamilton Exteriors</strong></p>
-<p>Signature: <span class="ds ds-sig" id="f16" data-hx-uuid="77a4e0f0-d27c-4253-8dff-6adc0bacba44" data-name="Signature" data-type="signature" data-owner="employer" data-section=""></span></p>
-<p>Name / title: <span class="ds" id="f17" data-hx-uuid="b6ea886d-f0d8-4c13-a7c2-ca6e6c7c1609" data-name="Name / title" data-type="text" data-owner="employer" data-section=""></span></p>
-<p>Date: <span class="ds ds-date" id="f18" data-hx-uuid="914be03d-01c3-4ecc-8207-4f202cd41116" data-name="Date" data-type="date" data-owner="employer" data-section=""></span></p>
+<p>Signature: <span class="ds ds-sig" id="f16" data-hx-uuid="77a4e0f0-d27c-4253-8dff-6adc0bacba44" data-name="Signature" data-type="signature" data-owner="employer" data-section="" data-type="signature"></span></p>
+<p>Name / title: <span class="ds" id="f17" data-hx-uuid="b6ea886d-f0d8-4c13-a7c2-ca6e6c7c1609" data-name="Name / title" data-type="text" data-owner="employer" data-section="" data-type="text"></span></p>
+<p>Date: <span class="ds ds-date" id="f18" data-hx-uuid="914be03d-01c3-4ecc-8207-4f202cd41116" data-name="Date" data-type="date" data-owner="employer" data-section="" data-type="date"></span></p>
 <hr>
-<p><em>Copy given to Employee on: <span class="ds" id="f19" data-hx-uuid="d8c39198-9c69-473c-81b6-f3c10e15c205" data-name="Copy given to Employee on" data-type="text" data-owner="employer" data-section=""></span> · Original filed in personnel file.</em></p>
+<p><em>Copy given to Employee on: <span class="ds" id="f19" data-hx-uuid="d8c39198-9c69-473c-81b6-f3c10e15c205" data-name="Copy given to Employee on" data-type="text" data-owner="employer" data-section="" data-type="text"></span> · Original filed in personnel file.</em></p>

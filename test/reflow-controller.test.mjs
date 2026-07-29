@@ -35,7 +35,15 @@ function documentHtml(reflowUuid = 'u1', labels = englishLabels) {
     #hx-read-doc [data-hx-uuid]{position:relative;display:inline-block;width:130px;min-height:44px}
     #hx-read-doc [data-hx-uuid]>.field-area{position:absolute;inset:0;width:100%;height:100%}
   </style></head><body>
-    <header><h1>Fixture Document</h1></header>
+    <div class="flex mt-4"><span class="hx-brand"><span class="hx-brand-mark">Hamilton</span></span></div>
+    <header id="signing_form_header" class="flex items-center" style="margin-bottom:-16px">
+      <h1 style="width:100%;overflow:hidden;white-space:nowrap">Fixture Document</h1>
+      <div class="flex items-center gap-2 group" style="margin-left:20px;flex-shrink:0">
+        <modal-button><button id="decline_button" type="button" aria-label="Decline">Decline</button></modal-button>
+        <span id="complete_button_container" class="peer contents"></span>
+        <download-button role="button" tabindex="0" aria-label="Download">Download</download-button>
+      </div>
+    </header>
     <main>
       <div class="tray-shell"><div class="form-container"><nav aria-label="Form progress"><div class="flex items-center flex-wrap steps-progress"><button type="button" aria-label="Step 1"><span class="steps-progress-current"></span></button><button type="button" aria-label="Step 2"><span></span></button><button type="button" aria-label="Step 3"><span></span></button></div></nav></div></div>
       <page-container id="page-attachment-0"><div class="field-area" data-uuid="${reflowUuid}" tabindex="0">Field</div></page-container>
@@ -360,8 +368,12 @@ test('keyboard activation works and reduced motion suppresses transitions', asyn
   const { browser, page } = await fixture('<span class="ds" data-hx-uuid="u1"></span>', { reducedMotion: true });
   try {
     await page.waitForSelector('#hx-read-toggle');
-    for (let i = 0; i < 4; i += 1) await page.keyboard.press('Tab');
-    assert.equal(await page.evaluate(() => document.activeElement?.id), 'hx-read-toggle');
+    let focused = '';
+    for (let i = 0; i < 10 && focused !== 'hx-read-toggle'; i += 1) {
+      await page.keyboard.press('Tab');
+      focused = await page.evaluate(() => document.activeElement?.id || '');
+    }
+    assert.equal(focused, 'hx-read-toggle');
     await page.keyboard.press('Enter');
     await page.waitForSelector('#hx-read-doc .field-area');
     await page.waitForFunction((text) => document.querySelector('#hx-read-toggle')?.textContent === text, englishLabels.show_page);
@@ -373,22 +385,42 @@ test('keyboard activation works and reduced motion suppresses transitions', asyn
   }
 });
 
-test('200% text scaling keeps signer chrome reflowed without page overflow', async () => {
+test('200% text scaling keeps the two-column signer header and readable bar visible', async () => {
   const { browser, page } = await fixture('<span class="ds" data-hx-uuid="u1"></span>', { viewport: { width: 320, height: 640 } });
   try {
     await page.waitForSelector('#hx-read-toggle');
+    await page.locator('#signing_form_header h1').evaluate((node) => { node.textContent = 'Injury and Illness Prevention Program'; });
     await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
-    assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
-    const toggle = await page.locator('#hx-read-toggle').boundingBox();
-    assert.ok(toggle && toggle.width >= 44 && toggle.height >= 44, JSON.stringify(toggle));
-    const header = await page.locator('header').boundingBox();
-    assert.ok(header && header.width <= 320, JSON.stringify(header));
+    const metrics = await page.evaluate(() => {
+      const rect = (selector) => {
+        const box = document.querySelector(selector).getBoundingClientRect();
+        return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height };
+      };
+      return {
+        overflow: document.body.scrollWidth > innerWidth,
+        header: rect('#signing_form_header'),
+        identity: rect('.hx-signer-identity'),
+        actions: rect('.hx-signer-actions'),
+        decline: rect('#decline_button'),
+        download: rect('.hx-signer-actions download-button'),
+        bar: rect('.hx-read-bar'),
+        readLabel: rect('.hx-read-bar > span:first-child'),
+        toggle: rect('#hx-read-toggle'),
+      };
+    });
+    assert.equal(metrics.overflow, false, JSON.stringify(metrics));
+    assert.ok(metrics.header.right <= 320 && metrics.identity.right <= metrics.actions.left + 0.5, JSON.stringify(metrics));
+    assert.ok(Math.abs(metrics.decline.top - metrics.download.top) <= 8, JSON.stringify(metrics));
+    assert.ok(metrics.decline.width >= 44 && metrics.decline.height >= 44, JSON.stringify(metrics));
+    assert.ok(metrics.download.width >= 44 && metrics.download.height >= 44, JSON.stringify(metrics));
+    assert.ok(metrics.toggle.width >= 44 && metrics.toggle.height >= 44 && metrics.toggle.right <= metrics.bar.right, JSON.stringify(metrics));
+    assert.ok(metrics.readLabel.right <= metrics.toggle.left + 0.5, JSON.stringify(metrics));
   } finally {
     await browser.close();
   }
 });
 
-test('200% Spanish header actions wrap without widening the page', async () => {
+test('Spanish signer actions stay split right of the identity without widening the page', async () => {
   const labels = {
     readable_view: 'Vista legible',
     show_readable_view: 'Mostrar vista legible',
@@ -397,15 +429,21 @@ test('200% Spanish header actions wrap without widening the page', async () => {
   const { browser, page } = await fixture('<span class="ds" data-hx-uuid="u1"></span>', { labels, viewport: { width: 390, height: 844 } });
   try {
     await page.waitForSelector('#hx-read-toggle');
-    await page.locator('header').evaluate((header) => {
-      header.style.paddingInline = '28px';
-      header.innerHTML = '<div class="flex items-center gap-2 group"><h1>Contrato de Empleo</h1><download-button><button type="button">Descargar</button></download-button></div>';
-    });
-    assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
+    await page.locator('#signing_form_header h1').evaluate((node) => { node.textContent = 'Plan de Prevención de Enfermedades por Calor'; });
+    await page.locator('#decline_button').evaluate((node) => { node.textContent = 'Rechazar'; node.setAttribute('aria-label', 'Rechazar'); });
+    await page.locator('.hx-signer-actions download-button').evaluate((node) => { node.textContent = 'Descargar'; node.setAttribute('aria-label', 'Descargar'); });
     await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
-    assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
-    const group = await page.locator('header .group').boundingBox();
-    assert.ok(group && group.x + group.width <= 390, JSON.stringify(group));
+    const metrics = await page.evaluate(() => {
+      const identity = document.querySelector('.hx-signer-identity').getBoundingClientRect();
+      const actions = document.querySelector('.hx-signer-actions').getBoundingClientRect();
+      const controls = [...document.querySelectorAll('.hx-signer-actions button, .hx-signer-actions download-button')]
+        .map((node) => { const r = node.getBoundingClientRect(); return { top: r.top, width: r.width, height: r.height, right: r.right }; });
+      return { overflow: document.body.scrollWidth > innerWidth, identityRight: identity.right, actionsLeft: actions.left, actionsRight: actions.right, controls };
+    });
+    assert.equal(metrics.overflow, false, JSON.stringify(metrics));
+    assert.ok(metrics.identityRight <= metrics.actionsLeft + 0.5 && metrics.actionsRight <= 390, JSON.stringify(metrics));
+    assert.ok(metrics.controls.every((control) => control.width >= 44 && control.height >= 44 && control.right <= 390), JSON.stringify(metrics));
+    assert.ok(metrics.controls.every((control) => Math.abs(control.top - metrics.controls[0].top) <= 8), JSON.stringify(metrics));
   } finally {
     await browser.close();
   }

@@ -32,7 +32,10 @@
 #hx-read-doc .ds-ini {min-width:min(3.5rem,100%)}
 #hx-read-doc .ds-date {min-width:min(6.875rem,100%)}
 #hx-read-doc .ds-phone {min-width:min(8.25rem,100%)}
-#hx-read-doc td .ds, #hx-read-doc td .ds-ini, #hx-read-doc td .ds-date {min-width:min(2.75rem,100%)}
+#hx-read-doc td .ds, #hx-read-doc td .ds-ini {min-width:min(2.75rem,100%)}
+#hx-read-doc td .ds:not(.ds-box):not(.ds-ini):not(.ds-date):not(.ds-phone):not(.ds-sig) {min-width:min(11.25rem,100%)}
+#hx-read-doc td .ds-date {min-width:min(6.875rem,100%)}
+#hx-read-doc td .ds-phone {min-width:min(8.25rem,100%)}
 #hx-read-doc .letterhead {display:flex;align-items:flex-start;justify-content:space-between;gap:.875rem;
             margin:0 0 1.125rem;padding-bottom:.75rem;border-bottom:2px solid #1B3C2D}
 #hx-read-doc .letterhead img {height:2.125rem;width:auto;display:block}
@@ -48,11 +51,11 @@ Cal/OSHA 8 CCR §3395 — Prevención de Enfermedades por Calor en Lugares de Tr
 
 <tbody><tr>
 <th scope="row">Fecha de vigencia</th>
-<td><span class="ds" id="f1" data-hx-uuid="d08bc691-836d-4e70-ac5b-75b0f6b6b3cd" data-name="Field 1" data-type="text" data-owner="employer" data-section=""></span></td>
+<td><span class="ds ds-date" id="f1" data-hx-uuid="d08bc691-836d-4e70-ac5b-75b0f6b6b3cd" data-name="Field 1" data-type="date" data-owner="employer" data-section=""></span></td>
 </tr>
 <tr>
 <th scope="row">Persona responsable</th>
-<td>Alex Li, Presidente — <span class="ds" id="f2" data-hx-uuid="5bcb5972-dc5f-408a-b089-1ae4110d0536" data-name="Alex Li, Presidente" data-type="text" data-owner="employer" data-section=""></span></td>
+<td>Alex Li, Presidente — <span class="ds" id="f2" data-hx-uuid="5bcb5972-dc5f-408a-b089-1ae4110d0536" data-name="Alex Li, Presidente" data-type="text" data-owner="employer" data-section="" data-type="text"></span></td>
 </tr>
 <tr>
 <th scope="row">Aplica a</th>
@@ -210,5 +213,5 @@ la sombra se sube al camión. Si es de 95°F o más, se anuncian los procedimien
 en la junta antes del turno y la hora de inicio se adelanta cuando el horario lo permite.</p>
 <hr>
 <p><strong>Firmado</strong></p>
-<p>Firma: <span class="ds ds-sig" id="f3" data-hx-uuid="8a839642-6464-425a-a8f5-71259085908c" data-name="Firma" data-type="signature" data-owner="employer" data-section="9. Vigilancia del clima"></span>  Alex Li, Presidente, ABR Quality Resources Inc dba Hamilton Exteriors</p>
-<p>Fecha: <span class="ds ds-date" id="f4" data-hx-uuid="8aa54152-ab4f-416d-8619-f6b2e0256278" data-name="Fecha" data-type="date" data-owner="employer" data-section="9. Vigilancia del clima"></span></p>
+<p>Firma: <span class="ds ds-sig" id="f3" data-hx-uuid="8a839642-6464-425a-a8f5-71259085908c" data-name="Firma" data-type="signature" data-owner="employer" data-section="9. Vigilancia del clima" data-type="signature"></span>  Alex Li, Presidente, ABR Quality Resources Inc dba Hamilton Exteriors</p>
+<p>Fecha: <span class="ds ds-date" id="f4" data-hx-uuid="8aa54152-ab4f-416d-8619-f6b2e0256278" data-name="Fecha" data-type="date" data-owner="employer" data-section="9. Vigilancia del clima" data-type="date"></span></p>

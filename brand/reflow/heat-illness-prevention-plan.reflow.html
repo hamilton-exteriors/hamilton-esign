@@ -32,7 +32,10 @@
 #hx-read-doc .ds-ini {min-width:min(3.5rem,100%)}
 #hx-read-doc .ds-date {min-width:min(6.875rem,100%)}
 #hx-read-doc .ds-phone {min-width:min(8.25rem,100%)}
-#hx-read-doc td .ds, #hx-read-doc td .ds-ini, #hx-read-doc td .ds-date {min-width:min(2.75rem,100%)}
+#hx-read-doc td .ds, #hx-read-doc td .ds-ini {min-width:min(2.75rem,100%)}
+#hx-read-doc td .ds:not(.ds-box):not(.ds-ini):not(.ds-date):not(.ds-phone):not(.ds-sig) {min-width:min(11.25rem,100%)}
+#hx-read-doc td .ds-date {min-width:min(6.875rem,100%)}
+#hx-read-doc td .ds-phone {min-width:min(8.25rem,100%)}
 #hx-read-doc .letterhead {display:flex;align-items:flex-start;justify-content:space-between;gap:.875rem;
             margin:0 0 1.125rem;padding-bottom:.75rem;border-bottom:2px solid #1B3C2D}
 #hx-read-doc .letterhead img {height:2.125rem;width:auto;display:block}
@@ -48,11 +51,11 @@ Cal/OSHA 8 CCR §3395 — Heat Illness Prevention in Outdoor Places of Employmen
 
 <tbody><tr>
 <th scope="row">Effective date</th>
-<td><span class="ds" id="f1" data-hx-uuid="2d30772e-64b2-460c-ac9b-06dea7fd01cd" data-name="Field 1" data-type="text" data-owner="employer" data-section=""></span></td>
+<td><span class="ds ds-date" id="f1" data-hx-uuid="2d30772e-64b2-460c-ac9b-06dea7fd01cd" data-name="Field 1" data-type="date" data-owner="employer" data-section=""></span></td>
 </tr>
 <tr>
 <th scope="row">Responsible person</th>
-<td>Alex Li, President — <span class="ds" id="f2" data-hx-uuid="f5e96cfb-14df-4e2b-8c8a-ad94fc492fd3" data-name="Alex Li, President" data-type="text" data-owner="employer" data-section=""></span></td>
+<td>Alex Li, President — <span class="ds" id="f2" data-hx-uuid="f5e96cfb-14df-4e2b-8c8a-ad94fc492fd3" data-name="Alex Li, President" data-type="text" data-owner="employer" data-section="" data-type="text"></span></td>
 </tr>
 <tr>
 <th scope="row">Applies to</th>
@@ -208,5 +211,5 @@ on the truck. If it is 95°F or higher, high-heat procedures are announced at th
 meeting and the start time moves earlier where the schedule allows.</p>
 <hr>
 <p><strong>Signed</strong></p>
-<p>Signature: <span class="ds ds-sig" id="f3" data-hx-uuid="16972eeb-168c-4b7e-ba15-099a45d76b07" data-name="Signature" data-type="signature" data-owner="employer" data-section="9. Weather monitoring"></span>  Alex Li, President, ABR Quality Resources Inc dba Hamilton Exteriors</p>
-<p>Date: <span class="ds ds-date" id="f4" data-hx-uuid="a1f43e32-b933-43cb-bedb-efc2bbba4614" data-name="Date" data-type="date" data-owner="employer" data-section="9. Weather monitoring"></span></p>
+<p>Signature: <span class="ds ds-sig" id="f3" data-hx-uuid="16972eeb-168c-4b7e-ba15-099a45d76b07" data-name="Signature" data-type="signature" data-owner="employer" data-section="9. Weather monitoring" data-type="signature"></span>  Alex Li, President, ABR Quality Resources Inc dba Hamilton Exteriors</p>
+<p>Date: <span class="ds ds-date" id="f4" data-hx-uuid="a1f43e32-b933-43cb-bedb-efc2bbba4614" data-name="Date" data-type="date" data-owner="employer" data-section="9. Weather monitoring" data-type="date"></span></p>

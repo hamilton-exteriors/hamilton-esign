@@ -4,7 +4,10 @@ import { createDocusealClient } from '../pipeline/docuseal-api.mjs';
 import { requireUniqueActiveTemplate, DEFAULT_DOCUMENT_SLUGS } from '../pipeline/registry.mjs';
 import { matchGeneratedFields } from '../pipeline/field-match.mjs';
 import { packetFor, validate } from '../pipeline/worker-types.mjs';
-import { scopeCss, assertScoped, normalizeReflowTables, scopeDocumentLanguages } from '../pipeline/build-docs.mjs';
+import { scopeCss, assertScoped, normalizeReflowTables, scopeDocumentLanguages, classify } from '../pipeline/build-docs.mjs';
+import { stampReflowAnchors } from '../pipeline/reflow-anchor.mjs';
+import { validateGeneratedGeometry } from '../pipeline/field-geometry.mjs';
+import { planIippMigration, buildMigratedFields, assertIippPostflight } from '../pipeline/migrate-iipp.mjs';
 
 const secrets = { url: 'https://docuseal.test', publicUrl: 'https://sign.test', apiKey: 'test' };
 
@@ -63,6 +66,104 @@ test('field matching is independent of API array order', () => {
   assert.equal(matched.get('f2'), 'u2');
   live.fields[0].areas[0].x = 0.41;
   assert.throws(() => matchGeneratedFields(generated, live), /no live field matches/);
+});
+
+test('IIPP administrative fields classify as phone and date controls', () => {
+  assert.equal(classify('Administrator phone', ''), 'phone');
+  assert.equal(classify('Reviewed / updated', ''), 'date');
+  assert.equal(classify('Effective date', ''), 'date');
+  assert.equal(classify('Program administrator', ''), 'text');
+});
+
+test('reflow stamping synchronizes measured field types and classes', () => {
+  const source = '<span class="ds" id="f1" data-type="text"></span>' +
+    '<span class="ds ds-date" id="f2" data-type="date" data-hx-uuid="stale"></span>';
+  const fields = [
+    { id: 'f1', type: 'phone' },
+    { id: 'f2', type: 'date' },
+  ];
+  const result = stampReflowAnchors(source, fields, new Map([['f1', 'u1'], ['f2', 'u2']]));
+  assert.equal(result.stamped, 2);
+  assert.match(result.html, /class="ds ds-phone" id="f1" data-hx-uuid="u1" data-type="phone"/);
+  assert.match(result.html, /class="ds ds-date" id="f2" data-hx-uuid="u2" data-type="date"/);
+  assert.doesNotMatch(result.html, /stale/);
+  assert.throws(() => stampReflowAnchors(source, fields, new Map([['f1', 'u1']])), /missing live UUID/);
+});
+
+test('generated geometry rejects narrow, overlapping, and semantically mistyped fields', () => {
+  const valid = {
+    pageCount: 1,
+    fields: [
+      { name: 'Administrator phone', type: 'phone', page: 0, x: 0.2, y: 0.2, w: 150 / 816, h: 21 / 1056 },
+      { name: 'Reviewed / updated', type: 'date', page: 0, x: 0.5, y: 0.3, w: 130 / 816, h: 21 / 1056 },
+    ],
+  };
+  assert.deepEqual(validateGeneratedGeometry(valid), []);
+  const broken = structuredClone(valid);
+  broken.fields[0].w = 44 / 816;
+  broken.fields[1].type = 'text';
+  broken.fields[1].x = broken.fields[0].x;
+  broken.fields[1].y = broken.fields[0].y;
+  const problems = validateGeneratedGeometry(broken).join('\n');
+  assert.match(problems, /too small for phone/);
+  assert.match(problems, /semantic type date, got text/);
+  assert.match(problems, /overlaps/);
+});
+
+function iippMigrationFixture() {
+  const submitter = { name: 'Hamilton', uuid: 'role-hamilton' };
+  const definitions = [
+    ['Effective date', 'date', 0.38163, 0.05392, 0.15931],
+    ['Administrator phone', 'phone', 0.45076, 0.05392, 0.18382],
+    ['Reviewed / updated', 'text', 0.48674, 0.05392, 0.15931],
+    ['Signature', 'signature', 0.16761, 0.30637, 0.30637],
+    ['Date', 'date', 0.23011, 0.15931, 0.15931],
+  ];
+  const fields = definitions.map(([name, type, y, oldWidth]) => ({
+    uuid: `uuid-${name}`,
+    name,
+    type,
+    required: true,
+    submitter_uuid: submitter.uuid,
+    areas: [{ page: name === 'Signature' || name === 'Date' ? 5 : 0, x: 0.25, y, w: oldWidth, h: name === 'Signature' ? 0.0322 : 0.01989, attachment_uuid: 'old-attachment' }],
+  }));
+  const generated = {
+    slug: 'iipp',
+    fields: definitions.map(([name, type, y, _oldWidth, targetWidth]) => ({
+      id: `id-${name}`,
+      name,
+      type: name === 'Reviewed / updated' ? 'date' : type,
+      owner: 'employer',
+      page: name === 'Signature' || name === 'Date' ? 5 : 0,
+      x: 0.25,
+      y,
+      w: targetWidth,
+      h: name === 'Signature' ? 0.0322 : 0.01989,
+    })),
+  };
+  const template = {
+    id: 360,
+    name: 'Injury and Illness Prevention Program (IIPP)',
+    schema: [{ name: 'iipp.pdf', attachment_uuid: 'old-attachment' }],
+    submitters: [submitter],
+    fields,
+  };
+  return { template, generated };
+}
+
+test('IIPP migration preserves identity and UUIDs while changing only guarded fields', () => {
+  const { template, generated } = iippMigrationFixture();
+  const plan = planIippMigration(template, generated);
+  assert.equal(plan.alreadyApplied, false);
+  assert.ok(plan.changes.some((change) => /Reviewed \/ updated: type text -> date/.test(change)));
+  const fields = buildMigratedFields(template, generated, 'new-attachment');
+  assert.deepEqual(fields.map((field) => field.uuid), template.fields.map((field) => field.uuid));
+  assert.ok(fields.every((field) => field.areas[0].attachment_uuid === 'new-attachment'));
+  const after = { ...template, schema: [{ name: 'iipp.pdf', attachment_uuid: 'new-attachment' }], fields };
+  assert.doesNotThrow(() => assertIippPostflight(template, after, generated, 'new-attachment'));
+  const changed = structuredClone(template);
+  changed.fields.find((field) => field.name === 'Signature').areas[0].x += 0.01;
+  assert.throws(() => planIippMigration(changed, generated), /Signature generated geometry changed unexpectedly/);
 });
 
 test('worker type is mandatory and packets never fall across classifications', () => {

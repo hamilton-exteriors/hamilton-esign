@@ -56,6 +56,25 @@
         var mounted = false;
         var observer;
 
+        function mountSignerHeader() {
+          var header = document.getElementById('signing_form_header');
+          if (!header || header.classList.contains('hx-signer-header')) return;
+          var title = header.querySelector(':scope > h1');
+          var actions = header.querySelector(':scope > .group');
+          var brand = document.querySelector('.hx-brand');
+          if (!title || !actions || !brand) return;
+
+          var brandRow = brand.parentElement;
+          var identity = document.createElement('div');
+          identity.className = 'hx-signer-identity';
+          identity.appendChild(brand);
+          identity.appendChild(title);
+          header.insertBefore(identity, actions);
+          header.classList.add('hx-signer-header');
+          actions.classList.add('hx-signer-actions');
+          if (brandRow && !brandRow.children.length) brandRow.remove();
+        }
+
         function titleOf() {
           var h = document.querySelector('h1');
           return h ? h.textContent.trim().replace(/\s+/g, ' ') : '';
@@ -308,13 +327,17 @@
           });
         }
 
-        observer = new MutationObserver(function () { mountControl(); });
+        observer = new MutationObserver(function () {
+          mountSignerHeader();
+          mountControl();
+        });
         observer.observe(document.documentElement, { childList: true, subtree: true });
         // The form bundle is deferred. Watch for its fields, and also cover a
         // desktop-first session that rotates or resizes into the mobile view.
         MOBILE.addEventListener('change', function () {
           if (MOBILE.matches) mountControl();
         });
+        mountSignerHeader();
         mountControl();
       })();
     </script>

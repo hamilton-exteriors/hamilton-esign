@@ -5,6 +5,7 @@ import { BUILD_DIR } from './config.mjs';
 import { createDocusealClient } from './docuseal-api.mjs';
 import { TEMPLATE_REGISTRY, requireUniqueActiveTemplate } from './registry.mjs';
 import { matchGeneratedFields } from './field-match.mjs';
+import { stampReflowAnchors } from './reflow-anchor.mjs';
 
 const client = createDocusealClient();
 const apply = process.argv.includes('--apply');
@@ -29,14 +30,10 @@ for (const entry of TEMPLATE_REGISTRY) {
     const path = new URL(`../brand/reflow/${entry.slug}.reflow.html`, import.meta.url);
     const generatedPath = `${BUILD_DIR}/${entry.slug}.reflow.html`;
     if (!existsSync(generatedPath)) throw new Error('generated reading view file is missing');
-    let html = readFileSync(generatedPath, 'utf8').replace(/ data-hx-uuid="[^"]*"/g, '');
-    let stamped = 0;
-    for (const field of generated.fields) {
-      const uuid = mapping.get(field.id);
-      const before = html;
-      html = html.replace(`id="${field.id}"`, `id="${field.id}" data-hx-uuid="${uuid}"`);
-      if (html !== before) stamped++;
-    }
+    const source = readFileSync(generatedPath, 'utf8');
+    const stampedResult = stampReflowAnchors(source, generated.fields, mapping);
+    const html = stampedResult.html;
+    const stamped = stampedResult.stamped;
     const markers = (html.match(/class="ds[^"]*"/g) || []).length;
     const uuids = [...html.matchAll(/data-hx-uuid="([^"]+)"/g)].map((match) => match[1]);
     if (stamped !== markers || uuids.length !== new Set(uuids).size || stamped !== entry.fields) {

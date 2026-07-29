@@ -73,25 +73,55 @@ body {
   max-width: 100%;
 }
 
-/* Keep the signer chrome usable at narrow widths and 200% zoom. These are the
-   stable semantic containers in the pinned signer layout; avoid clipping as a
-   substitute for reflow, because clipped controls would only hide the defect. */
+/* Keep the signer chrome usable at narrow widths and 200% zoom. */
 header, [role='banner'], main, main > * {
   min-width: 0;
   max-width: 100%;
 }
-header, [role='banner'] { flex-wrap: wrap; }
-/* Upstream nests the title and download action in another flex row. At 200%
-   text scaling that inner row was 1px wider than the phone viewport in Spanish.
-   Give it an explicit containing width so the action wraps instead of widening
-   the page. */
-header .group {
-  box-sizing: border-box;
-  min-width: 0;
-  max-width: calc(100vw - 2rem);
-  flex-wrap: wrap;
+/* Pinned DocuSeal renders the mark in a separate row and gives its title 100%
+   width, so generic flex wrapping stacks Decline and Download underneath it.
+   The layout controller moves the existing nodes into these two explicit zones;
+   no action is cloned or replaced. */
+#signing_form_header.hx-signer-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start !important;
+  gap: 8px 12px;
+  margin-bottom: 0 !important;
 }
-header download-button { max-width: 100%; }
+.hx-signer-identity {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+.hx-signer-identity .hx-brand { padding-inline: 0; }
+#signing_form_header .hx-signer-identity > h1 {
+  width: auto !important;
+  min-width: 0;
+  margin: 0;
+}
+#signing_form_header .hx-signer-actions {
+  display: flex;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-left: 0 !important;
+}
+#signing_form_header .hx-signer-actions > modal-button,
+#signing_form_header .hx-signer-actions > download-button {
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+}
+#signing_form_header .hx-signer-actions button,
+#signing_form_header .hx-signer-actions download-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+@media (min-width: 768px) {
+  .hx-signer-identity { display: flex; align-items: center; gap: 12px; }
+}
 main .btn { max-width: 100%; white-space: normal; }
 .set-current-date-button {
   flex: 0 1 auto;
@@ -420,7 +450,10 @@ html.hx-readable-active body {
    own stylesheet. */
 #hx-read { margin: 0 0 4px; max-width: 100%; }
 #hx-read .hx-read-bar {
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
   padding: 8px 16px;
   max-width: 100%;
   font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;

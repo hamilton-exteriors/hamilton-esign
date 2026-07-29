@@ -32,7 +32,10 @@
 #hx-read-doc .ds-ini {min-width:min(3.5rem,100%)}
 #hx-read-doc .ds-date {min-width:min(6.875rem,100%)}
 #hx-read-doc .ds-phone {min-width:min(8.25rem,100%)}
-#hx-read-doc td .ds, #hx-read-doc td .ds-ini, #hx-read-doc td .ds-date {min-width:min(2.75rem,100%)}
+#hx-read-doc td .ds, #hx-read-doc td .ds-ini {min-width:min(2.75rem,100%)}
+#hx-read-doc td .ds:not(.ds-box):not(.ds-ini):not(.ds-date):not(.ds-phone):not(.ds-sig) {min-width:min(11.25rem,100%)}
+#hx-read-doc td .ds-date {min-width:min(6.875rem,100%)}
+#hx-read-doc td .ds-phone {min-width:min(8.25rem,100%)}
 #hx-read-doc .letterhead {display:flex;align-items:flex-start;justify-content:space-between;gap:.875rem;
             margin:0 0 1.125rem;padding-bottom:.75rem;border-bottom:2px solid #1B3C2D}
 #hx-read-doc .letterhead img {height:2.125rem;width:auto;display:block}
@@ -48,8 +51,8 @@ aparezca en un comprobante de pago oportuno. El empleado se queda con una copia 
 Hamilton guarda el original en el expediente de personal.</p>
 <hr>
 <p><strong>EMPLEADO</strong></p>
-<p>Nombre: <span class="ds" id="f1" data-hx-uuid="50434969-f714-47bf-8a09-d3eeef589779" data-name="Nombre" data-type="text" data-owner="worker" data-section=""></span></p>
-<p>Fecha de inicio: <span class="ds ds-date" id="f2" data-hx-uuid="08ca357f-f97d-4180-81c9-0610ef23759e" data-name="Fecha de inicio" data-type="date" data-owner="worker" data-section=""></span></p>
+<p>Nombre: <span class="ds" id="f1" data-hx-uuid="50434969-f714-47bf-8a09-d3eeef589779" data-name="Nombre" data-type="text" data-owner="worker" data-section="" data-type="text"></span></p>
+<p>Fecha de inicio: <span class="ds ds-date" id="f2" data-hx-uuid="08ca357f-f97d-4180-81c9-0610ef23759e" data-name="Fecha de inicio" data-type="date" data-owner="worker" data-section="" data-type="date"></span></p>
 <h2>1. Tarifa(s) de pago</h2>
 <p><strong>Tarifa por hora:</strong> <strong>$16.90 por hora</strong> (salario mínimo de California), pagada por cada
 hora trabajada.</p>
@@ -105,11 +108,11 @@ techo instalado en un trabajo terminado y aprobado, además de la tarifa por hor
 </tr>
 </thead>
 <tbody><tr>
-<td><span class="ds ds-box" id="f3" data-hx-uuid="70a26911-04f1-4ae2-bd36-5eb0ef5156cc" data-name="Techador" data-type="checkbox" data-owner="employer" data-section=""></span> Techador</td>
+<td><span class="ds ds-box" id="f3" data-hx-uuid="70a26911-04f1-4ae2-bd36-5eb0ef5156cc" data-name="Techador" data-type="checkbox" data-owner="employer" data-section="" data-type="checkbox"></span> Techador</td>
 <td><strong>$14.90 por cuadro</strong></td>
 </tr>
 <tr>
-<td><span class="ds ds-box" id="f4" data-hx-uuid="3e8899d1-870f-4573-a1fd-13868546ad04" data-name="Capataz" data-type="checkbox" data-owner="employer" data-section=""></span> Capataz</td>
+<td><span class="ds ds-box" id="f4" data-hx-uuid="3e8899d1-870f-4573-a1fd-13868546ad04" data-name="Capataz" data-type="checkbox" data-owner="employer" data-section="" data-type="checkbox"></span> Capataz</td>
 <td><strong>$29.90 por cuadro</strong></td>
 </tr>
 </tbody></table></div>
@@ -137,10 +140,10 @@ Es una agencia de empleo temporal: <strong>NO</strong></p>
 <strong>Teléfono:</strong> (650) 977-3241
 <strong>Licencia CSLB:</strong> 1078806  <strong>FEIN:</strong> 87-2389370</p>
 <h2>6. Aseguradora de compensación de trabajadores</h2>
-<p><strong>Nombre de la aseguradora:</strong> <span class="ds" id="f5" data-hx-uuid="a535b200-d3b6-438f-935a-ce64d9ddc2f8" data-name="Field 5" data-type="text" data-owner="worker" data-section=""></span></p>
-<p><strong>Número de póliza:</strong> <span class="ds" id="f6" data-hx-uuid="0a6ba00a-829a-4b32-8918-b05f5a6829c9" data-name="Field 6" data-type="text" data-owner="worker" data-section=""></span></p>
-<p><strong>Dirección de la aseguradora:</strong> <span class="ds" id="f7" data-hx-uuid="5cad9925-cd87-4e22-973c-d8c54656bfc5" data-name="Field 7" data-type="text" data-owner="worker" data-section=""></span></p>
-<p><strong>Teléfono de la aseguradora:</strong> <span class="ds" id="f8" data-hx-uuid="c94855eb-fc77-483b-be8a-cced544f11f1" data-name="Field 8" data-type="text" data-owner="worker" data-section=""></span></p>
+<p><strong>Nombre de la aseguradora:</strong> <span class="ds" id="f5" data-hx-uuid="a535b200-d3b6-438f-935a-ce64d9ddc2f8" data-name="Field 5" data-type="text" data-owner="worker" data-section="" data-type="text"></span></p>
+<p><strong>Número de póliza:</strong> <span class="ds" id="f6" data-hx-uuid="0a6ba00a-829a-4b32-8918-b05f5a6829c9" data-name="Field 6" data-type="text" data-owner="worker" data-section="" data-type="text"></span></p>
+<p><strong>Dirección de la aseguradora:</strong> <span class="ds" id="f7" data-hx-uuid="5cad9925-cd87-4e22-973c-d8c54656bfc5" data-name="Field 7" data-type="text" data-owner="worker" data-section="" data-type="text"></span></p>
+<p><strong>Teléfono de la aseguradora:</strong> <span class="ds ds-phone" id="f8" data-hx-uuid="c94855eb-fc77-483b-be8a-cced544f11f1" data-name="Field 8" data-type="phone" data-owner="worker" data-section=""></span></p>
 <p><strong>Si esta sección está en blanco, Hamilton todavía no tiene la cobertura de techos vigente
 y no debes ser puesto en un techo.</strong> Pregunta antes de empezar. Hamilton llena esto y vuelve
 a entregar este aviso dentro de 7 días de que la póliza entre en vigor, como lo exige el
@@ -150,8 +153,8 @@ Código Laboral §2810.5(b).</p>
 horas o 5 días</strong> al año bajo el Código Laboral §246. El Empleado puede acumular y usar
 estos días, no puede sufrir represalias por usarlos, y puede presentar una queja ante el
 Comisionado Laboral si sufre represalias.</p>
-<p><span class="ds ds-box" id="f9" data-hx-uuid="446125ce-dbc3-4fcb-918c-6eda8d9fcf54" data-name="Sick leave: accrual" data-type="checkbox" data-owner="employer" data-section="7. Días pagados por enfermedad"></span> Acumulación: 1 hora por cada 30 horas trabajadas, tope de 40 horas / 5 días al año
-<span class="ds ds-box" id="f10" data-hx-uuid="b7e843fd-f51d-4c6b-a9bc-f446050f4013" data-name="Sick leave: front load" data-type="checkbox" data-owner="employer" data-section="7. Días pagados por enfermedad"></span> Entrega adelantada: 40 horas / 5 días al inicio de cada año</p>
+<p><span class="ds ds-box" id="f9" data-hx-uuid="446125ce-dbc3-4fcb-918c-6eda8d9fcf54" data-name="Sick leave: accrual" data-type="checkbox" data-owner="employer" data-section="7. Días pagados por enfermedad" data-type="checkbox"></span> Acumulación: 1 hora por cada 30 horas trabajadas, tope de 40 horas / 5 días al año
+<span class="ds ds-box" id="f10" data-hx-uuid="b7e843fd-f51d-4c6b-a9bc-f446050f4013" data-name="Sick leave: front load" data-type="checkbox" data-owner="employer" data-section="7. Días pagados por enfermedad" data-type="checkbox"></span> Entrega adelantada: 40 horas / 5 días al inicio de cada año</p>
 <h2>8. Declaración de emergencia o desastre</h2>
 <p>Se requiere que el Empleado se presente a un sitio de trabajo cubierto por una
 declaración de emergencia o desastre emitida dentro de los 30 días de la fecha de inicio —
@@ -164,14 +167,14 @@ por parte de una agencia de inmigración federal o estatal, conforme al Código 
 <p>El Empleado acusa recibo de este aviso. La firma del Empleado confirma únicamente el
 recibo; no es un acuerdo de que la información sea correcta y no renuncia a ningún derecho.
 Si algo de lo anterior está incorrecto, avise de inmediato a la gerencia de Hamilton.</p>
-<p><span class="ds ds-box" id="f11" data-hx-uuid="137ef15a-7bc9-4136-b5a4-be046a201835" data-name="Language: Spanish" data-type="checkbox" data-owner="employer" data-section="Acuse de recibo"></span> El idioma principal del Empleado es español y este aviso se entregó en español.</p>
+<p><span class="ds ds-box" id="f11" data-hx-uuid="137ef15a-7bc9-4136-b5a4-be046a201835" data-name="Language: Spanish" data-type="checkbox" data-owner="employer" data-section="Acuse de recibo" data-type="checkbox"></span> El idioma principal del Empleado es español y este aviso se entregó en español.</p>
 <p><strong>Empleado</strong></p>
-<p>Firma: <span class="ds ds-sig" id="f12" data-hx-uuid="e1aedc38-ecdf-48d5-9d57-d0942885ad8a" data-name="Firma" data-type="signature" data-owner="worker" data-section=""></span></p>
-<p>Nombre en letra de molde: <span class="ds" id="f13" data-hx-uuid="6e26bb0d-4aee-4dde-8648-dbbe360bfb65" data-name="Nombre en letra de molde" data-type="text" data-owner="worker" data-section=""></span></p>
-<p>Fecha: <span class="ds ds-date" id="f14" data-hx-uuid="3ab93ad2-7773-459e-9b80-934e6ca0c3e2" data-name="Fecha" data-type="date" data-owner="worker" data-section=""></span></p>
+<p>Firma: <span class="ds ds-sig" id="f12" data-hx-uuid="e1aedc38-ecdf-48d5-9d57-d0942885ad8a" data-name="Firma" data-type="signature" data-owner="worker" data-section="" data-type="signature"></span></p>
+<p>Nombre en letra de molde: <span class="ds" id="f13" data-hx-uuid="6e26bb0d-4aee-4dde-8648-dbbe360bfb65" data-name="Nombre en letra de molde" data-type="text" data-owner="worker" data-section="" data-type="text"></span></p>
+<p>Fecha: <span class="ds ds-date" id="f14" data-hx-uuid="3ab93ad2-7773-459e-9b80-934e6ca0c3e2" data-name="Fecha" data-type="date" data-owner="worker" data-section="" data-type="date"></span></p>
 <p><strong>ABR Quality Resources Inc dba Hamilton Exteriors</strong></p>
-<p>Firma: <span class="ds ds-sig" id="f15" data-hx-uuid="e0714500-6f5a-462f-abd8-eaeb8dc84b91" data-name="Firma" data-type="signature" data-owner="employer" data-section=""></span></p>
-<p>Nombre / título: <span class="ds" id="f16" data-hx-uuid="e397e169-8e51-482a-8839-1f215ec7691e" data-name="Nombre / título" data-type="text" data-owner="employer" data-section=""></span></p>
-<p>Fecha: <span class="ds ds-date" id="f17" data-hx-uuid="70b4f1c7-ad16-4a72-a0dd-6176dc4f63c6" data-name="Fecha" data-type="date" data-owner="employer" data-section=""></span></p>
+<p>Firma: <span class="ds ds-sig" id="f15" data-hx-uuid="e0714500-6f5a-462f-abd8-eaeb8dc84b91" data-name="Firma" data-type="signature" data-owner="employer" data-section="" data-type="signature"></span></p>
+<p>Nombre / título: <span class="ds" id="f16" data-hx-uuid="e397e169-8e51-482a-8839-1f215ec7691e" data-name="Nombre / título" data-type="text" data-owner="employer" data-section="" data-type="text"></span></p>
+<p>Fecha: <span class="ds ds-date" id="f17" data-hx-uuid="70b4f1c7-ad16-4a72-a0dd-6176dc4f63c6" data-name="Fecha" data-type="date" data-owner="employer" data-section="" data-type="date"></span></p>
 <hr>
-<p><em>Copia entregada al Empleado el: <span class="ds" id="f18" data-hx-uuid="42d83a0f-81ac-4a61-a267-dc5094678db1" data-name="Copia entregada al Empleado el" data-type="text" data-owner="employer" data-section=""></span> · Original archivado en el expediente de personal.</em></p>
+<p><em>Copia entregada al Empleado el: <span class="ds" id="f18" data-hx-uuid="42d83a0f-81ac-4a61-a267-dc5094678db1" data-name="Copia entregada al Empleado el" data-type="text" data-owner="employer" data-section="" data-type="text"></span> · Original archivado en el expediente de personal.</em></p>
