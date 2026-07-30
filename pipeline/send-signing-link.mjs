@@ -153,7 +153,7 @@ export async function templateByName(name) {
 }
 
 /** Returns { worker: url, hamilton: url|null } with ?lang= already applied. */
-export async function createSigningRequest(templateName, worker) {
+export async function createSigningRequest(templateName, worker, metadata = {}) {
   const lang = LANGS[worker.language] || 'en';
   if (lang !== 'en' && ENGLISH_ONLY.has(templateName)) {
     throw new Error(
@@ -215,7 +215,22 @@ export async function createSigningRequest(templateName, worker) {
 
   const out = await client.request('/api/submissions', {
     method: 'POST',
-    body: JSON.stringify({ template_id: tpl.id, send_email: false, send_sms: false, submitters }),
+    body: JSON.stringify({
+      template_id: tpl.id,
+      send_email: false,
+      send_sms: false,
+      // Correlation only: never place worker values, routes, or credentials here.
+      ...(metadata.onboardingId ? {
+        external_id: `onboarding:${metadata.onboardingId}:${metadata.documentKey || templateName}`,
+        metadata: {
+          onboardingId: metadata.onboardingId,
+          documentKey: metadata.documentKey || templateName,
+          classification: metadata.classification,
+          schemaVersion: metadata.schemaVersion || 1,
+        },
+      } : {}),
+      submitters,
+    }),
   }, `create submission for ${templateName}`);
   const arr = Array.isArray(out) ? out : [out];
   const url = (s, l) => `${PUBLIC_URL}/s/${s.slug}?lang=${l}`;

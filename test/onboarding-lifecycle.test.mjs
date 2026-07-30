@@ -152,8 +152,8 @@ test('W-2 wage notice requires both class 5552 and populated live policy fields'
     language: 'en',
     role: 'Roofer',
     startDate: '2026-08-01',
-    baseHourlyRate: 30,
-    productionBonusRate: 10,
+    baseHourlyRate: 16.90,
+    productionBonusRate: 14.90,
     sickLeaveMethod: 'accrual',
     payday: 'Friday',
   }, { id: 'zz-test-wage-notice-gates' });

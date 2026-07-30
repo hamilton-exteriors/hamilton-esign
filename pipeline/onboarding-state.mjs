@@ -57,6 +57,8 @@ export const GATES = {
 };
 
 const W2_ROLES = new Set(['Roofer', 'Foreman']);
+const W2_BASE_HOURLY_RATE = 16.90;
+const W2_PRODUCTION_BONUS_BY_ROLE = { Roofer: 14.90, Foreman: 29.90 };
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const E164 = /^\+[1-9]\d{7,14}$/;
 const FORBIDDEN_KEY = /(?:^|_)(?:link|url|slug|token|secret|password|cookie|api_?key)(?:$|_)|(?:Link|Url|URL|Slug|Token|Secret|Password|Cookie|ApiKey)/;
@@ -98,6 +100,13 @@ export function validateIntake(type, raw) {
     if (!W2_ROLES.has(intake.role)) problems.push('W-2 role must be Roofer or Foreman');
     intake.baseHourlyRate = positiveMoney(intake.baseHourlyRate, 'baseHourlyRate', problems);
     intake.productionBonusRate = positiveMoney(intake.productionBonusRate, 'productionBonusRate', problems);
+    if (intake.baseHourlyRate !== W2_BASE_HOURLY_RATE) {
+      problems.push(`baseHourlyRate must match the current signed packet rate of ${W2_BASE_HOURLY_RATE.toFixed(2)}`);
+    }
+    const packetBonus = W2_PRODUCTION_BONUS_BY_ROLE[intake.role];
+    if (packetBonus !== undefined && intake.productionBonusRate !== packetBonus) {
+      problems.push(`productionBonusRate must match the current ${intake.role} packet rate of ${packetBonus.toFixed(2)}`);
+    }
     if (intake.sickLeaveMethod !== 'accrual') problems.push('sickLeaveMethod must be accrual');
     if (intake.payday !== 'Friday') problems.push('payday must be Friday');
   } else {

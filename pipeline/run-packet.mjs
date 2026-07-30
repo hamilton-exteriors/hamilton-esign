@@ -212,7 +212,12 @@ async function sendDoc(plan, index, rwPath, checkpoint = async () => {}, retryAm
     throw new Error(`packet ${plan.packetId} has a different delivery awaiting recovery`);
   }
   if (!pending) {
-    const request = await createSigningRequest(document.title, { ...plan.worker, ...flags });
+    const request = await createSigningRequest(document.title, { ...plan.worker, ...flags }, {
+      onboardingId: plan.worker.onboardingId,
+      documentKey: document.key,
+      classification: plan.type,
+      schemaVersion: 1,
+    });
     pending = {
       kind: 'document',
       index,
@@ -444,7 +449,12 @@ export async function sendTrainingRoster(state, trainingEvidence, rwPath, {
     throw new Error(`training roster is already awaiting delivery for trainer ${pending.trainingEvidence.trainer}`);
   }
   if (!pending) {
-    const request = await createSigningRequest(state.trainingDocument.title, state.worker);
+    const request = await createSigningRequest(state.trainingDocument.title, state.worker, {
+      onboardingId: state.worker.onboardingId,
+      documentKey: state.trainingDocument.key,
+      classification: state.type,
+      schemaVersion: 1,
+    });
     pending = {
       kind: 'training',
       trainingEvidence: evidence,

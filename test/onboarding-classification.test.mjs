@@ -18,8 +18,8 @@ const w2 = () => ({
   phone: '+16509770001',
   role: 'Roofer',
   startDate: '2026-08-01',
-  baseHourlyRate: 30,
-  productionBonusRate: 5,
+  baseHourlyRate: 16.90,
+  productionBonusRate: 14.90,
   sickLeaveMethod: 'accrual',
   payday: 'Friday',
 });
@@ -76,7 +76,10 @@ test('enforces W-2 phone, role, start date, rates, payday, and sick-leave constr
     [{ startDate: '08/01/2026' }, /startDate must be a valid YYYY-MM-DD date/],
     [{ startDate: '2026-02-30' }, /startDate must be a valid YYYY-MM-DD date/],
     [{ baseHourlyRate: 0 }, /baseHourlyRate must be a positive number/],
+    [{ baseHourlyRate: 17 }, /must match the current signed packet rate of 16\.90/],
     [{ productionBonusRate: 'nope' }, /productionBonusRate must be a positive number/],
+    [{ productionBonusRate: 15 }, /must match the current Roofer packet rate of 14\.90/],
+    [{ role: 'Foreman', productionBonusRate: 14.90 }, /must match the current Foreman packet rate of 29\.90/],
     [{ payday: 'Monday' }, /payday must be Friday/],
     [{ sickLeaveMethod: 'frontload' }, /sickLeaveMethod must be accrual/],
   ];

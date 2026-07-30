@@ -28,6 +28,7 @@ import { pamphletCopy } from './send-pamphlets.mjs';
 import { programCopy } from './send-programs.mjs';
 import { REFERENCES_DIR } from './config.mjs';
 import { resolveRoleBinding } from './role-catalog.mjs';
+import { createPlatformOnboardingClient, platformCutoverEnabled } from './platform-client.mjs';
 
 const client = createDocusealClient();
 
@@ -66,6 +67,7 @@ export function hashCopyBundle(copyBundle) {
 function packetWorker(record) {
   const intake = record.intake;
   return {
+    onboardingId: record.onboardingId,
     type: record.type,
     name: intake.name,
     phone: intake.phone,
@@ -172,9 +174,54 @@ function openPrivateUrl(value) {
 }
 
 async function create(type, intakePath) {
-  const record = createRecord(type, readJson(intakePath, 'intake'));
+  const intake = readJson(intakePath, 'intake');
+  if (platformCutoverEnabled()) {
+    // Platform owns new production state after cutover. Validate and normalize
+    // locally first so catalog defaults and numeric coercion remain identical.
+    const normalized = validateIntakeForPlatform(type, intake);
+    return { record: await createPlatformOnboardingClient().create(type, normalized), path: null };
+  }
+  const record = createRecord(type, intake);
   const path = saveRecord(record);
   return { record, path };
+}
+
+function validateIntakeForPlatform(type, intake) {
+  // createRecord validates existing intake and catalog rules in memory; project
+  // only the strict Platform retry snapshot so unknown/local-only keys never cross.
+  const normalized = createRecord(type, intake, { id: 'validation-only' }).intake;
+  const common = {
+    name: normalized.name,
+    phone: normalized.phone,
+    ...(normalized.email ? { email: normalized.email } : {}),
+    startDate: normalized.startDate,
+    role: normalized.role,
+    language: normalized.language,
+  };
+  return type === 'w2_local'
+    ? {
+      ...common,
+      baseHourlyRate: normalized.baseHourlyRate,
+      productionBonusRate: normalized.productionBonusRate,
+      sickLeaveMethod: normalized.sickLeaveMethod,
+      payday: normalized.payday,
+    }
+    : {
+      ...common,
+      roleKey: normalized.roleKey,
+      roleExpectationsVersion: normalized.roleExpectationsVersion,
+      country: normalized.country,
+      rateProbation: normalized.rateProbation,
+      probationMonths: normalized.probationMonths,
+      rate: normalized.rate,
+      currency: normalized.currency,
+      cadence: normalized.cadence,
+      paymentRail: normalized.paymentRail,
+    };
+}
+
+function platformClient() {
+  return createPlatformOnboardingClient();
 }
 
 async function plan(record) {
@@ -332,6 +379,19 @@ async function training(record, evidencePath, rwPath, retryAmbiguous) {
 }
 
 async function countersign(record, open) {
+  if (platformCutoverEnabled()) {
+    const api = platformClient();
+    const status = await api.status(record);
+    const ref = status.countersignReady?.[0]?.submissionRef;
+    if (typeof ref !== 'string' || !/^docuseal:\d+$/.test(ref)) throw new Error('no countersign action is ready');
+    if (!open) return { ready: status.countersignReady.length, action: 'rerun with --open after confirming the authorized Hamilton operator is present' };
+    // The route is retrieved from DocuSeal only after explicit --open and is kept in memory.
+    const result = await countersignLink(ref.slice('docuseal:'.length));
+    if (!result.ready) throw new Error('DocuSeal countersign action is no longer ready');
+    openPrivateUrl(result.link);
+    await api.auditCountersignOpen(record, ref);
+    return { ready: status.countersignReady.length, opened: 'countersign action' };
+  }
   if (!record.packetId) throw new Error('onboarding packet has not been started');
   const packet = loadPacket(record.packetId);
   await synchronize(record, packet);
@@ -376,15 +436,25 @@ async function file(record) {
 function usage() {
   console.error('usage:');
   console.error('  node pipeline/onboarding.mjs create <w2_local|overseas_contractor> <intake.json>');
-  console.error('  node pipeline/onboarding.mjs plan <onboardingId>');
-  console.error('  node pipeline/onboarding.mjs rebind-role <onboardingId> <role-key-or-name> [version]');
-  console.error('  node pipeline/onboarding.mjs approve-copy <onboardingId> <copy-hash> <approval-reference>');
-  console.error('  node pipeline/onboarding.mjs start <onboardingId> <rw.json>');
-  console.error('  node pipeline/onboarding.mjs advance <onboardingId> [rw.json] [--retry-ambiguous]');
-  console.error('  node pipeline/onboarding.mjs training <onboardingId> <training-evidence.json> <rw.json> [--retry-ambiguous]');
+  if (platformCutoverEnabled()) {
+    console.error('  node pipeline/onboarding.mjs plan <onboardingId> [initial|training]');
+    console.error('  node pipeline/onboarding.mjs rebind-role <onboardingId> <role-key> <version>');
+    console.error('  node pipeline/onboarding.mjs approve-copy <onboardingId> <plan-id> <initial|training> <copy-hash> <approval-reference>');
+    console.error('  node pipeline/onboarding.mjs start <onboardingId> <plan-id> <initial|training> <digest>');
+    console.error('  node pipeline/onboarding.mjs reconcile <onboardingId>');
+    console.error('  node pipeline/onboarding.mjs resolve-effect <onboardingId> <idempotency-key> <succeeded|definite_failed> <evidence-reference> [success-proof.json]');
+  } else {
+    console.error('  node pipeline/onboarding.mjs plan <onboardingId>');
+    console.error('  node pipeline/onboarding.mjs rebind-role <onboardingId> <role-key> [version]');
+    console.error('  node pipeline/onboarding.mjs approve-copy <onboardingId> <copy-hash> <approval-reference>');
+    console.error('  node pipeline/onboarding.mjs start <onboardingId> <rw.json>');
+    console.error('  node pipeline/onboarding.mjs advance <onboardingId> [rw.json] [--retry-ambiguous]');
+    console.error('  node pipeline/onboarding.mjs training <onboardingId> <training-evidence.json> <rw.json> [--retry-ambiguous]');
+    console.error('  node pipeline/onboarding.mjs file <onboardingId>');
+  }
   console.error('  node pipeline/onboarding.mjs countersign <onboardingId> [--open]');
   console.error('  node pipeline/onboarding.mjs record-gate <onboardingId> <gate> <evidence-reference>');
-  console.error('  node pipeline/onboarding.mjs file <onboardingId>');
+  console.error('  node pipeline/onboarding.mjs import-legacy <state.json> [--apply]');
   console.error('  node pipeline/onboarding.mjs status <onboardingId>');
 }
 
@@ -394,7 +464,51 @@ const IS_MAIN = Boolean(process.argv[1]) &&
 if (IS_MAIN) {
   const [, , command, ...args] = process.argv;
   try {
-    if (command === 'create') {
+    if (command === 'import-legacy') {
+      const [statePath, apply] = args;
+      if (!statePath || (apply && apply !== '--apply')) throw new Error('import-legacy requires a state JSON path and optional --apply');
+      const legacy = readJson(statePath, 'legacy state');
+      // Do not mutate the source file. Platform validates the complete import and
+      // defaults to dry-run; --apply is explicit and remains non-destructive here.
+      const output = await platformClient().importLegacy(legacy, { dryRun: apply !== '--apply' });
+      console.log(JSON.stringify(output, null, 2));
+    } else if (platformCutoverEnabled() && command === 'create') {
+      const [type, intakePath] = args;
+      if (!type || !intakePath) throw new Error('create requires worker classification and intake JSON path');
+      const { record } = await create(type, intakePath);
+      console.log(JSON.stringify(record, null, 2));
+    } else if (platformCutoverEnabled() && ['advance', 'training', 'file'].includes(command)) {
+      throw new Error(`${command} is automatic after Platform cutover; use status or reconcile instead`);
+    } else if (platformCutoverEnabled() && ['plan', 'approve-copy', 'record-gate', 'rebind-role', 'start', 'status', 'reconcile', 'resolve-effect'].includes(command)) {
+      const api = platformClient();
+      const [id, first, second, third, fourth] = args;
+      if (!id) throw new Error(`${command} requires onboarding ID`);
+      let output;
+      if (command === 'plan') output = await api.plan(id, first || 'initial');
+      else if (command === 'status') output = await api.status(id);
+      else if (command === 'start') {
+        if (!first || !second || !third) throw new Error('start requires ID, plan ID, stage, and digest');
+        output = await api.start(id, first, second, third);
+      } else if (command === 'reconcile') output = await api.reconcile(id);
+      else if (command === 'resolve-effect') {
+        if (!first || !['succeeded', 'definite_failed'].includes(second) || !third) {
+          throw new Error('resolve-effect requires ID, idempotency key, succeeded|definite_failed, evidence reference, and a success-proof JSON file for succeeded');
+        }
+        if (second === 'succeeded' && !fourth) throw new Error('successful effect resolution requires a success-proof JSON file');
+        if (second === 'definite_failed' && fourth) throw new Error('definite-failed effect resolution does not accept success proof');
+        output = await api.resolveEffect(id, first, second, third, fourth ? readJson(fourth, 'effect success proof') : undefined);
+      } else if (command === 'approve-copy') {
+        if (!first || !second || !third || !fourth) throw new Error('approve-copy requires ID, plan ID, stage, copy hash, and approval reference');
+        output = await api.approveCopy(id, first, second, third, fourth);
+      } else if (command === 'rebind-role') {
+        if (!first || !second) throw new Error('rebind-role requires ID, role key, and release version');
+        output = await api.rebindRole(id, first, second);
+      } else {
+        if (!first || !second) throw new Error('record-gate requires ID, gate, and evidence reference');
+        output = await api.recordGate(id, first, second);
+      }
+      console.log(JSON.stringify(output, null, 2));
+    } else if (command === 'create') {
       const [type, intakePath] = args;
       const { record, path } = await create(type, intakePath);
       console.log(JSON.stringify({ onboardingId: record.onboardingId, type: record.type,
@@ -447,8 +561,10 @@ if (IS_MAIN) {
     } else if (command === 'countersign') {
       const [id, openFlag] = args;
       if (!id || (openFlag && openFlag !== '--open')) throw new Error('invalid countersign arguments');
-      console.log(JSON.stringify(await withRecordLock(id, async () =>
-        countersign(loadRecord(id), openFlag === '--open')), null, 2));
+      const output = platformCutoverEnabled()
+        ? await countersign(id, openFlag === '--open')
+        : await withRecordLock(id, async () => countersign(loadRecord(id), openFlag === '--open'));
+      console.log(JSON.stringify(output, null, 2));
     } else if (command === 'record-gate') {
       const [id, gate, evidence] = args;
       await withRecordLock(id, async () => saveRecord(recordGate(loadRecord(id), gate, evidence,
@@ -469,4 +585,4 @@ if (IS_MAIN) {
   }
 }
 
-export { create, plan, start, advance, training, countersign, file, synchronize };
+export { create, plan, start, advance, training, countersign, file, synchronize, validateIntakeForPlatform };
