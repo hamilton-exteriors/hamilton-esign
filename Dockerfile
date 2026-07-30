@@ -27,7 +27,7 @@ ENV NODE_ENV=production
 WORKDIR /src
 
 RUN apk add --no-cache \
-      nodejs=24.17.0-r0 \
+      nodejs=24.18.1-r0 \
       yarn=1.22.22-r1 \
       git=2.54.0-r0 \
       build-base=0.5-r4 && \
