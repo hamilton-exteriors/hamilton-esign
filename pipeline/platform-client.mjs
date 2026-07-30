@@ -75,6 +75,7 @@ export class PlatformOnboardingClient {
   }
 
   create(type, intake) { return this.request('', 'POST', { type, intake }); }
+  publishRoleRelease(release) { return this.request('/role-releases', 'POST', release); }
   status(id) { return this.request(`/${encodeURIComponent(id)}/status`); }
   plan(id, stage = 'initial') { return this.request(`/${encodeURIComponent(id)}/plan?stage=${encodeURIComponent(stage)}`); }
   approveCopy(id, planId, stage, copyHash, approvalReference) {

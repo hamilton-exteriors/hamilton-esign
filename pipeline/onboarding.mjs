@@ -45,6 +45,19 @@ function readJson(path, label) {
   }
 }
 
+export function buildRoleReleasePayload(metadata, artifactContent) {
+  const allowed = ['roleKey', 'displayName', 'releaseVersion', 'artifactReference', 'approvalReference', 'approvedByName', 'approvedAt'];
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata) || Object.keys(metadata).some((key) => !allowed.includes(key)) || allowed.some((key) => typeof metadata[key] !== 'string' || !metadata[key])) {
+    throw new Error('role release metadata is malformed or incomplete');
+  }
+  if (typeof artifactContent !== 'string' || !artifactContent || Buffer.byteLength(artifactContent, 'utf8') > 256 * 1024) throw new Error('role release artifact is empty or too large');
+  return {
+    ...Object.fromEntries(allowed.map((key) => [key, metadata[key]])),
+    artifactContent,
+    artifactDigest: createHash('sha256').update(Buffer.from(artifactContent, 'utf8')).digest('hex'),
+  };
+}
+
 function referenceArtifact(name, caption) {
   const path = resolve(REFERENCES_DIR, name);
   const bytes = readFileSync(path);
@@ -437,6 +450,7 @@ function usage() {
   console.error('usage:');
   console.error('  node pipeline/onboarding.mjs create <w2_local|overseas_contractor> <intake.json>');
   if (platformCutoverEnabled()) {
+    console.error('  node pipeline/onboarding.mjs publish-role-release <release-metadata.json> <approved-role-artifact.md>');
     console.error('  node pipeline/onboarding.mjs plan <onboardingId> [initial|training]');
     console.error('  node pipeline/onboarding.mjs rebind-role <onboardingId> <role-key> <version>');
     console.error('  node pipeline/onboarding.mjs approve-copy <onboardingId> <plan-id> <initial|training> <copy-hash> <approval-reference>');
@@ -471,6 +485,13 @@ if (IS_MAIN) {
       // Do not mutate the source file. Platform validates the complete import and
       // defaults to dry-run; --apply is explicit and remains non-destructive here.
       const output = await platformClient().importLegacy(legacy, { dryRun: apply !== '--apply' });
+      console.log(JSON.stringify(output, null, 2));
+    } else if (platformCutoverEnabled() && command === 'publish-role-release') {
+      const [metadataPath, artifactPath, extra] = args;
+      if (!metadataPath || !artifactPath || extra) throw new Error('publish-role-release requires metadata JSON and one approved role artifact path');
+      const metadata = readJson(metadataPath, 'role release metadata');
+      const artifactContent = readFileSync(artifactPath, 'utf8');
+      const output = await platformClient().publishRoleRelease(buildRoleReleasePayload(metadata, artifactContent));
       console.log(JSON.stringify(output, null, 2));
     } else if (platformCutoverEnabled() && command === 'create') {
       const [type, intakePath] = args;

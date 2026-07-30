@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createPlatformOnboardingClient, platformCutoverEnabled } from '../pipeline/platform-client.mjs';
-import { validateIntakeForPlatform } from '../pipeline/onboarding.mjs';
+import { buildRoleReleasePayload, validateIntakeForPlatform } from '../pipeline/onboarding.mjs';
 
 test('Platform client uses internal bearer auth and rejects private data', async () => {
   let request;
@@ -27,6 +27,34 @@ test('Platform client uses internal bearer auth and rejects private data', async
     fetchImpl: async () => new Response(JSON.stringify({ error: 'provider failed at https://docuseal.example/s/private' }), { status: 409 }),
   });
   await assert.rejects(() => unsafeError.status('ob-1'), /private signing data/);
+});
+
+test('role-release publication hashes exact UTF-8 and uses the dedicated authenticated route', async () => {
+  let request;
+  const client = createPlatformOnboardingClient({
+    env: { PLATFORM_INTERNAL_URL: 'https://platform.internal', PLATFORM_INTERNAL_TOKEN: 'operator-token' },
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return Response.json({ roleReleaseId: 'release-1', roleKey: 'estimator' }, { status: 201 });
+    },
+  });
+  const metadata = {
+    roleKey: 'estimator',
+    displayName: 'Estimator',
+    releaseVersion: '2.0',
+    artifactReference: 'role_scope:estimator-2.0',
+    approvalReference: 'approval:estimator-2.0-20260730',
+    approvedByName: 'Alex Li, President',
+    approvedAt: '2026-07-30T00:00:00Z',
+  };
+  const payload = buildRoleReleasePayload(metadata, 'Exact UTF-8 role scope é\n');
+  await client.publishRoleRelease(payload);
+  assert.equal(request.url, 'https://platform.internal/internal/onboarding/role-releases');
+  assert.equal(request.options.method, 'POST');
+  assert.equal(request.options.headers.authorization, 'Bearer operator-token');
+  assert.deepEqual(JSON.parse(request.options.body), payload);
+  assert.match(payload.artifactDigest, /^[a-f0-9]{64}$/);
+  assert.throws(() => buildRoleReleasePayload({ ...metadata, extra: 'forbidden' }, 'scope'), /malformed/);
 });
 
 test('Platform client binds staged plan approval and start to one immutable digest', async () => {
