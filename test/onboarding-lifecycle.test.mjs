@@ -27,6 +27,7 @@ globalThis.fetch = async (url) => {
 const { createRecord, approveCopy, recordGate } = await import('../pipeline/onboarding-state.mjs');
 const {
   assertCopyHash,
+  contractorPreSendGateBlockers,
   contractorRoleScopeRelease,
   contractorStartGate,
   hashCopyBundle,
@@ -39,7 +40,7 @@ const intake = {
   phone: '+639171234567',
   language: 'en',
   role: 'Roofing Project Coordinator',
-  roleExpectationsVersion: 'roofing-project-coordinator-v1',
+  roleExpectationsVersion: '1.0',
   country: 'Philippines',
   startDate: '2026-08-01',
   rateProbation: 900,
@@ -119,13 +120,19 @@ test('copy approval fails closed when any recipient-facing content changes', () 
   assert.throws(() => assertCopyHash(record, hashCopyBundle(artifactChanged)), /no longer matches/);
 });
 
-test('contractor agreement start remains blocked until every pre-send gate is evidenced', () => {
-  assert.equal(contractorRoleScopeRelease().approved, false,
-    'the current canonical manifest must remain fail-closed until owner-approved scope exists');
+test('contractor agreement start validates the canonical scope before pre-send gates', () => {
   const record = createRecord('overseas_contractor', intake, { id: 'zz-test-contractor-gates' });
-  assert.throws(() => contractorStartGate(record, { approved: false }), /canonical role scope/);
+  assert.equal(contractorRoleScopeRelease(record).approved, false,
+    'the current canonical manifest must remain fail-closed until owner-approved scope exists');
   assert.throws(() => contractorStartGate(record, { approved: true }),
-    /role_scope_approved.*w8ben_instructions_delivered/);
+    /owner-approved for release/,
+    'a caller-supplied release object cannot bypass canonical scope validation');
+  assert.deepEqual(contractorPreSendGateBlockers(record), [
+    'role_scope_approved',
+    'w8ben_instructions_delivered',
+    'role_expectations_delivered',
+    'payment_rail_verified',
+  ]);
   for (const gate of [
     'role_scope_approved',
     'w8ben_instructions_delivered',
@@ -134,7 +141,8 @@ test('contractor agreement start remains blocked until every pre-send gate is ev
   ]) {
     recordGate(record, gate, `ZZ TEST evidence ${gate}`);
   }
-  assert.doesNotThrow(() => contractorStartGate(record, { approved: true }));
+  assert.deepEqual(contractorPreSendGateBlockers(record), []);
+  assert.throws(() => contractorStartGate(record), /owner-approved for release/);
 });
 
 test('W-2 wage notice requires both class 5552 and populated live policy fields', () => {

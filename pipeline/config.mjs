@@ -7,6 +7,11 @@ export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const BUILD_DIR = resolve(process.env.HAMILTON_BUILD_DIR || join(REPO_ROOT, 'build'));
 export const DOCS_DIR = resolve(process.env.HAMILTON_DOCS_DIR ||
   join(homedir(), '.claude', 'skills', 'onboard-worker', 'references', 'documents'));
+export const REFERENCES_DIR = resolve(DOCS_DIR, '..');
+export const OVERSEAS_ROLE_CATALOG_PATH = resolve(process.env.HAMILTON_OVERSEAS_ROLE_CATALOG_PATH ||
+  join(REFERENCES_DIR, 'overseas-role-catalog.json'));
+export const OVERSEAS_ROLE_ROOT = resolve(process.env.HAMILTON_OVERSEAS_ROLE_ROOT ||
+  join(REFERENCES_DIR, 'roles'));
 export const DOCUSEAL_SECRET_PATH = resolve(process.env.DOCUSEAL_SECRET_PATH ||
   join(homedir(), '.claude', '.hamilton-secrets', 'docuseal.json'));
 export const PACKET_STATE_DIR = resolve(process.env.HAMILTON_PACKET_STATE_DIR ||

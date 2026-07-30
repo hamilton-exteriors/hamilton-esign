@@ -29,7 +29,7 @@ const contractor = () => ({
   phone: '+639171234567',
   language: 'en',
   role: 'Roofing Project Coordinator',
-  roleExpectationsVersion: 'roofing-project-coordinator-v1',
+  roleExpectationsVersion: '1.0',
   country: 'Philippines',
   startDate: '2026-08-01',
   rateProbation: 900,
@@ -91,8 +91,8 @@ test('enforces contractor phone, English, scope, commercial, country, rate, and 
   const cases = [
     [{ phone: '+16509770002' }, /must not start with \+1/],
     [{ language: 'es' }, /supports English only/],
-    [{ role: 'ZZ TEST Roofer' }, /role must be Roofing Project Coordinator/],
-    [{ roleExpectationsVersion: 'ZZ TEST v0' }, /roleExpectationsVersion must be roofing-project-coordinator-v1/],
+    [{ role: 'ZZ TEST Roofer' }, /unsupported overseas contractor role/],
+    [{ roleExpectationsVersion: 'ZZ TEST v0' }, /version ZZ TEST v0 is not published/],
     [{ country: '' }, /country is required/],
     [{ rateProbation: 0 }, /rateProbation must be a positive number/],
     [{ probationMonths: 1.5 }, /probationMonths must be a positive integer/],
@@ -185,6 +185,26 @@ test('atomically saves and loads synthetic state under the pre-import temporary 
   assert.equal(existsSync(path), true);
   assert.deepEqual(state.loadRecord(record.onboardingId), record);
   assert.deepEqual(readdirSync(process.env.HAMILTON_ONBOARDING_STATE_DIR).filter((name) => name.endsWith('.tmp')), []);
+});
+
+
+
+test('migrates the known v1 contractor role and blocks unknown legacy roles', () => {
+  const current = validRecord('overseas_contractor');
+  const legacy = structuredClone(current);
+  legacy.version = 1;
+  legacy.intake.roleExpectationsVersion = 'roofing-project-coordinator-v1';
+  delete legacy.intake.roleKey;
+  delete legacy.roleBinding;
+  const migrated = state.migrateRecord(legacy, '2026-07-29T13:00:00.000Z');
+  assert.equal(migrated.version, state.ONBOARDING_VERSION);
+  assert.equal(migrated.roleBinding.roleKey, 'roofing-project-coordinator');
+  assert.equal(migrated.roleBinding.version, '1.0');
+  assert.equal(migrated.audit.at(-1).action, 'record-migrated');
+
+  const unknown = structuredClone(legacy);
+  unknown.intake.role = 'ZZ TEST Unknown Role';
+  assert.throws(() => state.migrateRecord(unknown), /cannot be migrated automatically/);
 });
 
 test('routes contractor agreement and W-8BEN to contractor buckets while W-2 records remain segregated', () => {

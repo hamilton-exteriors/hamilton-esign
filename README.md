@@ -111,6 +111,7 @@ bundle plus its SHA-256 hash. `start` refuses unless that exact hash was approve
 
     node pipeline/onboarding.mjs create <w2_local|overseas_contractor> <intake.json>
     node pipeline/onboarding.mjs plan <onboardingId>
+    node pipeline/onboarding.mjs rebind-role <onboardingId> <role-key-or-name> [version]
     node pipeline/onboarding.mjs approve-copy <onboardingId> <copy-hash> <approval-reference>
     node pipeline/onboarding.mjs start <onboardingId> <rw.json>
     node pipeline/onboarding.mjs advance <onboardingId> [rw.json] [--retry-ambiguous]
@@ -119,6 +120,13 @@ bundle plus its SHA-256 hash. `start` refuses unless that exact hash was approve
     node pipeline/onboarding.mjs record-gate <onboardingId> <gate> <evidence-reference>
     node pipeline/onboarding.mjs file <onboardingId>
     node pipeline/onboarding.mjs status <onboardingId>
+    node pipeline/role-catalog.mjs list
+
+Overseas roles are configured in
+`~/.claude/skills/onboard-worker/references/overseas-role-catalog.json`. Each role
+version points to an immutable artifact under `references/roles/<role-key>/` with a
+pinned SHA-256. Add a new version rather than editing an approved artifact, then change
+`activeVersion` for future records.
 
 Onboarding state is versioned, keyed by a generated onboarding ID, and written
 atomically under `HAMILTON_ONBOARDING_STATE_DIR`. It stores lifecycle status,
@@ -129,11 +137,14 @@ Packet recovery state is similarly scrubbed before persistence.
 The W-2 path tracks I-9 human review, W-4, DE 4, pay election, emergency contact,
 payroll enrollment, DE 34, actual training evidence, tax review, and WC class 5552.
 It will not send the wage notice until class 5552 is bound and the live carrier/policy fields are verified populated, and it never releases roof work while class 5552 is missing.
-The overseas path supports the English Roofing Project Coordinator role only and
-requires a canonical owner-approved role scope, W-8BEN delivery/receipt/human review,
-restricted tax-record filing confirmation, and payment-rail review. A recorded gate cannot bypass a canonical role manifest that
-still says its scope is not approved for release. It never creates a W-9, 1099, payroll record, Mercury recipient, vendor bill,
-or payment.
+The overseas path supports catalog-backed English roles using the shared Independent
+Contractor Agreement. `pipeline/role-catalog.mjs list` validates and displays available
+roles and versions. Each record is pinned to its selected versioned scope artifact, so
+changing the active version affects only future records. A recorded gate cannot bypass
+an unapproved, missing, changed, or digest-mismatched role scope. W-8BEN delivery,
+receipt, human review, restricted tax-record filing confirmation, and payment-rail
+review remain required. The workflow never creates a W-9, 1099, payroll record,
+Mercury recipient, vendor bill, or payment.
 
 `run-packet.mjs` remains a compatibility layer for existing packet records. New
 work must start through `onboarding.mjs`. If a WhatsApp outcome is ambiguous,

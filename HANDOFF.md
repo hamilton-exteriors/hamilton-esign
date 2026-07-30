@@ -272,23 +272,27 @@ Railway `0be07a92-8d07-470a-b696-f0af74822a16`. Both production hosts returned
 1. **Workers comp class 5552.** Section 6 of the wage notice remains blank until
    coverage is bound and the live carrier/policy fields are verified. The engine
    blocks the wage notice and `roofReady` until both gates are evidenced.
-2. **Roofing Project Coordinator scope.** The canonical role manifest deliberately
-   says its scope is not approved for release. The engine checks the artifact itself,
-   so recording a gate cannot bypass this blocker. Alex Li, President must approve a
-   versioned scope with an absolute date before any contractor agreement can start.
+2. **First overseas role scope.** The current Roofing Project Coordinator version 1.0
+   artifact is a draft and is not approved for release. The engine checks the catalog,
+   pinned digest, artifact metadata, and approval itself, so recording a gate cannot
+   bypass this blocker. Alex Li, President must approve the actual scope with an
+   absolute date before that role can start.
 
-**New onboarding engine, ready for release:** `pipeline/onboarding.mjs` and
+**New onboarding engine, released as operator tooling:** `pipeline/onboarding.mjs` and
 `pipeline/onboarding-state.mjs` own generated record IDs, atomic protected state,
 exclusive locks, exact-copy SHA-256 approval, lifecycle synchronization, manual
 evidence gates, filing, countersign readiness, and truthful `roofReady` /
 `paymentAuthorized` outcomes. New starts cannot use direct sender CLIs. Private
 signing routes are reconstructed only when needed and are not persisted or printed.
-Validation passed 71/71 tests, all 14 live template checks, two synthetic dry plans
-against production templates, targeted Semgrep with zero findings, and `git diff --check`.
+Validation passed 80/80 tests, all 14 live template checks, a catalog-backed synthetic
+dry plan against production templates, targeted Semgrep with zero findings, and
+`git diff --check`.
 
 The explicit skills are `onboard-w2-local` and `onboard-overseas-contractor`;
 `onboard-worker` is now a strict classification dispatcher. The W-2 path never enters
-contractor payment actions. The overseas path never enters W-2, payroll, WC, or
+contractor payment actions. The overseas path uses a canonical data catalog, so new
+roles and immutable scope versions can be added without changing code. Existing records
+stay pinned when `activeVersion` changes. It never enters W-2, payroll, WC, or
 California employee-document actions. Contractor agreements and restricted tax records
 route outside employee Personnel/I-9/Medical folders.
 

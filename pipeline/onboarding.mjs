@@ -8,6 +8,7 @@ import {
   deriveStatus,
   loadRecord,
   recordGate,
+  rebindOverseasRole,
   saveRecord,
   withRecordLock,
 } from './onboarding-state.mjs';
@@ -25,7 +26,8 @@ import { createDocusealClient } from './docuseal-api.mjs';
 import { fileSubmission } from './file-to-drive.mjs';
 import { pamphletCopy } from './send-pamphlets.mjs';
 import { programCopy } from './send-programs.mjs';
-import { DOCS_DIR } from './config.mjs';
+import { REFERENCES_DIR } from './config.mjs';
+import { resolveRoleBinding } from './role-catalog.mjs';
 
 const client = createDocusealClient();
 
@@ -43,7 +45,7 @@ function readJson(path, label) {
 }
 
 function referenceArtifact(name, caption) {
-  const path = resolve(DOCS_DIR, '..', name);
+  const path = resolve(REFERENCES_DIR, name);
   const bytes = readFileSync(path);
   return {
     name,
@@ -52,16 +54,9 @@ function referenceArtifact(name, caption) {
   };
 }
 
-export function contractorRoleScopeRelease() {
-  const path = resolve(DOCS_DIR, '..', 'roofing-project-coordinator-role-expectations-v1.md');
-  const content = readFileSync(path, 'utf8');
-  const approved = /\*\*Status:\*\* owner-approved for release\b/i.test(content) &&
-    /\*\*Approved by:\*\* Alex Li, President\b/i.test(content) &&
-    /\*\*Approved on:\*\* \d{4}-\d{2}-\d{2}\b/i.test(content);
-  return {
-    approved,
-    sha256: createHash('sha256').update(content).digest('hex'),
-  };
+export function contractorRoleScopeRelease(record) {
+  if (record.type !== 'overseas_contractor') return null;
+  return resolveRoleBinding(record.roleBinding);
 }
 
 export function hashCopyBundle(copyBundle) {
@@ -77,6 +72,8 @@ function packetWorker(record) {
     language: intake.language,
     email: intake.email,
     role: intake.role,
+    roleKey: intake.roleKey,
+    roleExpectationsVersion: intake.roleExpectationsVersion,
     startDate: intake.startDate,
     country: intake.country,
     rateProbation: intake.rateProbation,
@@ -85,14 +82,20 @@ function packetWorker(record) {
   };
 }
 
-export function contractorStartGate(record, roleScopeRelease = contractorRoleScopeRelease()) {
-  if (record.type !== 'overseas_contractor') return;
-  if (!roleScopeRelease.approved) {
-    throw new Error('contractor agreement remains blocked until the canonical role scope is owner-approved for release');
-  }
+export function contractorPreSendGateBlockers(record) {
+  if (record.type !== 'overseas_contractor') return [];
   const required = ['role_scope_approved', 'w8ben_instructions_delivered',
     'role_expectations_delivered', 'payment_rail_verified'];
-  const pending = required.filter((name) => record.gates[name]?.status !== 'satisfied');
+  return required.filter((name) => record.gates[name]?.status !== 'satisfied');
+}
+
+export function contractorStartGate(record) {
+  if (record.type !== 'overseas_contractor') return;
+  const roleScopeRelease = contractorRoleScopeRelease(record);
+  if (!roleScopeRelease.approved) {
+    throw new Error(`contractor agreement remains blocked until ${roleScopeRelease.displayName} scope version ${roleScopeRelease.version} is owner-approved for release`);
+  }
+  const pending = contractorPreSendGateBlockers(record);
   if (pending.length) {
     throw new Error(`contractor agreement remains blocked until these pre-send gates are evidenced: ${pending.join(', ')}`);
   }
@@ -177,6 +180,9 @@ async function create(type, intakePath) {
 async function plan(record) {
   const packet = await startPacket(packetWorker(record), undefined, { dryRun: true });
   const blockers = [...packet.blockers];
+  const roleScope = record.type === 'overseas_contractor'
+    ? contractorRoleScopeRelease(record)
+    : null;
   if (record.type === 'w2_local') {
     if (record.gates.wc_5552_bound.status !== 'satisfied') {
       blockers.push('WC class 5552 is not evidenced; the wage notice and all roof-work release remain blocked');
@@ -186,8 +192,8 @@ async function plan(record) {
     }
   }
   if (record.type === 'overseas_contractor') {
-    if (!contractorRoleScopeRelease().approved) {
-      blockers.push('the canonical Roofing Project Coordinator scope is not owner-approved for release');
+    if (!roleScope.approved) {
+      blockers.push(`${roleScope.displayName} scope version ${roleScope.version} is not owner-approved for release`);
     }
     for (const name of ['role_scope_approved', 'w8ben_instructions_delivered',
       'role_expectations_delivered', 'payment_rail_verified']) {
@@ -208,10 +214,13 @@ async function plan(record) {
             'w8ben-instructions-return-procedure.md',
             'W-8BEN instructions and secure return procedure',
           ),
-          referenceArtifact(
-            'roofing-project-coordinator-role-expectations-v1.md',
-            'Roofing Project Coordinator role expectations, version 1',
-          ),
+          {
+            name: roleScope.artifact,
+            caption: `${roleScope.displayName} role scope, version ${roleScope.version}`,
+            roleKey: roleScope.roleKey,
+            version: roleScope.version,
+            sha256: roleScope.sha256,
+          },
         ],
       },
     }),
@@ -220,6 +229,13 @@ async function plan(record) {
   return {
     onboardingId: record.onboardingId,
     type: record.type,
+    ...(roleScope ? { role: {
+      roleKey: roleScope.roleKey,
+      displayName: roleScope.displayName,
+      version: roleScope.version,
+      active: roleScope.active,
+      approved: roleScope.approved,
+    } } : {}),
     phase: record.phase,
     documents: packet.docs.map((document) => document.title),
     trainingDocument: packet.trainingDocument?.title || null,
@@ -361,6 +377,7 @@ function usage() {
   console.error('usage:');
   console.error('  node pipeline/onboarding.mjs create <w2_local|overseas_contractor> <intake.json>');
   console.error('  node pipeline/onboarding.mjs plan <onboardingId>');
+  console.error('  node pipeline/onboarding.mjs rebind-role <onboardingId> <role-key-or-name> [version]');
   console.error('  node pipeline/onboarding.mjs approve-copy <onboardingId> <copy-hash> <approval-reference>');
   console.error('  node pipeline/onboarding.mjs start <onboardingId> <rw.json>');
   console.error('  node pipeline/onboarding.mjs advance <onboardingId> [rw.json] [--retry-ambiguous]');
@@ -384,6 +401,20 @@ if (IS_MAIN) {
         phase: record.phase, state: path }, null, 2));
     } else if (command === 'plan') {
       console.log(JSON.stringify(await plan(loadRecord(args[0])), null, 2));
+    } else if (command === 'rebind-role') {
+      const [id, role, version] = args;
+      if (!id || !role) throw new Error('rebind-role requires onboarding ID and role key or exact display name');
+      const rebound = await withRecordLock(id, async () => {
+        const record = rebindOverseasRole(loadRecord(id), role, version, { actor: actor() });
+        saveRecord(record);
+        return record;
+      });
+      console.log(JSON.stringify({
+        onboardingId: rebound.onboardingId,
+        role: rebound.roleBinding,
+        status: deriveStatus(rebound),
+        next: `node pipeline/onboarding.mjs plan ${rebound.onboardingId}`,
+      }, null, 2));
     } else if (command === 'approve-copy') {
       const [id, copyHash, reference] = args;
       if (!id || !copyHash || !reference) throw new Error('approve-copy requires ID, copy hash, and approval reference');

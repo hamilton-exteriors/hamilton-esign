@@ -13,8 +13,9 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { ONBOARDING_STATE_DIR } from './config.mjs';
 import { resolveType, validate as validateWorkerType } from './worker-types.mjs';
+import { resolveOverseasRole } from './role-catalog.mjs';
 
-export const ONBOARDING_VERSION = 1;
+export const ONBOARDING_VERSION = 2;
 
 export const PHASES = [
   'intake_validated',
@@ -56,8 +57,6 @@ export const GATES = {
 };
 
 const W2_ROLES = new Set(['Roofer', 'Foreman']);
-const CONTRACTOR_ROLE = 'Roofing Project Coordinator';
-const CONTRACTOR_ROLE_VERSION = 'roofing-project-coordinator-v1';
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const E164 = /^\+[1-9]\d{7,14}$/;
 const FORBIDDEN_KEY = /(?:^|_)(?:link|url|slug|token|secret|password|cookie|api_?key)(?:$|_)|(?:Link|Url|URL|Slug|Token|Secret|Password|Cookie|ApiKey)/;
@@ -84,6 +83,7 @@ export function validateIntake(type, raw) {
   resolveType(type);
   const intake = { ...raw };
   const problems = [];
+  let roleBinding;
   intake.name = requiredText(intake.name, 'name', problems);
   intake.phone = requiredText(intake.phone, 'phone', problems);
   intake.role = requiredText(intake.role, 'role', problems);
@@ -103,18 +103,27 @@ export function validateIntake(type, raw) {
   } else {
     intake.language = intake.language || 'en';
     intake.country = requiredText(intake.country, 'country', problems);
-    intake.roleExpectationsVersion = requiredText(
-      intake.roleExpectationsVersion,
-      'roleExpectationsVersion',
-      problems,
-    );
     if (intake.language !== 'en') problems.push('overseas contractor packet currently supports English only');
     if (intake.phone?.startsWith('+1')) problems.push('overseas_contractor phone must not start with +1');
-    if (intake.role !== CONTRACTOR_ROLE) {
-      problems.push(`overseas contractor role must be ${CONTRACTOR_ROLE}`);
-    }
-    if (intake.roleExpectationsVersion !== CONTRACTOR_ROLE_VERSION) {
-      problems.push(`roleExpectationsVersion must be ${CONTRACTOR_ROLE_VERSION}`);
+    if (intake.role) {
+      try {
+        const resolved = resolveOverseasRole(
+          intake.roleKey || intake.role,
+          intake.roleExpectationsVersion,
+        );
+        intake.roleKey = resolved.roleKey;
+        intake.role = resolved.displayName;
+        intake.roleExpectationsVersion = resolved.version;
+        roleBinding = {
+          roleKey: resolved.roleKey,
+          displayName: resolved.displayName,
+          version: resolved.version,
+          artifact: resolved.artifact,
+          sha256: resolved.sha256,
+        };
+      } catch (error) {
+        problems.push(error.message);
+      }
     }
     intake.rateProbation = positiveMoney(intake.rateProbation, 'rateProbation', problems);
     const months = Number(intake.probationMonths);
@@ -130,7 +139,7 @@ export function validateIntake(type, raw) {
 
   const workerCheck = validateWorkerType({ type, ...intake });
   problems.push(...workerCheck.problems.filter((problem) => !problems.includes(problem)));
-  return { ok: problems.length === 0, problems, intake };
+  return { ok: problems.length === 0, problems, intake, roleBinding };
 }
 
 function assertSafeValue(value, path = 'record') {
@@ -168,6 +177,7 @@ export function createRecord(type, rawIntake, { now = new Date().toISOString(), 
       ...(checked.intake.email ? { email: checked.intake.email } : {}),
     },
     intake: checked.intake,
+    ...(type === 'overseas_contractor' ? { roleBinding: checked.roleBinding } : {}),
     phase: 'awaiting_copy_approval',
     gates: emptyGates(type),
     documents: [],
@@ -180,10 +190,95 @@ export function createRecord(type, rawIntake, { now = new Date().toISOString(), 
   return record;
 }
 
+export function rebindOverseasRole(record, role, version, {
+  actor = 'operator',
+  now = new Date().toISOString(),
+} = {}) {
+  if (record.type !== 'overseas_contractor') {
+    throw new Error('role rebinding is only valid for overseas_contractor');
+  }
+  if (record.packetId || !['awaiting_copy_approval', 'ready_to_send'].includes(record.phase)) {
+    throw new Error('an overseas role can only be rebound before the packet starts');
+  }
+  const resolved = resolveOverseasRole(role, version);
+  const previous = record.roleBinding;
+  record.intake.roleKey = resolved.roleKey;
+  record.intake.role = resolved.displayName;
+  record.intake.roleExpectationsVersion = resolved.version;
+  record.roleBinding = {
+    roleKey: resolved.roleKey,
+    displayName: resolved.displayName,
+    version: resolved.version,
+    artifact: resolved.artifact,
+    sha256: resolved.sha256,
+  };
+  delete record.copyApproval;
+  record.phase = 'awaiting_copy_approval';
+  record.updatedAt = now;
+  record.audit.push({
+    at: now,
+    actor,
+    action: 'role-rebound',
+    details: {
+      fromRoleKey: previous.roleKey,
+      fromVersion: previous.version,
+      toRoleKey: resolved.roleKey,
+      toVersion: resolved.version,
+    },
+  });
+  return assertRecord(record);
+}
+
+export function migrateRecord(record, now = new Date().toISOString()) {
+  if (record?.version === ONBOARDING_VERSION) return record;
+  if (record?.version !== 1) throw new Error('unsupported onboarding record version');
+  const migrated = structuredClone(record);
+  if (migrated.type === 'overseas_contractor') {
+    if (migrated.intake?.role !== 'Roofing Project Coordinator' ||
+      !['roofing-project-coordinator-v1', '1.0'].includes(migrated.intake?.roleExpectationsVersion)) {
+      throw new Error('legacy overseas onboarding role cannot be migrated automatically; select an explicit catalog role and version');
+    }
+    const resolved = resolveOverseasRole('roofing-project-coordinator', '1.0', { allowInactive: true });
+    migrated.intake.roleKey = resolved.roleKey;
+    migrated.intake.role = resolved.displayName;
+    migrated.intake.roleExpectationsVersion = resolved.version;
+    migrated.roleBinding = {
+      roleKey: resolved.roleKey,
+      displayName: resolved.displayName,
+      version: resolved.version,
+      artifact: resolved.artifact,
+      sha256: resolved.sha256,
+    };
+  }
+  migrated.gates ||= {};
+  for (const gate of GATES[migrated.type] || []) migrated.gates[gate] ||= { status: 'pending' };
+  migrated.version = ONBOARDING_VERSION;
+  migrated.updatedAt = now;
+  migrated.audit ||= [];
+  migrated.audit.push({
+    at: now,
+    actor: 'system',
+    action: 'record-migrated',
+    details: { fromVersion: 1, toVersion: ONBOARDING_VERSION },
+  });
+  return assertRecord(migrated);
+}
+
 export function assertRecord(record) {
   if (record?.version !== ONBOARDING_VERSION) throw new Error('unsupported onboarding record version');
   if (!record.onboardingId) throw new Error('onboardingId is required');
   resolveType(record.type);
+  if (record.type === 'overseas_contractor') {
+    const binding = record.roleBinding;
+    for (const key of ['roleKey', 'displayName', 'version', 'artifact', 'sha256']) {
+      if (typeof binding?.[key] !== 'string' || !binding[key]) {
+        throw new Error(`overseas contractor role binding ${key} is required`);
+      }
+    }
+    if (!/^[a-f0-9]{64}$/.test(binding.sha256)) {
+      throw new Error('overseas contractor role binding sha256 is invalid');
+    }
+  }
   if (!PHASES.includes(record.phase)) throw new Error(`unknown onboarding phase ${record.phase}`);
   const allowedGates = new Set(GATES[record.type]);
   for (const [name, gate] of Object.entries(record.gates || {})) {
@@ -325,7 +420,7 @@ export function saveRecord(record) {
 export function loadRecord(onboardingId) {
   const path = recordPath(onboardingId);
   if (!existsSync(path)) throw new Error(`no onboarding record found for ${onboardingId}`);
-  return assertRecord(JSON.parse(readFileSync(path, 'utf8')));
+  return migrateRecord(JSON.parse(readFileSync(path, 'utf8')));
 }
 
 function processIsRunning(pid) {

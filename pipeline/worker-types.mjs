@@ -64,9 +64,6 @@ export const WORKER_TYPES = {
     label: 'Overseas independent contractor (non-US)',
     employment: 'contractor',
     jurisdiction: 'non-US',
-    supportedRoles: {
-      'Roofing Project Coordinator': 'roofing-project-coordinator-v1',
-    },
     commercialTerms: {
       currency: 'USD',
       cadence: 'twice-monthly',
@@ -111,9 +108,7 @@ export const WORKER_TYPES = {
         reference: 'w8ben-instructions-return-procedure.md',
         note: 'Official IRS form; delivery, receipt, and human review are separate gates.' },
       { key: 'role-expectations', title: 'Role expectations',
-        reference: 'roofing-project-coordinator-role-expectations-v1.md',
-        version: 'roofing-project-coordinator-v1',
-        note: 'Fail closed until owner-approved scope evidence is attached to this version.' },
+        note: 'Selected dynamically from the canonical overseas role catalog.' },
     ],
     blockers: [
       'No payment until the signed W-8BEN is on file (agreement section 3.3)',
@@ -195,8 +190,7 @@ export function validate(worker) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(worker.startDate || '')) problems.push('w2_local startDate must be YYYY-MM-DD');
   }
   if (worker.type === 'overseas_contractor') {
-    const expected = t.supportedRoles?.[worker.role];
-    if (!expected) problems.push('unsupported overseas contractor role');
+    if (!worker.role) problems.push('overseas contractor role is required');
     if (!worker.country) problems.push('overseas contractor country is required');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(worker.startDate || '')) problems.push('overseas contractor startDate must be YYYY-MM-DD');
     for (const key of ['rateProbation', 'probationMonths', 'rate']) {
