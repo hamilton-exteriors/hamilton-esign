@@ -25,6 +25,7 @@ export const WORKER_TYPES = {
     label: 'W-2 employee (California)',
     employment: 'employee',
     jurisdiction: 'California',
+    supportedRoles: ['Roofer', 'Foreman'],
     // Documents Hamilton authors, in signing order. Titles must match the live
     // DocuSeal template names exactly — resolve by name, never by id, because
     // ids change on every pipeline rebuild.
@@ -63,6 +64,14 @@ export const WORKER_TYPES = {
     label: 'Overseas independent contractor (non-US)',
     employment: 'contractor',
     jurisdiction: 'non-US',
+    supportedRoles: {
+      'Roofing Project Coordinator': 'roofing-project-coordinator-v1',
+    },
+    commercialTerms: {
+      currency: 'USD',
+      cadence: 'twice-monthly',
+      paymentRail: 'Mercury',
+    },
     // Authored 2026-07-28 from the agreement Pat (Fatmih Makburi) actually
     // signed on 2026-07-21, generalised so the commercial terms are per-hire
     // fields instead of hardcoded. Nicole Nascimento's 2026-07-10 set is the
@@ -99,9 +108,12 @@ export const WORKER_TYPES = {
     // and emails back, and the role expectations document is reference material.
     handouts: [
       { key: 'w8ben', title: 'W-8BEN instructions',
-        note: 'IRS form, contractor downloads from irs.gov, signs, emails back to admin@' },
+        reference: 'w8ben-instructions-return-procedure.md',
+        note: 'Official IRS form; delivery, receipt, and human review are separate gates.' },
       { key: 'role-expectations', title: 'Role expectations',
-        note: 'Per-role. Pat/Nicole used "Roofing Project Coordinator - Role Expectations".' },
+        reference: 'roofing-project-coordinator-role-expectations-v1.md',
+        version: 'roofing-project-coordinator-v1',
+        note: 'Fail closed until owner-approved scope evidence is attached to this version.' },
     ],
     blockers: [
       'No payment until the signed W-8BEN is on file (agreement section 3.3)',
@@ -177,6 +189,21 @@ export function validate(worker) {
       `phone ${worker.phone} looks domestic (+1) but the type is ` +
       'overseas_contractor. If this person works in California they are almost ' +
       'certainly an employee, not a contractor.');
+  }
+  if (worker.type === 'w2_local') {
+    if (!['Roofer', 'Foreman'].includes(worker.role)) problems.push('w2_local role must be Roofer or Foreman');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(worker.startDate || '')) problems.push('w2_local startDate must be YYYY-MM-DD');
+  }
+  if (worker.type === 'overseas_contractor') {
+    const expected = t.supportedRoles?.[worker.role];
+    if (!expected) problems.push('unsupported overseas contractor role');
+    if (!worker.country) problems.push('overseas contractor country is required');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(worker.startDate || '')) problems.push('overseas contractor startDate must be YYYY-MM-DD');
+    for (const key of ['rateProbation', 'probationMonths', 'rate']) {
+      if (!Number.isFinite(Number(worker[key])) || Number(worker[key]) <= 0) {
+        problems.push(`overseas contractor ${key} must be a positive number`);
+      }
+    }
   }
   return { ok: problems.length === 0, problems, type: t };
 }

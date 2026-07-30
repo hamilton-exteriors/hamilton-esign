@@ -14,6 +14,8 @@ const serviceAccountPath = process.env.GOOGLE_SERVICE_ACCOUNT_PATH ||
 const ROOT = 'Hamilton Employee Records';
 
 const ROUTE = [
+  [/independent contractor agreement/i, 'contractor'],
+  [/w-?8ben/i, 'contractor-tax'],
   [/i-?9|employment eligibility|elegibilidad de empleo/i, 'i9'],
   [/predesignation|physician|medical|dwc|predesignaci|m[ée]dico/i, 'medical'],
   [/safety training roster|registro de capacitaci/i, 'safety-roster'],
@@ -21,7 +23,7 @@ const ROUTE = [
   [/prevenci[óo]n de (enfermedades|lesiones)|por calor|protecci[óo]n contra ca[íi]das|pr[áa]cticas seguras/i, 'program'],
   [/.*/, 'personnel'],
 ];
-const bucketFor = (name) => ROUTE.find(([pattern]) => pattern.test(name))[1];
+export const bucketFor = (name) => ROUTE.find(([pattern]) => pattern.test(name))[1];
 
 async function drive() {
   const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
@@ -64,6 +66,11 @@ async function destination(clientDrive, bucket, person) {
     const safety = await folder(clientDrive, 'Safety', root);
     const rosters = await folder(clientDrive, 'Training Rosters', safety);
     return folder(clientDrive, person, rosters);
+  }
+  if (bucket === 'contractor' || bucket === 'contractor-tax') {
+    const contractors = await folder(clientDrive, 'Contractors', root);
+    const contractor = await folder(clientDrive, person, contractors);
+    return folder(clientDrive, bucket === 'contractor-tax' ? 'Restricted Tax Records' : 'Agreements', contractor);
   }
   const employees = await folder(clientDrive, 'Employees', root);
   const employee = await folder(clientDrive, person, employees);
@@ -112,8 +119,8 @@ export async function fileSubmission(submissionId) {
       pageSize: 1,
     });
     if (duplicate.data.files?.length) {
-      output.push({ bucket, person, file: duplicate.data.files[0].name,
-        link: duplicate.data.files[0].webViewLink, skipped: true });
+      output.push({ bucket, person, fileId: duplicate.data.files[0].id,
+        file: duplicate.data.files[0].name, link: duplicate.data.files[0].webViewLink, skipped: true });
       continue;
     }
 
@@ -128,7 +135,8 @@ export async function fileSubmission(submissionId) {
       fields: 'id,name,webViewLink',
     });
     if (!created.data.id) throw new Error(`Drive did not return an id for ${filename}`);
-    output.push({ bucket, person, file: created.data.name, link: created.data.webViewLink });
+    output.push({ bucket, person, fileId: created.data.id,
+      file: created.data.name, link: created.data.webViewLink });
   }
   return output;
 }

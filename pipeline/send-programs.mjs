@@ -21,6 +21,19 @@ export const PROGRAMS = {
   ],
 };
 
+export function programCopy(language = 'en') {
+  const lang = language === 'es' ? 'es' : 'en';
+  return {
+    intro: lang === 'es'
+      ? 'Aquí están los programas de seguridad de Hamilton. Guárdalos en tu teléfono.'
+      : "Here are Hamilton's safety programs. Keep these on your phone.",
+    documents: PROGRAMS[lang].map((program) => ({
+      filename: `${safeName(program.title)}.pdf`,
+      caption: program.title,
+    })),
+  };
+}
+
 async function signedProgram(title, submissions) {
   const template = await client.templateByName(title);
   const complete = submissions
@@ -71,10 +84,8 @@ export async function sendPrograms(worker, rwPath, previousState = {}) {
   const rw = loadRw(rwPath);
   const state = { intro: Boolean(previousState.intro), documents: { ...(previousState.documents || {}) } };
   try {
-    const intro = lang === 'es'
-      ? 'Aquí están los programas de seguridad de Hamilton. Guárdalos en tu teléfono.'
-      : "Here are Hamilton's safety programs. Keep these on your phone.";
-    await sendIntroOnce(rw, worker.phone, intro, state);
+    const preview = programCopy(lang);
+    await sendIntroOnce(rw, worker.phone, preview.intro, state);
     for (const program of status) {
       const key = String(program.submissionId);
       if (state.documents[key]) continue;
@@ -95,7 +106,7 @@ export async function sendPrograms(worker, rwPath, previousState = {}) {
 function usage() {
   console.error('usage:');
   console.error('  node send-programs.mjs status <en|es>');
-  console.error('  node send-programs.mjs send <phone> <en|es> <rw.json>');
+  console.error('  delivery is available only through pipeline/onboarding.mjs');
 }
 
 const IS_MAIN = Boolean(process.argv[1]) &&
@@ -109,11 +120,9 @@ if (IS_MAIN) {
     }
     console.log(`\n${status.filter((program) => program.signed).length}/${status.length} signed`);
     if (status.some((program) => !program.signed)) process.exitCode = 1;
-  } else if (process.argv[2] === 'send' && process.argv[3] &&
-    ['en', 'es'].includes(process.argv[4]) && process.argv[5]) {
-    const result = await sendPrograms({ phone: process.argv[3], language: process.argv[4] }, process.argv[5]);
-    if (!result.sent) { console.error(`NOT sent: ${result.reason}`); process.exit(1); }
-    console.log(`sent ${result.count} programs`);
+  } else if (process.argv[2] === 'send') {
+    console.error('direct safety-program delivery is disabled; use the approval-gated onboarding workflow');
+    process.exit(1);
   } else {
     usage();
     process.exit(1);

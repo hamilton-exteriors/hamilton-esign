@@ -11,6 +11,8 @@ export const DOCUSEAL_SECRET_PATH = resolve(process.env.DOCUSEAL_SECRET_PATH ||
   join(homedir(), '.claude', '.hamilton-secrets', 'docuseal.json'));
 export const PACKET_STATE_DIR = resolve(process.env.HAMILTON_PACKET_STATE_DIR ||
   join(homedir(), '.claude', '.hamilton-state', 'esign-packets'));
+export const ONBOARDING_STATE_DIR = resolve(process.env.HAMILTON_ONBOARDING_STATE_DIR ||
+  join(homedir(), '.claude', '.hamilton-state', 'onboarding'));
 
 export function loadDocusealSecrets() {
   let value;

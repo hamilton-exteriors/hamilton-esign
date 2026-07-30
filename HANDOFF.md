@@ -268,19 +268,39 @@ assertions there pass off the footer chrome instead.
 Railway `0be07a92-8d07-470a-b696-f0af74822a16`. Both production hosts returned
 200. Git push alone still does not deploy this service.
 
-**Blocked on the owner, not code:**
+**Blocked on external evidence, not missing workflow code:**
 1. **Workers comp class 5552.** Section 6 of the wage notice remains blank until
-   bound, and nobody goes on a roof until it is.
+   coverage is bound and the live carrier/policy fields are verified. The engine
+   blocks the wage notice and `roofReady` until both gates are evidenced.
+2. **Roofing Project Coordinator scope.** The canonical role manifest deliberately
+   says its scope is not approved for release. The engine checks the artifact itself,
+   so recording a gate cannot bypass this blocker. Alex Li, President must approve a
+   versioned scope with an absolute date before any contractor agreement can start.
+
+**New onboarding engine, ready for release:** `pipeline/onboarding.mjs` and
+`pipeline/onboarding-state.mjs` own generated record IDs, atomic protected state,
+exclusive locks, exact-copy SHA-256 approval, lifecycle synchronization, manual
+evidence gates, filing, countersign readiness, and truthful `roofReady` /
+`paymentAuthorized` outcomes. New starts cannot use direct sender CLIs. Private
+signing routes are reconstructed only when needed and are not persisted or printed.
+Validation passed 71/71 tests, all 14 live template checks, two synthetic dry plans
+against production templates, targeted Semgrep with zero findings, and `git diff --check`.
+
+The explicit skills are `onboard-w2-local` and `onboard-overseas-contractor`;
+`onboard-worker` is now a strict classification dispatcher. The W-2 path never enters
+contractor payment actions. The overseas path never enters W-2, payroll, WC, or
+California employee-document actions. Contractor agreements and restricted tax records
+route outside employee Personnel/I-9/Medical folders.
 
 **Completed operationally:** all five safety programs were signed on 2026-07-29;
 DocuSeal reports each submission and submitter `completed`. The Policy
 Acknowledgment signature gate is cleared.
 
 **Deliberately deferred:**
-- Webhook-driven packet advancement and scheduled Drive filing need a durable
-  datastore, endpoint, retention policy, and operator.
-- The durable operational source for trainer confirmation is not selected. Until
-  then the roster requires the explicit `training` command and recorded trainer name.
+- Webhook-driven packet advancement and scheduled Drive filing still need a service
+  endpoint, retention policy, and operator. The CLI state itself is now durable.
+- Actual training, I-9/tax review, payroll, insurance binding, filing evidence, and
+  payment remain human or external actions represented as fail-closed gates.
 - The overseas agreement has no Spanish variant; do not machine-translate it.
 
 **Closed by this remediation:**
@@ -320,8 +340,11 @@ hamilton-esign/
   brand/                      hamilton.css, form.html.erb, _decline_form.html.erb, icons, fonts
   brand/reflow/               generated reading views + index.json (template name → slug)
   pipeline/                   build-docs, measure, build-templates, verify-templates,
-                              stamp-reflow, send-signing-link, send-pamphlets, send-programs,
-                              run-packet, worker-types, file-to-drive, safe
+                              onboarding, onboarding-state, run-packet, worker-types,
+                              send-signing-link, send-pamphlets, send-programs,
+                              file-to-drive, safe
+~/.claude/skills/{onboard-worker,onboard-w2-local,onboard-overseas-contractor}/
+                              explicit dispatcher and classification workflows
 ~/.claude/skills/onboard-worker/references/documents/*.md   SOURCE OF TRUTH for content
 ~/.claude/.hamilton-secrets/docuseal.json                   url, publicUrl, email, password, apiKey
 ```

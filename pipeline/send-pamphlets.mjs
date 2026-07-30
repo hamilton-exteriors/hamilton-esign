@@ -26,6 +26,19 @@ export const PAMPHLETS = {
   ],
 };
 
+export function pamphletCopy(language = 'en') {
+  const lang = language === 'es' ? 'es' : 'en';
+  return {
+    intro: lang === 'es'
+      ? 'Antes de firmar el acuse de recibo, aquí están los avisos del estado de California que te corresponden. Son 8 documentos.'
+      : 'Before you sign the acknowledgment, here are the California state notices you are entitled to. Eight documents.',
+    documents: PAMPHLETS[lang].map((pamphlet) => ({
+      filename: `${safeName(pamphlet.name)}.pdf`,
+      caption: `${pamphlet.row}. ${pamphlet.name}`,
+    })),
+  };
+}
+
 export async function verifyAll(lang = 'en') {
   const key = lang === 'es' ? 'es' : 'en';
   const out = [];
@@ -60,10 +73,8 @@ export async function sendPamphlets(worker, rwPath, previousState = {}) {
   const rw = loadRw(rwPath);
   const state = { intro: Boolean(previousState.intro), documents: { ...(previousState.documents || {}) } };
   try {
-    const intro = lang === 'es'
-      ? 'Antes de firmar el acuse de recibo, aquí están los avisos del estado de California que te corresponden. Son 8 documentos.'
-      : 'Before you sign the acknowledgment, here are the California state notices you are entitled to. Eight documents.';
-    await sendIntroOnce(rw, worker.phone, intro, state);
+    const preview = pamphletCopy(lang);
+    await sendIntroOnce(rw, worker.phone, preview.intro, state);
     for (const pamphlet of checked) {
       const key = String(pamphlet.row);
       if (state.documents[key]) continue;
@@ -84,7 +95,7 @@ export async function sendPamphlets(worker, rwPath, previousState = {}) {
 function usage() {
   console.error('usage:');
   console.error('  node send-pamphlets.mjs verify <en|es>');
-  console.error('  node send-pamphlets.mjs send <phone> <en|es> <rw.json>');
+  console.error('  delivery is available only through pipeline/onboarding.mjs');
 }
 
 const IS_MAIN = Boolean(process.argv[1]) &&
@@ -99,10 +110,9 @@ if (IS_MAIN) {
     }
     console.log(`\n${results.filter((entry) => entry.ok).length}/${results.length} live`);
     if (results.some((entry) => !entry.ok)) process.exitCode = 1;
-  } else if (command === 'send' && first && ['en', 'es'].includes(second) && third) {
-    const result = await sendPamphlets({ phone: first, language: second }, third);
-    if (!result.sent) { console.error(`NOT sent: ${result.reason}`); process.exit(1); }
-    console.log(`sent ${result.count} pamphlets to ${first}`);
+  } else if (command === 'send') {
+    console.error('direct pamphlet delivery is disabled; use the approval-gated onboarding workflow');
+    process.exit(1);
   } else {
     usage();
     process.exit(1);

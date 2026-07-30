@@ -19,6 +19,7 @@ import {
   deliverSignedCopy,
   sendWhatsApp,
   templateByName,
+  workerLinkForSubmission,
 } from './send-signing-link.mjs';
 import { sendPamphlets } from './send-pamphlets.mjs';
 import { sendPrograms, programStatus } from './send-programs.mjs';
@@ -48,6 +49,33 @@ const copy = {
     training: (title, link) => `La capacitación terminó. Firma el registro ${title} aquí:\n${link}`,
   },
 };
+
+const contractorCopy = {
+  en: {
+    intro: (n) => `Your contractor onboarding packet is ready. There ${n === 1 ? 'is' : 'are'} ${n} document${n === 1 ? '' : 's'} to review and sign. ` +
+      `I will send each one separately. Questions on the agreement, call me at (650) 977-3241.`,
+    doc: (i, n, title, link) => `${i} of ${n}: ${title}\n${link}`,
+    done: () => `Your portion of the contractor agreement is signed. I will countersign, then your completed copy comes back here.`,
+    training: () => { throw new Error('training copy is not valid for an overseas contractor'); },
+  },
+};
+
+function copyFor(type, language) {
+  return type === 'overseas_contractor' ? contractorCopy.en : copy[language];
+}
+
+export function packetCopyPreview(type, language, docs, trainingDocument) {
+  const text = copyFor(type, language);
+  return {
+    intro: text.intro(docs.length),
+    documents: docs.map((document, index) =>
+      text.doc(index + 1, docs.length, document.title, '<private signing link>')),
+    completion: text.done(docs.length),
+    ...(trainingDocument ? {
+      training: text.training(trainingDocument.title, '<private signing link>'),
+    } : {}),
+  };
+}
 
 const NEEDS_HANDOUTS = new Set(['acknowledgment']);
 const TRAINING_KEY = 'safety-roster';
@@ -92,9 +120,21 @@ async function preflightPlan(worker, docs, trainingDocument) {
   ] : [];
 }
 
+async function deliveryMessage(plan, pending) {
+  const link = await workerLinkForSubmission(
+    pending.submissionId,
+    plan.lang,
+    pending.workerSubmitterId,
+  );
+  const text = copyFor(plan.type, plan.lang);
+  return pending.kind === 'training'
+    ? text.training(pending.title, link)
+    : text.doc(pending.index + 1, plan.total, pending.title, link);
+}
+
 export async function startPacket(worker, rwPath, { dryRun = true, checkpoint = async () => {} } = {}) {
   const resolved = resolvePacket(worker);
-  const t = copy[resolved.lang];
+  const t = copyFor(worker.type, resolved.lang);
   const plan = {
     packetId: randomUUID(),
     worker: { ...worker, language: resolved.lang },
@@ -179,8 +219,7 @@ async function sendDoc(plan, index, rwPath, checkpoint = async () => {}, retryAm
       key: document.key,
       title: request.template,
       submissionId: request.submissionId,
-      link: request.worker,
-      message: copy[plan.lang].doc(index + 1, plan.total, request.template, request.worker),
+      workerSubmitterId: request.workerSubmitterId,
       createdAt: new Date().toISOString(),
     };
     plan.pendingDelivery = pending;
@@ -193,9 +232,10 @@ async function sendDoc(plan, index, rwPath, checkpoint = async () => {}, retryAm
   pending.attemptedAt = new Date().toISOString();
   await checkpoint(plan);
 
+  const message = await deliveryMessage(plan, pending);
   let delivered;
   try {
-    delivered = await sendWhatsApp(plan.worker.phone, pending.message, rwPath);
+    delivered = await sendWhatsApp(plan.worker.phone, message, rwPath);
   } catch (error) {
     if (error.deliveryAmbiguous) {
       await checkpoint(plan);
@@ -212,11 +252,11 @@ async function sendDoc(plan, index, rwPath, checkpoint = async () => {}, retryAm
     key: pending.key,
     title: pending.title,
     submissionId: pending.submissionId,
-    link: pending.link,
+    workerSubmitterId: pending.workerSubmitterId,
     sentAt: new Date().toISOString(),
     deliveryStatus: delivered.status,
   });
-  plan.message = pending.message;
+  plan.message = copyFor(plan.type, plan.lang).doc(index + 1, plan.total, pending.title, '<sent privately>');
   plan.phase = 'active';
   delete plan.pendingDelivery;
   await checkpoint(plan);
@@ -256,7 +296,7 @@ export async function advance(state, rwPath, {
     if (dryRun) {
       return {
         action: 'would-resume-delivery',
-        message: pending.message,
+        message: copyFor(state.type, state.lang).doc(pending.index + 1, state.total, pending.title, '<private signing link>'),
         state,
         completedCopies: [],
       };
@@ -279,7 +319,7 @@ export async function advance(state, rwPath, {
     if (dryRun) {
       return {
         action: 'would-send-first',
-        message: copy[state.lang].doc(1, state.total, state.docs[0].title, '<signing link>'),
+        message: copyFor(state.type, state.lang).doc(1, state.total, state.docs[0].title, '<signing link>'),
         state,
         completedCopies,
       };
@@ -313,7 +353,7 @@ export async function advance(state, rwPath, {
 
   const nextIndex = state.sent.filter((entry) => entry.key !== TRAINING_KEY).length;
   if (nextIndex >= state.docs.length) {
-    const message = copy[state.lang].done(state.total);
+    const message = copyFor(state.type, state.lang).done(state.total);
     if (!state.deliveries.packetComplete && state.packetCompleteAttemptedAt && !retryAmbiguous) {
       return {
         action: 'delivery-ambiguous',
@@ -348,7 +388,7 @@ export async function advance(state, rwPath, {
     const document = state.docs[nextIndex];
     return {
       action: 'would-send-next',
-      message: copy[state.lang].doc(nextIndex + 1, state.total, document.title, '<signing link>'),
+      message: copyFor(state.type, state.lang).doc(nextIndex + 1, state.total, document.title, '<signing link>'),
       state,
       completedCopies,
     };
@@ -357,11 +397,33 @@ export async function advance(state, rwPath, {
   return { action: 'sent-next', message: state.message, state, completedCopies };
 }
 
-export async function sendTrainingRoster(state, trainer, rwPath, {
+function validateTrainingEvidence(value) {
+  if (!value || typeof value !== 'object') {
+    throw new Error('training evidence JSON is required, not only a trainer name');
+  }
+  const required = ['trainer', 'completedAt', 'topicsVersion', 'attendanceEvidenceRef'];
+  const missing = required.filter((key) => !String(value[key] || '').trim());
+  if (missing.length) throw new Error(`training evidence is missing: ${missing.join(', ')}`);
+  if (value.operatorAttested !== true) {
+    throw new Error('training evidence requires operatorAttested=true after actual instruction');
+  }
+  if (/https?:\/\/\S+\/s\/\S+/i.test(value.attendanceEvidenceRef)) {
+    throw new Error('training evidence cannot contain a private signing URL');
+  }
+  return {
+    trainer: String(value.trainer).trim(),
+    completedAt: String(value.completedAt).trim(),
+    topicsVersion: String(value.topicsVersion).trim(),
+    attendanceEvidenceRef: String(value.attendanceEvidenceRef).trim(),
+    operatorAttested: true,
+  };
+}
+
+export async function sendTrainingRoster(state, trainingEvidence, rwPath, {
   checkpoint = async () => {},
   retryAmbiguous = false,
 } = {}) {
-  if (!trainer?.trim()) throw new Error('trainer name is required');
+  const evidence = validateTrainingEvidence(trainingEvidence);
   if (!state.trainingDocument) throw new Error(`worker type ${state.type} has no training roster`);
   if (state.sent.some((entry) => entry.key === TRAINING_KEY)) {
     throw new Error('training roster has already been sent for this packet');
@@ -378,18 +440,17 @@ export async function sendTrainingRoster(state, trainer, rwPath, {
   if (pending && pending.kind !== 'training') {
     throw new Error(`packet ${state.packetId} has a different delivery awaiting recovery`);
   }
-  if (pending && pending.trainer !== trainer.trim()) {
-    throw new Error(`training roster is already awaiting delivery for trainer ${pending.trainer}`);
+  if (pending && pending.trainingEvidence.trainer !== evidence.trainer) {
+    throw new Error(`training roster is already awaiting delivery for trainer ${pending.trainingEvidence.trainer}`);
   }
   if (!pending) {
     const request = await createSigningRequest(state.trainingDocument.title, state.worker);
     pending = {
       kind: 'training',
-      trainer: trainer.trim(),
+      trainingEvidence: evidence,
       title: request.template,
       submissionId: request.submissionId,
-      link: request.worker,
-      message: copy[state.lang].training(request.template, request.worker),
+      workerSubmitterId: request.workerSubmitterId,
       createdAt: new Date().toISOString(),
     };
     state.pendingDelivery = pending;
@@ -401,9 +462,10 @@ export async function sendTrainingRoster(state, trainer, rwPath, {
   }
   pending.attemptedAt = new Date().toISOString();
   await checkpoint(state);
+  const message = await deliveryMessage(state, pending);
   let delivered;
   try {
-    delivered = await sendWhatsApp(state.worker.phone, pending.message, rwPath);
+    delivered = await sendWhatsApp(state.worker.phone, message, rwPath);
   } catch (error) {
     if (error.deliveryAmbiguous) {
       await checkpoint(state);
@@ -415,17 +477,17 @@ export async function sendTrainingRoster(state, trainer, rwPath, {
     throw new Error(`training roster delivery failed; submission was revoked: ${error.message}`);
   }
 
-  state.training = { trainer: pending.trainer, confirmedAt: new Date().toISOString() };
+  state.training = { ...pending.trainingEvidence, recordedAt: new Date().toISOString() };
   state.sent.push({
     i: state.total + 1,
     key: TRAINING_KEY,
     title: pending.title,
     submissionId: pending.submissionId,
-    link: pending.link,
+    workerSubmitterId: pending.workerSubmitterId,
     sentAt: new Date().toISOString(),
     deliveryStatus: delivered.status,
   });
-  state.message = pending.message;
+  state.message = copyFor(state.type, state.lang).training(pending.title, '<sent privately>');
   delete state.pendingDelivery;
   await checkpoint(state);
   return { action: 'training-roster-sent', message: state.message, state };
@@ -437,17 +499,40 @@ function ensureStateDir() {
 const stateFile = (packetId) => join(PACKET_STATE_DIR, `${packetId}.json`);
 const lockFile = (packetId) => join(PACKET_STATE_DIR, `${packetId}.lock`);
 
-function loadState(packetId) {
+export function loadState(packetId) {
   const path = stateFile(packetId);
   if (!existsSync(path)) throw new Error(`no packet state found for ${packetId}`);
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
-function saveState(state) {
+function stateForPersistence(state) {
+  const safe = structuredClone(state);
+  const scrub = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach(scrub);
+      return;
+    }
+    if (!value || typeof value !== 'object') return;
+    delete value.link;
+    delete value.slug;
+    for (const [key, child] of Object.entries(value)) {
+      if (typeof child === 'string' && /https?:\/\/\S+\/s\/\S+/i.test(child)) {
+        value[key] = child.replace(/https?:\/\/\S+\/s\/\S+/ig, '<private signing link>');
+      } else {
+        scrub(child);
+      }
+    }
+  };
+  scrub(safe);
+  return safe;
+}
+
+export function saveState(state) {
   ensureStateDir();
   const path = stateFile(state.packetId);
   const temporary = `${path}.${process.pid}.tmp`;
-  writeFileSync(temporary, JSON.stringify(state, null, 2), { mode: 0o600 });
+  const safe = stateForPersistence(state);
+  writeFileSync(temporary, JSON.stringify(safe, null, 2), { mode: 0o600 });
   renameSync(temporary, path);
   return path;
 }
@@ -478,7 +563,7 @@ function staleLock(path) {
   return !processIsRunning(owner.pid);
 }
 
-async function withLock(packetId, operation) {
+export async function withLock(packetId, operation) {
   ensureStateDir();
   const path = lockFile(packetId);
   const token = randomUUID();
@@ -516,11 +601,10 @@ async function withLock(packetId, operation) {
 
 function usage() {
   console.error('usage:');
-  console.error('  node run-packet.mjs plan  <w2_local|overseas_contractor> <name> <phone> <en|es>');
-  console.error('  node run-packet.mjs start <w2_local|overseas_contractor> <name> <phone> <en|es> <rw.json>');
+  console.error('  new plans and starts require pipeline/onboarding.mjs');
   console.error('  node run-packet.mjs advance <packetId> [rw.json] [--retry-ambiguous]');
   console.error('  node run-packet.mjs status <packetId>');
-  console.error('  node run-packet.mjs training <packetId> <trainer name> <rw.json> [--retry-ambiguous]');
+  console.error('  node run-packet.mjs training <packetId> <training-evidence.json> <rw.json> [--retry-ambiguous]');
 }
 
 const IS_MAIN = Boolean(process.argv[1]) &&
@@ -529,28 +613,10 @@ const IS_MAIN = Boolean(process.argv[1]) &&
 if (IS_MAIN) {
   const [, , command, ...args] = process.argv;
   try {
-    if (command === 'plan' || command === 'start') {
-      const [type, name, phone, language, rwPath] = args;
-      if (!type || !name || !phone || !['en', 'es'].includes(language) ||
-        (command === 'start' && !rwPath)) {
-        usage(); process.exit(1);
-      }
-      const dryRun = command === 'plan';
-      let announced = false;
-      const checkpoint = async (current) => {
-        const path = saveState(current);
-        if (!announced) {
-          console.log(`packet id: ${current.packetId}\nstate: ${path}`);
-          announced = true;
-        }
-      };
-      const state = await startPacket({ type, name, phone, language }, rwPath,
-        { dryRun, checkpoint });
-      console.log(`packet: ${state.total} documents, type=${state.type}, lang=${state.lang}${dryRun ? ' (READ-ONLY PLAN)' : ''}`);
-      console.log(`\nintro:\n${state.intro}`);
-      console.log(`\nfirst document:\n${state.message}`);
-      if (state.blockers.length) console.log(`\nblockers before acknowledgment:\n- ${state.blockers.join('\n- ')}`);
-    } else if (command === 'advance') {
+    if (command === 'start' || command === 'plan') {
+      throw new Error('direct packet planning and start are disabled; use pipeline/onboarding.mjs so structured intake, copy approval, and lifecycle gates are enforced');
+    }
+    if (command === 'advance') {
       const [packetId, rwPath, retryFlag] = args;
       if (!packetId || rwPath === '--retry-ambiguous' ||
         (retryFlag && retryFlag !== '--retry-ambiguous')) {
@@ -580,14 +646,15 @@ if (IS_MAIN) {
       const last = state.sent[state.sent.length - 1];
       console.log(`${state.worker.name}: ${state.sent.length} sent${last ? `, latest "${last.title}"` : ''}`);
     } else if (command === 'training') {
-      const [packetId, trainer, rwPath, retryFlag] = args;
-      if (!packetId || !trainer || !rwPath ||
+      const [packetId, evidencePath, rwPath, retryFlag] = args;
+      if (!packetId || !evidencePath || !rwPath ||
         (retryFlag && retryFlag !== '--retry-ambiguous')) {
         usage(); process.exit(1);
       }
+      const trainingEvidence = JSON.parse(readFileSync(evidencePath, 'utf8'));
       await withLock(packetId, async () => {
         const state = loadState(packetId);
-        const result = await sendTrainingRoster(state, trainer, rwPath, {
+        const result = await sendTrainingRoster(state, trainingEvidence, rwPath, {
           checkpoint: async () => saveState(state),
           retryAmbiguous: retryFlag === '--retry-ambiguous',
         });

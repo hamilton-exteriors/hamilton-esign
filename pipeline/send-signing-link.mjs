@@ -97,6 +97,7 @@ function contractorTerms(tpl, worker) {
   const wanted = {
     'Contractor': worker.name,
     'Role': worker.role,
+    'Country of residence': worker.country,
     'Monthly rate during probation': worker.rateProbation,
     'Probation length in months': worker.probationMonths,
     'Monthly rate after probation': worker.rate,
@@ -233,9 +234,21 @@ export async function createSigningRequest(templateName, worker) {
   return {
     template: tpl.name, worker: url(w, lang), lang,
     submissionId: w.submission_id,
+    workerSubmitterId: w.id,
     hamiltonSubmitterId: h ? h.id : null,
     hamilton: null,
   };
+}
+
+export async function workerLinkForSubmission(submissionId, language = 'en', submitterId) {
+  const sub = await client.request(`/api/submissions/${submissionId}`, {},
+    `submission ${submissionId}`);
+  const submitters = sub.submitters || [];
+  const worker = submitters.find((entry) => entry.id === submitterId) ||
+    submitters.find((entry) => /worker/i.test(entry.role || '')) || submitters[0];
+  if (!worker?.slug) throw new Error(`submission ${submissionId} has no worker signing route`);
+  const lang = LANGS[language] || 'en';
+  return `${PUBLIC_URL}/s/${worker.slug}?lang=${lang}`;
 }
 
 export async function archiveSubmission(submissionId) {
@@ -304,6 +317,12 @@ export async function sendWhatsApp(to, body, rwPath) {
  * a two-party document the PDF only carries both signatures once Hamilton has
  * countersigned, and sending an incomplete PDF as "here is your signed copy"
  * would be worse than sending nothing. */
+export function signedCopyCaption(language = 'en') {
+  return (LANGS[language] || 'en') === 'es'
+    ? 'Aquí está tu copia firmada, para tus archivos.'
+    : "Here's your signed copy, for your records.";
+}
+
 export async function deliverSignedCopy(submissionId, worker, rwPath) {
   const sub = await client.request(`/api/submissions/${submissionId}`, {},
     `submission ${submissionId}`);
@@ -326,9 +345,7 @@ export async function deliverSignedCopy(submissionId, worker, rwPath) {
     // safeName, not the raw name: "Ana Maria / Marie" produced a broken filename
     // and "///" produced an empty one.
     const filename = `${safeName(sub.template?.name || doc.name, 'Document')} - ${safeName(worker.name)} - ${date}.pdf`;
-    const caption = lang === 'es'
-      ? 'Aquí está tu copia firmada, para tus archivos.'
-      : "Here's your signed copy, for your records.";
+    const caption = signedCopyCaption(lang);
     const res = await sendDocument(worker.phone, doc.url, filename, caption, rwPath);
     results.push({ filename, status: res.status, ok: true });
   }
@@ -356,9 +373,8 @@ const IS_MAIN = !!process.argv[1] &&
 // --- CLI ---------------------------------------------------------------------
 function usage() {
   console.error('usage:');
-  console.error('  node send-signing-link.mjs countersign <submissionId> [--send <phone> <rw.json>]');
-  console.error('  node send-signing-link.mjs deliver <submissionId> <name> <phone> <en|es> <rw.json>');
-  console.error('  node send-signing-link.mjs "<template name>" <name> <phone> <en|es> [--send <rw.json>]');
+  console.error('  node send-signing-link.mjs countersign <submissionId>  # readiness only; use onboarding.mjs --open');
+  console.error('  node send-signing-link.mjs "<template name>" <name> <phone> <en|es>  # read-only preview');
 }
 
 if (!IS_MAIN) {
@@ -372,20 +388,14 @@ if (!IS_MAIN) {
   }
   const c = await countersignLink(submissionId);
   if (!c.ready) { console.error(`not ready: ${c.reason}`); process.exit(1); }
-  console.log(`countersign link: ${c.link}`);
+  console.log('countersignature is ready; use pipeline/onboarding.mjs countersign <onboardingId> --open so the private route is not logged');
   if (sendIdx > 0) {
-    const res = await sendWhatsApp(process.argv[sendIdx + 1],
-      `Signed and ready for your countersignature: ${c.link}`, process.argv[sendIdx + 2]);
-    console.log(`sent to Alex -> HTTP ${res.status}`);
+    console.error('direct countersign delivery is disabled; use the approval-gated onboarding workflow');
+    process.exit(1);
   }
 } else if (process.argv[2] === 'deliver') {
-  const [, , , submissionId, name, phone, language, rwPath] = process.argv;
-  if (!submissionId || !name || !phone || !['en', 'es'].includes(language) || !rwPath) {
-    usage(); process.exit(1);
-  }
-  const r = await deliverSignedCopy(submissionId, { name, phone, language }, rwPath);
-  if (!r.sent) { console.error(`not sent: ${r.reason || JSON.stringify(r.results)}`); process.exit(1); }
-  console.log(`delivered: ${r.results.map(x => x.filename).join(', ')}`);
+  console.error('direct signed-copy delivery is disabled; use the approval-gated onboarding workflow');
+  process.exit(1);
 } else if (process.argv[2]) {
   const [, , tplName, name, phone, language] = process.argv;
   if (!tplName || !name || !phone || !['en', 'es'].includes(language || 'en')) {
@@ -399,22 +409,10 @@ if (!IS_MAIN) {
     console.log(`template : ${tpl.name}`);
     console.log(`lang     : ${worker.language}`);
     console.log(`\npreview for ${phone}:\n${preview}\n`);
-    console.log('(read-only preview; pass --send <rw.json> to create and deliver)');
+    console.log('(read-only legacy preview; create and deliver only through pipeline/onboarding.mjs)');
   } else {
-    const rwPath = process.argv[sendIdx + 1];
-    if (!rwPath) { usage(); process.exit(1); }
-    const req = await createSigningRequest(tplName, worker);
-    try {
-      const msg = message(worker, req.worker, req.template);
-      const res = await sendWhatsApp(phone, msg, rwPath);
-      console.log(`created submission ${req.submissionId} and sent -> HTTP ${res.status}`);
-    } catch (error) {
-      if (error.deliveryAmbiguous) {
-        throw new Error(`link delivery outcome is unknown; submission ${req.submissionId} remains active for inspection: ${error.message}`);
-      }
-      await archiveSubmission(req.submissionId);
-      throw new Error(`link delivery failed; submission ${req.submissionId} was revoked: ${error.message}`);
-    }
+    console.error('direct signing-link delivery is disabled; use pipeline/onboarding.mjs so exact copy approval and lifecycle gates are enforced');
+    process.exit(1);
   }
 } else {
   usage();
