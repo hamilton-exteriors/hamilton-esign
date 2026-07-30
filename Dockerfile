@@ -42,8 +42,9 @@ RUN git init . && \
 
 # Every edit asserts its anchor text, so an upstream change fails the build here
 # rather than shipping a bundle where fields silently capture nothing.
-COPY patches/docuseal-inline-fields.mjs /patches/
-RUN node /patches/docuseal-inline-fields.mjs /src/app/javascript/submission_form
+COPY patches/docuseal-inline-fields.mjs patches/docuseal-audit-layout.mjs /patches/
+RUN node /patches/docuseal-inline-fields.mjs /src/app/javascript/submission_form \
+ && node /patches/docuseal-audit-layout.mjs /src/lib/submissions/generate_audit_trail.rb
 
 RUN yarn install --frozen-lockfile --network-timeout 1000000
 
@@ -126,6 +127,9 @@ COPY brand/icons/favicon-96.png    /app/public/favicon-96x96.png
 COPY brand/icons/favicon-180.png   /app/public/apple-icon-180x180.png
 COPY brand/icons/favicon-180.png   /app/public/apple-touch-icon.png
 COPY brand/icons/favicon-180.png   /app/public/apple-touch-icon-precomposed.png
+
+COPY --from=webpack /src/lib/submissions/generate_audit_trail.rb /app/lib/submissions/generate_audit_trail.rb
+RUN ruby -c /app/lib/submissions/generate_audit_trail.rb
 
 # Product name is a Ruby constant upstream, not an env var.
 RUN sed -i "s/PRODUCT_NAME = 'DocuSeal'/PRODUCT_NAME = 'Hamilton Exteriors'/" /app/lib/docuseal.rb \
