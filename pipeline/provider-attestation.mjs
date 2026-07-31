@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { PDF_FINGERPRINT_ALGORITHM, PDF_FINGERPRINT_SCALE, validatePdfFingerprint } from './pdf-fingerprint.mjs';
 
+export const LEGACY_PROVIDER_ATTESTATION_SCHEMA_VERSION = 1;
 export const PROVIDER_ATTESTATION_SCHEMA_VERSION = 2;
 const SHA256 = /^[a-f0-9]{64}$/;
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -14,6 +15,8 @@ function normalizedFieldRegions(regions, pageCount, slug, documentOrder, entryId
   return regions.map((region, order) => {
     if (region.order !== undefined && region.order !== order) throw new Error(`${slug}: provider field region order is invalid`);
     if (typeof region.id !== 'string' || !region.id || typeof region.uuid !== 'string' || !region.uuid ||
+      typeof region.name !== 'string' || !region.name || typeof region.description !== 'string' ||
+      typeof region.required !== 'boolean' || typeof region.readonly !== 'boolean' ||
       ids.has(region.id) || uuids.has(region.uuid) || entryIds.has(region.id) || entryUuids.has(region.uuid) || !FIELD_TYPES.has(region.type) || !FIELD_OWNERS.has(region.owner) ||
       !Number.isInteger(region.page) || region.page < 0 || region.page >= pageCount ||
       ![region.x, region.y, region.w, region.h].every(Number.isFinite) || region.x < 0 || region.y < 0 ||
@@ -21,7 +24,11 @@ function normalizedFieldRegions(regions, pageCount, slug, documentOrder, entryId
       throw new Error(`${slug}: provider document ${documentOrder} field region ${order} is invalid`);
     }
     ids.add(region.id); uuids.add(region.uuid); entryIds.add(region.id); entryUuids.add(region.uuid);
-    return { order, id: region.id, uuid: region.uuid, type: region.type, owner: region.owner, page: region.page, x: region.x, y: region.y, w: region.w, h: region.h };
+    return {
+      order, id: region.id, uuid: region.uuid, name: region.name, description: region.description,
+      type: region.type, owner: region.owner, required: region.required, readonly: region.readonly,
+      page: region.page, x: region.x, y: region.y, w: region.w, h: region.h,
+    };
   });
 }
 
@@ -127,6 +134,43 @@ export function validateProviderAttestation(attestation, expectedEntries = 2) {
     throw new Error('provider attestation aggregate digest is invalid');
   }
   return attestation;
+}
+
+export function validateLegacyProviderAttestation(attestation, expectedEntries = 2) {
+  if (!attestation || attestation.schemaVersion !== LEGACY_PROVIDER_ATTESTATION_SCHEMA_VERSION ||
+    !Array.isArray(attestation.entries) || attestation.entries.length !== expectedEntries ||
+    new Set(attestation.entries.map((entry) => entry.slug)).size !== attestation.entries.length) {
+    throw new Error('legacy provider attestation structure is invalid');
+  }
+  for (const entry of attestation.entries) {
+    if (typeof entry.slug !== 'string' || !entry.slug || !Number.isInteger(entry.registryVersion) || entry.registryVersion < 1 ||
+      !/^\d+$/.test(entry.templateId || '') || typeof entry.templateName !== 'string' || !entry.templateName ||
+      !SHA256.test(entry.layoutSha256 || '') || !SHA256.test(entry.reflowSha256 || '') ||
+      !Array.isArray(entry.documents) || entry.documents.length !== 15 ||
+      entry.documents.some((document, order) => document.order !== order || !document.uuid || !document.filename ||
+        Object.hasOwn(document, 'sourceByteLength') || Object.hasOwn(document, 'fieldRegions') ||
+        !SHA256.test(document.localRawSha256 || '') || document.providerRawSha256 !== document.localRawSha256)) {
+      throw new Error(`legacy provider attestation entry ${entry.slug || 'unknown'} is invalid`);
+    }
+    entry.documents.forEach((document) => validatePdfFingerprint({
+      ...document.fingerprint,
+      pages: Array.from({ length: document.fingerprint?.pageCount || 0 }, () => ({})),
+    }, `${entry.slug} legacy provider fingerprint`));
+    if (entry.entrySha256 !== providerAttestationEntryDigest(entry)) {
+      throw new Error(`legacy provider attestation entry ${entry.slug} digest is invalid`);
+    }
+  }
+  if (attestation.attestationSha256 !== providerAttestationDigest(attestation)) {
+    throw new Error('legacy provider attestation aggregate digest is invalid');
+  }
+  return attestation;
+}
+
+export function requireLegacyProviderAttestationEntry(attestation, slug) {
+  validateLegacyProviderAttestation(attestation);
+  const matches = attestation.entries.filter((entry) => entry.slug === slug);
+  if (matches.length !== 1) throw new Error(`legacy provider attestation has no unique entry for ${slug}`);
+  return matches[0];
 }
 
 export function requireProviderAttestationEntry(attestation, slug) {

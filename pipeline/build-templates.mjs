@@ -23,6 +23,7 @@ import {
   recoverPendingCreationBatch,
   stageCreationArtifacts,
 } from './template-creation-recovery.mjs';
+import { expectedProviderFieldMetadata } from './template-verifier.mjs';
 import { verifyCreatedTemplateReadback } from './template-mutation-safety.mjs';
 
 const DIR = BUILD_DIR;
@@ -38,13 +39,6 @@ const COMPANY = new Set(['iipp', 'iipp-es', 'heat-illness-prevention-plan', 'hea
 // opening one thing and then shown another. Accents are part of the name;
 // stripping them to stay ASCII is not a simplification, it is a misspelling.
 const TITLES = Object.fromEntries([...TEMPLATE_BY_SLUG].map(([slug, entry]) => [slug, entry.title]));
-
-// Sections and fields that only apply to some workers. Forcing these produces a
-// signed record asserting something untrue: a roofer who does not supervise
-// cannot honestly initial supervisor training, and a worker who answers NO to
-// driving cannot honestly attest he holds a licence and authorizes an MVR pull.
-const CONDITIONAL_SECTION = /supervisor|capataz|foreman|driving|manejo de veh/i;
-const CONDITIONAL_FIELD = /if assigned|si se asigna|if driving|si maneja|respirator|respirador|Section H|secci[óo]n H/i;
 
 // --- session (admin UI endpoints) -------------------------------------------
 let cookie = '';
@@ -305,43 +299,18 @@ for (const d of docs) {
   // So: `name` stays short and carries only what changes. Position goes first
   // because it is 5 chars and always visible. Section orientation moves to
   // `description`, which DocuSeal renders in its own element below the label.
-  const perOwner = {};
-  for (const f of d.fields) perOwner[f.owner] = (perOwner[f.owner] || 0) + 1;
-  const idx = {};
-  const NAME_MAX = 46;
-
-  const seen = new Map();
+  const metadataById = expectedProviderFieldMetadata(d.fields);
   const fields = d.fields.map((f) => {
-    idx[f.owner] = (idx[f.owner] || 0) + 1;
-    const total = perOwner[f.owner];
-    // Only worth showing on documents long enough to feel long.
-    const pos = total >= 8 ? `${idx[f.owner]}/${total} ` : '';
-    let short = f.name;
-    if (short.length > NAME_MAX) {
-      const cut = short.slice(0, NAME_MAX);
-      const sp = cut.lastIndexOf(' ');
-      short = (sp > NAME_MAX * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s(,;:-]+$/, '') + '…';
-    }
-    let nm = `${pos}${short}`;
-    const n = (seen.get(nm) || 0) + 1; seen.set(nm, n);
-    if (n > 1) nm = `${nm} (${n})`;
-    // Most blanks are mandatory: a signer must not skip an acknowledgment line
-    // and still produce a "signed" record. But `required: true` on a field
-    // inside a CONDITIONAL section forces a false attestation — the supervisor
-    // part says "complete only if the employee supervises", the driving section
-    // only applies if he answers YES, and several roster rows say "if assigned".
-    // Forcing those manufactures exactly the false record the pamphlet guard
-    // exists to prevent, so conditional sections are optional.
-    // A checkbox is one option out of a mutually exclusive set — exactly one of
-    // Roofer/Foreman is ticked, one language, one sick-leave method. Marking
-    // them required would demand Hamilton tick BOTH Roofer and Foreman.
-    const conditional = f.type === 'checkbox' ||
-      CONDITIONAL_SECTION.test(f.section || '') ||
-      CONDITIONAL_FIELD.test(f.name || '');
-    return { uuid: randomUUID(), submitter_uuid: (subs[f.owner] || submitters[0]).uuid,
-      name: nm, type: f.type, required: !conditional,
-      ...(f.section ? { description: f.section } : {}),
-      areas: [providerFieldGeometry(f, attachmentUuidByOrder[f.attachmentOrder])] };
+    const metadata = metadataById.get(f.id);
+    return {
+      uuid: randomUUID(),
+      submitter_uuid: (subs[f.owner] || submitters[0]).uuid,
+      name: metadata.name,
+      type: f.type,
+      required: metadata.required,
+      ...(metadata.description ? { description: metadata.description } : {}),
+      areas: [providerFieldGeometry(f, attachmentUuidByOrder[f.attachmentOrder])],
+    };
   });
   const st = await saveTemplate(id, schema, csrf, submitters, fields);
   const es = /(?:^|-)es(?:-|$)/.test(d.slug);
@@ -381,10 +350,15 @@ for (const d of docs) {
       providerRawSha256: savedDocumentInspections.get(document.uuid).rawSha256,
       sourceByteLength: savedDocumentInspections.get(document.uuid).sourceByteLength,
       fingerprint: savedDocumentInspections.get(document.uuid).fingerprint,
-      fieldRegions: d.fields.filter((field) => field.attachmentOrder === index).map((field, order) => ({
-        order, id: field.id, uuid: uuidById.get(field.id), type: field.type, owner: field.owner,
-        page: field.sourcePage, x: field.x, y: field.y, w: field.w, h: field.h,
-      })),
+      fieldRegions: d.fields.filter((field) => field.attachmentOrder === index).map((field, order) => {
+        const metadata = metadataById.get(field.id);
+        return {
+          order, id: field.id, uuid: uuidById.get(field.id), name: metadata.name,
+          description: metadata.description, type: field.type, owner: field.owner,
+          required: metadata.required, readonly: metadata.readonly,
+          page: field.sourcePage, x: field.x, y: field.y, w: field.w, h: field.h,
+        };
+      }),
     })),
   });
 }

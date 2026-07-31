@@ -52,11 +52,33 @@ it produced, so a rebuild can be scoped to one document.
 
 ### W-2 combined-packet code state (2026-07-31)
 
-This worktree is not committed, pushed, or deployed. Flattened v2 templates 378/379 remain
-active and unchanged. The coordinator created ordered-source v3 templates 380/381. All
-subsequent work here was read-only against DocuSeal: no template was archived, rebuilt, or
-mutated. The generated UUID-stamped reflow files and provider attestation are preserved
-locally for the required commit/deploy gate.
+Ordered-source v3 templates 380/381 were created by the coordinator; flattened v2
+templates 378/379 are retained and unchanged. A first v3 release (`694af62` here plus
+Platform `66a8e31`) was deployed at ~03:12 and rolled back minutes later after a
+post-release review found compatibility and timeout defects; production was re-pinned to
+`df2d34c` / `c5f2d26`. The remaining fixes below passed a second two-repo adversarial
+review before re-release.
+
+**Attestation generations — read this before touching either attestation file.** Three
+generations exist for templates 380/381: gen-A (`df2d34c`, schemaVersion 1, aggregate
+`e9039d51…`) is retained byte-identical as the immutable
+`brand/reflow/provider-attestations-v1.json` and is what retained schema-v3 plans bind;
+gen-C (current `provider-attestations.json`, schemaVersion 2 with enriched field regions,
+aggregate `d43df547…`) is what new schema-v4 plans bind. The intermediate gen-B
+(`694af62`, aggregate `3405d89…`) belongs only to the rolled-back release and validates
+under NEITHER validator — it is deliberately orphaned. Production inventory proof
+2026-07-31: zero plan rows contain any gen-B digest, zero schema-v4 rows exist, and the
+only two v3 plan rows (both unapproved synthetic drafts) bind gen-A. If gen-B digests
+ever appear in a plan row, that row predates this proof and needs manual review — do not
+"fix" it by regenerating attestation files. `test/provider-attestation.test.mjs` pins the
+v1 file identity by value and the legacy validator's fail-closed negative paths.
+
+**Aggregate request deadlines are Platform-owned.** The production timeout defect class
+from the rollback is fixed in `hamilton-platform`'s `docuseal-execution-client`
+(`boundedPhaseSignal`, one 120s phase across every provider call, fail-closed on expiry).
+This repo's pipeline is local operator tooling with per-call timeouts only and no
+aggregate budget — a stalled provider download here blocks an operator terminal, not
+production.
 
 - New W-2 intake uses `hourlyGuaranteeRate`, `pieceRatePerSquare`,
   `comparisonMethod: greater_of`, and `workweek: sunday_saturday`.
@@ -114,11 +136,12 @@ locally for the required commit/deploy gate.
   explicitly; they never permit raw drift. `brand/reflow/provider-attestations.json` pins
   and exposes the exact `templateId, order, uuid, filename, sourceByteLength, localRawSha256,
   providerRawSha256, fingerprint, fieldRegions` tuple plus layout/reflow binding. Each ordered
-  region binds local field ID, provider UUID, type, owner, source-local page, and normalized
-  top-left geometry. Execution-plan schema v4 binds the
+  region binds local field ID, provider UUID, name, description, type, owner, required/readonly
+  state, source-local page, and normalized top-left geometry. Execution-plan schema v4 binds the
   attestation entry into Platform approval/start. That is not an atomicity guarantee:
   Platform owns the post-submission provider-byte reread and exact tuple check before route
-  release. Schema v1/v2 are legacy-read only.
+  release. Plan schemas v1/v2 are legacy-read only; retained plan schema v3 binds the exact
+  immutable `provider-attestations-v1.json`, while generation emits only schema v4.
 - `--apply` acquires one atomic process-ownership lock before any journal inspection,
   recovery, or provider inventory request and holds it through recovery, both creates and
   readbacks, artifact staging, completion/rollback, and cleanup. It reuses the hardened
@@ -190,7 +213,7 @@ locally for the required commit/deploy gate.
   `d2369b0b652392ac1db3f20e135490396bc76a7be519f4dcbb0372a77881adf0` (EN) and
   `cf4fbb322d0fdf7078e4dad4bbe9a488831675546709b6f1a67a40a211bbf523` (ES).
   The committed provider-attestation aggregate digest is
-  `3405d89da01acccfae76997d24a4e021831ba84adc8021aa2f23ecbf0cdbb2bf`.
+  `d43df547a3d815e54678bb72fcef65f39b3271cfa97f65afcb9d3504596dd8d7`.
   Syntax checks for all 58 repository `.mjs` modules and `git diff --check` pass. Final
   read-only `--scope w2-release` verification passes v3 380/381 and rosters 358/359.
   `--scope w2-cutover` remains a reporting failure because retained v2 378/379 are no

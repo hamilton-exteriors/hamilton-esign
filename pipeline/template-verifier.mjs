@@ -114,6 +114,39 @@ export function stampedReflowUuidMap(html, measuredFields) {
   return mapping;
 }
 
+const CONDITIONAL_SECTION = /supervisor|capataz|foreman|driving|manejo de veh/i;
+const CONDITIONAL_FIELD = /if assigned|si se asigna|if driving|si maneja|respirator|respirador|Section H|secci[óo]n H/i;
+const PROVIDER_FIELD_NAME_MAX = 46;
+
+export function expectedProviderFieldMetadata(fields) {
+  const perOwner = {};
+  for (const field of fields) perOwner[field.owner] = (perOwner[field.owner] || 0) + 1;
+  const indexes = {};
+  const seen = new Map();
+  return new Map(fields.map((field) => {
+    indexes[field.owner] = (indexes[field.owner] || 0) + 1;
+    const total = perOwner[field.owner];
+    const position = total >= 8 ? `${indexes[field.owner]}/${total} ` : '';
+    let short = field.name;
+    if (short.length > PROVIDER_FIELD_NAME_MAX) {
+      const cut = short.slice(0, PROVIDER_FIELD_NAME_MAX);
+      const space = cut.lastIndexOf(' ');
+      short = (space > PROVIDER_FIELD_NAME_MAX * 0.6 ? cut.slice(0, space) : cut).replace(/[\s(,;:-]+$/, '') + '…';
+    }
+    let name = `${position}${short}`;
+    const duplicate = (seen.get(name) || 0) + 1;
+    seen.set(name, duplicate);
+    if (duplicate > 1) name = `${name} (${duplicate})`;
+    const conditional = field.type === 'checkbox' || CONDITIONAL_SECTION.test(field.section || '') || CONDITIONAL_FIELD.test(field.name || '');
+    return [field.id, {
+      name,
+      description: field.section || '',
+      required: !conditional,
+      readonly: false,
+    }];
+  }));
+}
+
 const FIELD_GEOMETRY_KEYS = ['page', 'x', 'y', 'w', 'h'];
 
 function verifierOwner(value) {
@@ -131,6 +164,7 @@ export function verifyExactMeasuredFields(template, measured, schema, uuidByFiel
     throw new Error('provider field UUID coverage differs from measured packet');
   }
   const roles = new Map((template.submitters || []).map((submitter) => [submitter.uuid, submitter.name]));
+  const metadataById = expectedProviderFieldMetadata(measured.fields);
   for (const expected of measured.fields) {
     const uuid = uuidByFieldId.get(expected.id);
     const actual = liveByUuid.get(uuid);
@@ -139,9 +173,11 @@ export function verifyExactMeasuredFields(template, measured, schema, uuidByFiel
     if (!actual || source?.slug !== expected.sourceSlug || !expectedAttachmentUuid) {
       throw new Error(`${expected.id}: provider field identity/source mapping is incomplete`);
     }
+    const metadata = metadataById.get(expected.id);
     if (actual.type !== expected.type || verifierOwner(roles.get(actual.submitter_uuid)) !== expected.owner ||
-      actual.areas?.length !== 1) {
-      throw new Error(`${expected.id}: provider field type/submitter/area differs from measured packet`);
+      actual.name !== metadata.name || (actual.description || '') !== metadata.description ||
+      Boolean(actual.required) !== metadata.required || Boolean(actual.readonly) !== metadata.readonly || actual.areas?.length !== 1) {
+      throw new Error(`${expected.id}: provider field name/description/type/owner/required/readonly/area differs from measured packet`);
     }
     const area = actual.areas[0];
     const expectedGeometry = {
@@ -224,21 +260,29 @@ export function validateProviderDocumentTopology({
       }
     });
     verifyExactMeasuredFields(template, measured, schema, uuidByFieldId);
+    const metadataById = expectedProviderFieldMetadata(measured.fields);
     measured.sources.forEach((_, index) => {
       const expectedRegions = measured.fields
         .filter((field) => field.attachmentOrder === index)
-        .map((field, order) => ({
-          order,
-          id: field.id,
-          uuid: uuidByFieldId.get(field.id),
-          type: field.type,
-          owner: field.owner,
-          page: field.sourcePage,
-          x: field.x,
-          y: field.y,
-          w: field.w,
-          h: field.h,
-        }));
+        .map((field, order) => {
+          const metadata = metadataById.get(field.id);
+          return {
+            order,
+            id: field.id,
+            uuid: uuidByFieldId.get(field.id),
+            name: metadata.name,
+            description: metadata.description,
+            type: field.type,
+            owner: field.owner,
+            required: metadata.required,
+            readonly: metadata.readonly,
+            page: field.sourcePage,
+            x: field.x,
+            y: field.y,
+            w: field.w,
+            h: field.h,
+          };
+        });
       if (JSON.stringify(attestationEntry.documents[index].fieldRegions) !== JSON.stringify(expectedRegions)) {
         throw new Error(`provider source ${index} attested field regions differ from measured/live fields`);
       }

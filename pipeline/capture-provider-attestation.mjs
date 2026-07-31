@@ -9,7 +9,7 @@ import { CURRENT_TEMPLATE_REGISTRY, requireUniqueActiveTemplate } from './regist
 import { canonicalProviderPdfName } from './packet-topology.mjs';
 import { fingerprintPdf, fingerprintsEqual } from './pdf-fingerprint.mjs';
 import { buildProviderAttestation } from './provider-attestation.mjs';
-import { stampedReflowUuidMap, verifyExactMeasuredFields } from './template-verifier.mjs';
+import { expectedProviderFieldMetadata, stampedReflowUuidMap, verifyExactMeasuredFields } from './template-verifier.mjs';
 
 if (process.argv.length !== 2) throw new Error('usage: node pipeline/capture-provider-attestation.mjs');
 const entries = CURRENT_TEMPLATE_REGISTRY.filter((entry) => entry.version === 3 && entry.orderedSourceAttachments);
@@ -33,6 +33,7 @@ for (const entry of entries) {
     throw new Error(`${entry.slug}: provider topology is not 15 ordered documents`);
   }
   verifyExactMeasuredFields(template, local, template.schema, uuidByFieldId);
+  const metadataById = expectedProviderFieldMetadata(local.fields);
   const documents = [];
   for (let index = 0; index < 15; index += 1) {
     const schema = template.schema[index];
@@ -62,18 +63,25 @@ for (const entry of entries) {
       fingerprint,
       fieldRegions: local.fields
         .filter((field) => field.attachmentOrder === index)
-        .map((field, order) => ({
-          order,
-          id: field.id,
-          uuid: uuidByFieldId.get(field.id),
-          type: field.type,
-          owner: field.owner,
-          page: field.sourcePage,
-          x: field.x,
-          y: field.y,
-          w: field.w,
-          h: field.h,
-        })),
+        .map((field, order) => {
+          const metadata = metadataById.get(field.id);
+          return {
+            order,
+            id: field.id,
+            uuid: uuidByFieldId.get(field.id),
+            name: metadata.name,
+            description: metadata.description,
+            type: field.type,
+            owner: field.owner,
+            required: metadata.required,
+            readonly: metadata.readonly,
+            page: field.sourcePage,
+            x: field.x,
+            y: field.y,
+            w: field.w,
+            h: field.h,
+          };
+        }),
     });
   }
   attestationEntries.push({

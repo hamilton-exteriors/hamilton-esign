@@ -1,9 +1,15 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { TEMPLATE_BY_SLUG } from './registry.mjs';
-import { requireProviderAttestationEntry, validateProviderAttestation } from './provider-attestation.mjs';
+import {
+  requireLegacyProviderAttestationEntry,
+  requireProviderAttestationEntry,
+  validateLegacyProviderAttestation,
+  validateProviderAttestation,
+} from './provider-attestation.mjs';
 
-export const ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION = 3;
+export const ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION = 4;
+export const RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION = 3;
 export const LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION = 2;
 
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -16,12 +22,20 @@ const E164 = /^\+[1-9]\d{7,14}$/;
 const EMAIL = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
 const SIGNING_URL_PLACEHOLDER = '{{signing_url}}';
 const PROVIDER_ATTESTATION_PATH = new URL('../brand/reflow/provider-attestations.json', import.meta.url);
+const LEGACY_PROVIDER_ATTESTATION_PATH = new URL('../brand/reflow/provider-attestations-v1.json', import.meta.url);
 let providerAttestationCache;
+let legacyProviderAttestationCache;
 function committedProviderAttestation() {
   providerAttestationCache ||= validateProviderAttestation(
     JSON.parse(readFileSync(PROVIDER_ATTESTATION_PATH, 'utf8')),
   );
   return providerAttestationCache;
+}
+function committedLegacyProviderAttestation() {
+  legacyProviderAttestationCache ||= validateLegacyProviderAttestation(
+    JSON.parse(readFileSync(LEGACY_PROVIDER_ATTESTATION_PATH, 'utf8')),
+  );
+  return legacyProviderAttestationCache;
 }
 
 const CLASSIFICATION_RULES = {
@@ -168,12 +182,12 @@ function roleRelease(value, required, path) {
 
 function template(value, path, schemaVersion) {
   const legacyV1 = schemaVersion === 1;
-  const current = schemaVersion === ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION;
+  const providerAttested = schemaVersion === RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION || schemaVersion === ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION;
   exactKeys(
     value,
     legacyV1
       ? ['id', 'name', 'documentSha256', 'snapshotSha256']
-      : current
+      : providerAttested
         ? ['id', 'name', 'registrySlug', 'registryVersion', 'documentSha256', 'snapshotSha256', 'providerBindingSha256']
         : ['id', 'name', 'registrySlug', 'registryVersion', 'documentSha256', 'snapshotSha256'],
     path,
@@ -192,7 +206,7 @@ function template(value, path, schemaVersion) {
   }
   result.documentSha256 = digest(value.documentSha256, `${path}.documentSha256`);
   result.snapshotSha256 = digest(value.snapshotSha256, `${path}.snapshotSha256`);
-  if (current) {
+  if (providerAttested) {
     result.providerBindingSha256 = value.providerBindingSha256 === null
       ? null
       : digest(value.providerBindingSha256, `${path}.providerBindingSha256`);
@@ -271,7 +285,7 @@ function outbound(value, path, documentKeys) {
   return { key, kind, ...(hasDocumentKey ? { documentKey } : {}), textTemplate, artifacts };
 }
 
-function validateCurrentTemplateBinding(entry, expectedSlug, path) {
+function validateCurrentTemplateBinding(entry, expectedSlug, path, schemaVersion) {
   const registryTemplate = TEMPLATE_BY_SLUG.get(expectedSlug);
   if (!registryTemplate || registryTemplate.legacy) {
     fail(path, `references unavailable current registry template ${expectedSlug}`);
@@ -287,7 +301,9 @@ function validateCurrentTemplateBinding(entry, expectedSlug, path) {
     fail(`${path}.template.name`, `must equal registry title ${JSON.stringify(registryTemplate.title)}`);
   }
   if (registryTemplate.orderedSourceAttachments) {
-    const attestationEntry = requireProviderAttestationEntry(committedProviderAttestation(), expectedSlug);
+    const attestationEntry = schemaVersion === RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION
+      ? requireLegacyProviderAttestationEntry(committedLegacyProviderAttestation(), expectedSlug)
+      : requireProviderAttestationEntry(committedProviderAttestation(), expectedSlug);
     if (String(entry.template.id) !== attestationEntry.templateId) {
       fail(`${path}.template.id`, `must equal attested provider template ${attestationEntry.templateId}`);
     }
@@ -314,8 +330,8 @@ export function validateOnboardingExecutionPlan(input) {
     'schemaVersion', 'classification', 'stage', 'language', 'recipient', 'roleRelease', 'documents',
     'outboundWhatsApp', 'trainingEvidenceRequired',
   ], path);
-  if (![1, LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION, ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION].includes(input.schemaVersion)) {
-    fail(`${path}.schemaVersion`, `must equal 1, ${LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}, or ${ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}`);
+  if (![1, LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION, RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION, ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION].includes(input.schemaVersion)) {
+    fail(`${path}.schemaVersion`, `must equal 1, ${LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}, ${RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION}, or ${ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}`);
   }
   const classification = safeString(input.classification, `${path}.classification`, { pattern: /^[a-z][a-z0-9_]*$/ });
   const classificationRules = CLASSIFICATION_RULES[classification];
@@ -337,8 +353,8 @@ export function validateOnboardingExecutionPlan(input) {
     if (entry.filingDestination !== rules.destinations[index]) {
       fail(`${path}.documents[${index}].filingDestination`, `must equal ${rules.destinations[index]} for ${entry.key}`);
     }
-    if (input.schemaVersion === ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION) {
-      validateCurrentTemplateBinding(entry, rules.templateSlugs[language][index], `${path}.documents[${index}]`);
+    if (input.schemaVersion === RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION || input.schemaVersion === ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION) {
+      validateCurrentTemplateBinding(entry, rules.templateSlugs[language][index], `${path}.documents[${index}]`, input.schemaVersion);
     }
   });
   if (!Array.isArray(input.outboundWhatsApp) || input.outboundWhatsApp.length === 0) {
@@ -352,7 +368,7 @@ export function validateOnboardingExecutionPlan(input) {
     seenOutbound.add(result.key);
     return result;
   });
-  if (input.schemaVersion === ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION) {
+  if (input.schemaVersion === RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION || input.schemaVersion === ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION) {
     validateExactDocumentLinks(keys, outboundWhatsApp, `${path}.outboundWhatsApp`);
   }
   if (input.trainingEvidenceRequired !== classificationRules.trainingEvidenceRequired) {

@@ -75,10 +75,12 @@ visual exception path exists. Diagnostics must also match, including `operatorSh
 Post-create `brand/reflow/provider-attestations.json` pins and exposes the exact tuple
 `templateId, order, uuid, filename, sourceByteLength, localRawSha256, providerRawSha256, fingerprint, fieldRegions` with layout and
 UUID-stamped reflow digests. Each ordered field region binds the local ID, provider UUID,
-type, owner, source-local page, and normalized top-left geometry. Execution-plan schema v4 binds the attestation entry digest
+name, description, type, owner, required/readonly state, source-local page, and normalized
+top-left geometry. Execution-plan schema v4 binds the attestation entry digest
 into copy approval and start. This binding is not a provider atomicity claim: Platform is
 responsible for rereading provider bytes after submission creation and comparing this exact
-tuple before releasing a signing route. Schema v1/v2 remain legacy-read only.
+tuple before releasing a signing route. Plan schemas v1/v2 remain legacy-read only; retained
+plan schema v3 binds the immutable `provider-attestations-v1.json`, while new plans emit v4.
 
     bun install
     node pipeline/build-docs.mjs        # ordered sources -> print + reflow HTML

@@ -127,7 +127,7 @@ test('v3 verifier requires 15 ordered measured provider documents and local fiel
     providerDocuments: 15, pageCount: 82, orderedSourceAttachments: true,
   };
   const expectedField = {
-    id: 'anchor-1', sourceSlug: 'source-15', attachmentOrder: 14, sourcePage: 11,
+    id: 'anchor-1', name: 'Worker signature', section: 'Acknowledgment', sourceSlug: 'source-15', attachmentOrder: 14, sourcePage: 11,
     owner: 'worker', type: 'signature', x: 0.1, y: 0.2, w: 0.3, h: 0.04,
   };
   const measured = { slug: entry.slug, layoutSha256: 'a'.repeat(64), sources, fields: [expectedField] };
@@ -138,7 +138,7 @@ test('v3 verifier requires 15 ordered measured provider documents and local fiel
     documents,
     submitters: [{ uuid: 'worker-role', name: 'Worker' }],
     fields: [{
-      uuid: 'field-1', type: 'signature', submitter_uuid: 'worker-role',
+      uuid: 'field-1', name: 'Worker signature', description: 'Acknowledgment', type: 'signature', required: true, submitter_uuid: 'worker-role',
       areas: [{ attachment_uuid: 'doc-15', page: 11, x: 0.1, y: 0.2, w: 0.3, h: 0.04 }],
     }],
   };
@@ -160,8 +160,12 @@ test('v3 verifier requires 15 ordered measured provider documents and local fiel
         order: 0,
         id: expectedField.id,
         uuid: 'field-1',
+        name: 'Worker signature',
+        description: 'Acknowledgment',
         type: expectedField.type,
         owner: expectedField.owner,
+        required: true,
+        readonly: false,
         page: expectedField.sourcePage,
         x: expectedField.x,
         y: expectedField.y,
@@ -192,6 +196,13 @@ test('v3 verifier requires 15 ordered measured provider documents and local fiel
   ]);
   assert.notEqual(changedRegionAttestation.entries[0].entrySha256, attestationEntry.entrySha256);
   assert.notEqual(changedRegionAttestation.attestationSha256, attestation.attestationSha256);
+  const changedRequiredInput = structuredClone(attestationInput);
+  changedRequiredInput.documents[14].fieldRegions[0].required = false;
+  const changedRequiredAttestation = buildProviderAttestation([
+    changedRequiredInput,
+    { ...changedRequiredInput, slug: 'packet-es-v3', templateId: 381, templateName: 'Packet ES v3' },
+  ]);
+  assert.notEqual(changedRequiredAttestation.entries[0].entrySha256, attestationEntry.entrySha256);
   for (const mutate of [
     (copy) => { delete copy.documents[14].fieldRegions; },
     (copy) => { copy.documents[14].fieldRegions[0].page = 12; },
@@ -266,6 +277,10 @@ test('v3 verifier requires 15 ordered measured provider documents and local fiel
   }), /diagnostic fingerprint differs/);
 
   for (const [mutate, pattern] of [
+    [(copy) => { copy.fields[0].name = 'Drifted label'; }, /name\/description\/type\/owner\/required\/readonly/],
+    [(copy) => { copy.fields[0].description = 'Drifted section'; }, /name\/description\/type\/owner\/required\/readonly/],
+    [(copy) => { copy.fields[0].required = false; }, /name\/description\/type\/owner\/required\/readonly/],
+    [(copy) => { copy.fields[0].readonly = true; }, /name\/description\/type\/owner\/required\/readonly/],
     [(copy) => { copy.fields[0].areas[0].page = 10; }, /attachment\/local page\/geometry/],
     [(copy) => { copy.fields[0].areas[0].x = 0.11; }, /attachment\/local page\/geometry/],
     // doc-14 is intentionally fieldless; a merely in-range page must still fail exact ownership.

@@ -15,7 +15,12 @@ const providerAttestation = JSON.parse(readFileSync(
   new URL('../brand/reflow/provider-attestations.json', import.meta.url),
   'utf8',
 ));
+const legacyProviderAttestation = JSON.parse(readFileSync(
+  new URL('../brand/reflow/provider-attestations-v1.json', import.meta.url),
+  'utf8',
+));
 const providerBindingBySlug = new Map(providerAttestation.entries.map((entry) => [entry.slug, entry.entrySha256]));
+const legacyProviderBindingBySlug = new Map(legacyProviderAttestation.entries.map((entry) => [entry.slug, entry.entrySha256]));
 
 function doc(key, name, id, filingDestination, registry = null) {
   return {
@@ -72,7 +77,7 @@ function overseasPlan() {
 
 function w2InitialPlan() {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     classification: 'w2_local',
     stage: 'initial',
     language: 'en',
@@ -93,6 +98,13 @@ function w2InitialPlan() {
     }],
     trainingEvidenceRequired: true,
   };
+}
+
+function retainedW2InitialPlan() {
+  const plan = w2InitialPlan();
+  plan.schemaVersion = 3;
+  plan.documents[0].template.providerBindingSha256 = legacyProviderBindingBySlug.get('w2-initial-packet-v3');
+  return plan;
 }
 
 function legacyW2InitialPlan() {
@@ -156,6 +168,7 @@ test('canonical JSON sorts object keys, preserves ordered messages, and hashes U
 
 test('classification and stage enforce deferred W-2 training and exact document sets', () => {
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(w2InitialPlan()));
+  assert.doesNotThrow(() => validateOnboardingExecutionPlan(retainedW2InitialPlan()));
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(legacyW2InitialPlan()));
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(w2TrainingPlan()));
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(overseasPlan()));
@@ -178,7 +191,7 @@ test('classification and stage enforce deferred W-2 training and exact document 
   );
 });
 
-test('schema v3 binds classification, stage, language, document key, and provider bytes to the exact registry template', () => {
+test('schema v4 binds classification, stage, language, document key, and provider bytes to the exact registry template', () => {
   const spanish = mutate(w2InitialPlan(), (copy) => {
     copy.language = 'es';
     copy.documents[0].template.id = 381;
@@ -201,13 +214,21 @@ test('schema v3 binds classification, stage, language, document key, and provide
   for (const [input, expected] of failures) assert.throws(() => validateOnboardingExecutionPlan(input), expected);
 });
 
-test('schema v1 and v2 compatibility is explicit and does not weaken schema v3', () => {
+test('schema v1, v2, and retained v3 compatibility is explicit and does not weaken schema v4', () => {
   const legacy = legacyW2InitialPlan();
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(legacy));
   const legacyV2 = w2InitialPlan();
   legacyV2.schemaVersion = 2;
   delete legacyV2.documents[0].template.providerBindingSha256;
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(legacyV2));
+  const retained = retainedW2InitialPlan();
+  assert.doesNotThrow(() => validateOnboardingExecutionPlan(retained));
+  assert.throws(() => validateOnboardingExecutionPlan(mutate(retained, (copy) => {
+    copy.documents[0].template.providerBindingSha256 = providerBindingBySlug.get('w2-initial-packet-v3');
+  })), /committed provider-byte attestation/);
+  assert.throws(() => validateOnboardingExecutionPlan(mutate(w2InitialPlan(), (copy) => {
+    copy.documents[0].template.providerBindingSha256 = legacyProviderBindingBySlug.get('w2-initial-packet-v3');
+  })), /committed provider-byte attestation/);
   assert.throws(
     () => validateOnboardingExecutionPlan(mutate(legacy, (copy) => {
       copy.documents[0].template.registrySlug = 'employment-agreement';
@@ -284,7 +305,7 @@ test('recipient identity enforces exact keys, E.164 classification, and optional
   for (const [input, expected] of failures) assert.throws(() => validateOnboardingExecutionPlan(input), expected);
 });
 
-test('schema v3 requires one ordered document-link message for every planned document', () => {
+test('schema v4 requires one ordered document-link message for every planned document', () => {
   const duplicateLink = structuredClone(w2InitialPlan().outboundWhatsApp[0]);
   duplicateLink.key = 'duplicate-initial-packet-link';
   const failures = [
