@@ -5,7 +5,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { createDocusealClient } from '../pipeline/docuseal-api.mjs';
-import { requireUniqueActiveTemplate, DEFAULT_DOCUMENT_SLUGS, TEMPLATE_BY_SLUG, orderedSources } from '../pipeline/registry.mjs';
+import {
+  CURRENT_TEMPLATE_REGISTRY,
+  SOURCE_ONLY_TEMPLATE_REGISTRY,
+  requireUniqueActiveTemplate,
+  DEFAULT_DOCUMENT_SLUGS,
+  TEMPLATE_BY_SLUG,
+  orderedSources,
+} from '../pipeline/registry.mjs';
 import { sourceManifest, validateManifestEntry, assertCurrentSources, validateMeasuredBuild, measuredLayoutDigest, sha256 } from '../pipeline/build-manifest.mjs';
 import { deterministicPdfBytes, packetFooterDescriptors } from '../pipeline/pdf-determinism.mjs';
 import { fetchStatutoryPdf, locateStatutoryFooterMasks, orderStatutoryTextItems, statutoryPdfToReflow } from '../pipeline/statutory-assets.mjs';
@@ -67,7 +74,15 @@ test('template resolution fails on zero or duplicate active names', () => {
   assert.throws(() => requireUniqueActiveTemplate([template, { ...template, id: 2 }], template.name), /found 2/);
   assert.ok(DEFAULT_DOCUMENT_SLUGS.includes('independent-contractor-agreement'));
   assert.ok(DEFAULT_DOCUMENT_SLUGS.includes('w2-initial-packet-v2'));
-  assert.equal(DEFAULT_DOCUMENT_SLUGS.length, 12);
+  assert.ok(!DEFAULT_DOCUMENT_SLUGS.includes('iipp-es'));
+  assert.ok(!DEFAULT_DOCUMENT_SLUGS.includes('fall-protection-program-es'));
+  assert.deepEqual(
+    SOURCE_ONLY_TEMPLATE_REGISTRY.map((entry) => entry.slug).sort(),
+    ['fall-protection-program-es', 'iipp-es'],
+  );
+  assert.ok(SOURCE_ONLY_TEMPLATE_REGISTRY.every((entry) => entry.liveExpected === false));
+  assert.ok(CURRENT_TEMPLATE_REGISTRY.every((entry) => !entry.sourceOnly && entry.liveExpected !== false));
+  assert.equal(DEFAULT_DOCUMENT_SLUGS.length, 10);
 });
 
 test('composite build manifest pins markdown and statutory PDF sources and detects drift', () => {

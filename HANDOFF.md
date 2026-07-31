@@ -50,10 +50,11 @@ node pipeline/migrate-generated-templates.mjs          # local dry-run analysis 
 `build-docs` takes slugs as arguments and everything downstream reads only what
 it produced, so a rebuild can be scoped to one document.
 
-### Unreleased W-2 combined-packet code state (2026-07-30)
+### W-2 combined-packet code state (2026-07-30)
 
-This worktree changes repository behavior only. It has not created templates, called
-production APIs, delivered documents, or changed a deployment.
+This worktree is not committed, pushed, or deployed. The coordinator created the two
+composite templates in production before the final verifier repair. Subsequent live
+checks were read-only: no template was archived, rebuilt, or otherwise mutated.
 
 - New W-2 intake uses `hourlyGuaranteeRate`, `pieceRatePerSquare`,
   `comparisonMethod: greater_of`, and `workweek: sunday_saturday`.
@@ -108,20 +109,36 @@ production APIs, delivered documents, or changed a deployment.
   than relying on local state to overwrite possible concurrent remote edits.
 - Spanish safety-program source coverage now includes `iipp-es.md` and
   `fall-protection-program-es.md`; the Code of Safe Practices remains the shared
-  bilingual fourth program.
-- Safe local validation: 149/149 repository Node tests passed; Markdown → HTML →
+  bilingual fourth program. The two Spanish standalone identities are explicitly
+  `sourceOnly` / `liveExpected: false`: they remain valid composite sources but are
+  neither required live templates nor reflow-stamping dependencies.
+- Live verification has explicit `current`, `w2-release`, and `all-live` scopes.
+  `w2-release` is exactly the EN/ES composites plus the EN/ES training rosters.
+  Every PDF page must contain ink. The first-page geometry check measures the body
+  band against both expected margins while excluding the deliberately wider packet
+  footer. PDF.js uses its bundled standard-font and WASM decoder directories with
+  system fonts disabled; remaining `TT: undefined function` / `invalid function id`
+  console warnings come from malformed embedded TrueType hint programs in source
+  PDFs, not missing standard-font or OpenJPEG assets.
+- Safe local validation: 154/154 repository Node tests pass. Markdown → HTML →
   reflow → Letter PDF measurement passed twice with 82 byte-identical retained
   artifacts. Page totals remained 82 EN / 87 ES. First/last composite footers, Spanish
   DWC pages 13-18, and the real cached Spanish DE-2515 reader order have literal
   regressions and were visually inspected locally. `build-templates` dry-run preflight
-  passed without credentials or network access. Production apply, live verification,
-  commit, push, and deployment were intentionally not run.
+  passed without credentials or network access. Syntax checks for every pipeline/test
+  module and `git diff --check` pass. Read-only production raster verification passes
+  all 4 `w2-release`, all 10 `current`, and all 16 `all-live` templates. The retained
+  policy acknowledgments deliberately pin their historical live 33-field/30+3-owner
+  shape separately from the current 34-field/31+3-owner build-source truth. No
+  production mutation occurred during verification. Commit, push, and deployment were
+  intentionally not run.
 
 ---
 
 ## 3. Live state, verified at handoff
 
-**14 templates, ids 351–364.** Rebuilding renumbers them. **Resolve by name.**
+**16 active templates, ids 351–364 and 378–379, read-only verified 2026-07-30.**
+Rebuilding renumbers them. **Resolve by name.** IDs 365–377 are not active dependencies.
 
 ```
 351 Independent Contractor Agreement 12f   358 Safety Training Roster        65f
@@ -131,6 +148,7 @@ production APIs, delivered documents, or changed a deployment.
 355 Aviso de Salario                 18f   362 Plan de Prevención (ES)        4f
 356 New Hire Policy Acknowledgment   33f   363 Fall Protection Program        3f
 357 Acuse de Recibo de Políticas     33f   364 Code of Safe Practices         2f
+378 W-2 Initial Employment Packet v2 62f   379 Paquete Inicial W-2 v2         61f
 ```
 
 **All 5 safety-program submissions were signed on 2026-07-29 and API-verified
@@ -315,8 +333,10 @@ desktop  anchors=0 fieldsInline=0 fieldsOnPages=5 pagesHidden=false steps=5
 bun run test                              # unit + responsive controller regressions
 node pipeline/build-docs.mjs
 node pipeline/measure.mjs
-node pipeline/stamp-reflow.mjs            # read-only live UUID mapping report
-node pipeline/verify-templates.mjs        # all 14 templates, every PDF page
+node pipeline/stamp-reflow.mjs            # read-only current live UUID mapping report
+node pipeline/verify-templates.mjs --scope current      # 10 current templates
+node pipeline/verify-templates.mjs --scope w2-release   # exact 4-template W-2 release
+node pipeline/verify-templates.mjs --scope all-live     # 16 current + retained legacy
 # ERB — a bad layout 500s every signer page. The harness MUST wrap the compiled
 # template in a method, or a layout that legitimately yields reports "Invalid yield":
 docker run --rm -v "<dir>:/chk:ro" -v "<erbcheck2.rb>:/e.rb:ro" -w /app \

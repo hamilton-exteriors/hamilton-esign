@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { BUILD_DIR } from './config.mjs';
 import { createDocusealClient } from './docuseal-api.mjs';
-import { TEMPLATE_REGISTRY, requireUniqueActiveTemplate } from './registry.mjs';
+import { STAMP_TEMPLATE_REGISTRY, requireUniqueActiveTemplate } from './registry.mjs';
 import { matchGeneratedFields } from './field-match.mjs';
 import { stampReflowAnchors } from './reflow-anchor.mjs';
 
@@ -19,7 +19,7 @@ const inventory = await client.listAll('/api/templates', { what: 'template inven
 
 let written = 0;
 const problems = [];
-for (const entry of TEMPLATE_REGISTRY) {
+for (const entry of STAMP_TEMPLATE_REGISTRY) {
   try {
     const template = requireUniqueActiveTemplate(inventory, entry.title);
     const generated = bySlug.get(entry.slug);
@@ -54,5 +54,5 @@ if (problems.length) {
   console.error(`\n${problems.length} problem(s); failed closed.`);
   process.exit(1);
 }
-if (!TEMPLATE_REGISTRY.length) throw new Error('template registry is empty');
-console.log(apply ? `\nstamped ${written} reading views` : `\nverified ${TEMPLATE_REGISTRY.length} reading views; re-run with --apply`);
+if (!STAMP_TEMPLATE_REGISTRY.length) throw new Error('stamp template registry is empty');
+console.log(apply ? `\nstamped ${written} reading views` : `\nverified ${STAMP_TEMPLATE_REGISTRY.length} reading views; re-run with --apply`);

@@ -51,7 +51,18 @@ remains its own post-training signing event. Nothing is authored in DocuSeal's b
     node pipeline/build-templates.mjs   # dry-run local preflight; no credentials/network
     node pipeline/build-templates.mjs --apply  # explicit production creation only
     node pipeline/stamp-reflow.mjs      # publish generated reflow + verify/stamp live UUIDs
+    node pipeline/verify-templates.mjs --scope current      # read-only current live inventory
+    node pipeline/verify-templates.mjs --scope w2-release   # read-only two packets + two rosters
+    node pipeline/verify-templates.mjs --scope all-live     # current plus retained legacy templates
     node pipeline/file-to-drive.mjs sweep   # file completed submissions into Drive
+
+The live verifier rasterizes every page using PDF.js's bundled standard fonts and
+WASM image decoders. Its first-page layout assertion measures the body band against
+both expected Letter-page margins, excluding the deliberately wider packet footer;
+the full page is still required to contain ink. Spanish IIPP and fall-protection
+identities are composite sources only (`sourceOnly`, `liveExpected: false`), so they
+are not standalone live or reflow-stamping dependencies. An active source-only or
+unknown template fails inventory validation.
 
 Generated artifacts default to `build/` in this repository. Override with
 `HAMILTON_BUILD_DIR`; override the markdown source with `HAMILTON_DOCS_DIR`.
