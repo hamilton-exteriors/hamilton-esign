@@ -52,9 +52,9 @@ it produced, so a rebuild can be scoped to one document.
 
 ### W-2 combined-packet code state (2026-07-30)
 
-This worktree is not committed, pushed, or deployed. The coordinator created the two
-composite templates in production before the final verifier repair. Subsequent live
-checks were read-only: no template was archived, rebuilt, or otherwise mutated.
+This worktree is not committed, pushed, or deployed. The coordinator created flattened
+v2 templates 378/379 before the topology blocker was found. V3 has not been created.
+Subsequent live checks were read-only: no template was archived, rebuilt, or mutated.
 
 - New W-2 intake uses `hourlyGuaranteeRate`, `pieceRatePerSquare`,
   `comparisonMethod: greater_of`, and `workweek: sunday_saturday`.
@@ -62,25 +62,24 @@ checks were read-only: no template was archived, rebuilt, or otherwise mutated.
   `productionBonusRate` fields. Onboarding state v3 migrates old v1/v2 W-2 records
   into explicitly labeled `legacyCompensation` metadata for read compatibility;
   it does not reinterpret old terms as the new piece-rate agreement.
-- The initial W-2 signing document is one versioned composite per language:
-  `w2-initial-packet-v2` and `w2-initial-packet-es-v2`. Their ordered sources are
-  agreement, §2810.5 wage notice, eight current statutory PDFs, the four company
-  safety programs, and finally the policy acknowledgment whose initials attest receipt
-  of those preceding materials. Normal builds load immutable, SHA-locked source PDFs
-  from the tracked offline cache; the explicit refresh command alone checks allowlisted
-  California agency hosts. The cache retains the exact agency source bytes for digest
-  verification and mobile text extraction. The final packet does not: composition
-  removes annotations/form widgets, masks superseded source footer labels, and stamps
-  one packet footer. Company program content is static in the composite, with no
+- New W-2 signing topology is versioned v3: `w2-initial-packet-v3` and
+  `w2-initial-packet-es-v3`. Each is one submission containing 15 ordered provider
+  documents: agreement, §2810.5 wage notice, eight statutory PDFs, four company safety
+  programs, then the policy acknowledgment whose initials attest receipt of the prior
+  materials. The 82-page EN / 87-page ES composite remains a deterministic reference
+  artifact and is never uploaded as the sole v3 attachment. Measurement slices that
+  finalized reference into 15 deterministic source PDFs, records exact filenames and
+  SHA-256 values, and maps every signable field from global packet page to source
+  attachment order and source-local page. Company program content is static, with no
   per-hire program widgets. The safety training roster remains a separate post-training
   document.
-- Build manifest schema v2 records ordered source filenames, authoritative URLs,
-  source page counts, and cached-source SHA-256 digests. Measurement transforms those
-  sources into the composed packet, records a separate final-PDF digest, strips source
-  form widgets/annotations, remaps later field pages, masks stale source footers, and
-  adds exactly one `Page X of N` footer across the 82-page EN and 87-page ES composites.
-  Template creation fails if registry order, cached source bytes, composed PDF bytes,
-  field totals, or Worker/Hamilton ownership drift.
+- Build manifest schema v2 records canonical source filenames/URLs/digests plus each
+  measured attachment filename, page count, and digest. Measurement strips source form
+  widgets/annotations, masks stale source footers, stamps one global `Page X of N`
+  sequence, emits the reference composite, then deterministically slices its exact page
+  ranges into 15 upload artifacts. Template preflight fails if source order/bytes,
+  reference or attachment bytes, page coverage, field-local mapping, field totals, or
+  Worker/Hamilton ownership drift.
 - Current generated geometry is 82 pages / 62 fields (EN, Worker 41 / Hamilton 21)
   and 87 pages / 61 fields (ES, Worker 41 / Hamilton 20). Each ordered source
   begins on a distinct PDF page, and every field retains its source slug and a
@@ -88,13 +87,38 @@ checks were read-only: no template was archived, rebuilt, or otherwise mutated.
   four-panel brochure text follows the agency artwork's semantic reader sequence
   (cover, definitions, pregnancy/care, application, next steps, calculation,
   rights/contact, administrative back), not generic physical left-to-right order.
-- Execution-plan schema v2 uses one `initial-packet` document. Validation still
-  reads immutable schema-v1 three-document plans. Local runtime also recognizes
-  the old acknowledgment/wage-notice keys only for already-existing state.
-- Generated-template creation readback now verifies attachment/document mapping plus every
-  field's UUID, name, description, required flag, type, submitter ownership, and geometry
-  against the measured source before reflow binding. Expected semantic drift fails closed;
-  only an absent optional description is canonicalized.
+- Execution-plan schema v2 binds new W-2 initial work to the exact v3 registry
+  slug/title/version and still uses one `initial-packet` submission. Validation reads
+  immutable schema-v1 three-document plans. Local runtime recognizes the old
+  acknowledgment/wage-notice keys only for existing state.
+- Generated-template creation readback verifies all 15 attachment UUIDs, order,
+  canonical filenames (only a provider-stripped final lowercase `.pdf` is tolerated),
+  provider-returned bytes/digests, plus every field's UUID, name,
+  description, required flag, type, submitter ownership, attachment UUID, source-local
+  page, and geometry before reflow binding. Fieldless statutory/safety attachments are
+  valid; exact document coverage is checked independently from field coverage.
+- `--apply` acquires one atomic process-ownership lock before any journal inspection,
+  recovery, or provider inventory request and holds it through recovery, both creates and
+  readbacks, artifact staging, completion/rollback, and cleanup. It reuses the hardened
+  migration lock metadata and liveness rules: a concurrent live owner, foreign workflow,
+  malformed owner, or uncertain liveness fails before provider access; only a proven dead
+  owner or process-start-identity PID reuse can be reclaimed. Windows obtains that identity
+  from a bounded, strictly validated PowerShell `Get-Process` start-time query and fails
+  closed on command, timeout, permission, or output errors. The journal header is bound to
+  the owner token. A safely reclaimed owner can recover the prior token directly; after a
+  failed cleanup releases its lock, the next fresh exclusive owner atomically appends an
+  adoption from the prior same-workflow token before retrying. Actual lock-file ownership
+  is verified first, so adoption remains impossible while the prior lock is live.
+- Template creation uses one exclusive append-only transaction journal for the entire EN
+  and ES operation, not one marker per template. The durable event stream names both
+  target templates, records each pre-POST inventory boundary, every resolved template ID
+  and successful exact readback, and the preimage plus target bytes/digest for both
+  UUID-stamped reflow files and the merged index. It is removed only after all three local
+  artifacts pass durable readback. Missing Location headers are reconciled against exact
+  names, pre-POST IDs, and creation time. A crash after either readback, during any reflow
+  write, or after index staging cleans every tracked/candidate remote template and restores
+  every artifact preimage. Failed or empty reconciliation retains the complete journal
+  rather than risking an orphan. Fault-injection tests pin every transaction boundary.
 - Generated-template migration is composite-only and dry-run by default. Spaced or
   equals-form `--slug` arguments are validated, process locks and journal creation are
   atomically exclusive, and the transaction engine has interruption/resume and
@@ -106,32 +130,45 @@ checks were read-only: no template was archived, rebuilt, or otherwise mutated.
   DocuSeal exposes no provider-side ETag, version precondition, or atomic conditional
   mutation for template PUT/upload, so both migration CLIs deliberately reject `--apply`
   before secrets or network access. Unsafe in-place migration remains disabled rather
-  than relying on local state to overwrite possible concurrent remote edits.
+  than relying on local state to overwrite possible concurrent remote edits. V3 is
+  explicitly creation-only and the old single-PDF migration path rejects it.
 - Spanish safety-program source coverage now includes `iipp-es.md` and
   `fall-protection-program-es.md`; the Code of Safe Practices remains the shared
   bilingual fourth program. The two Spanish standalone identities are explicitly
   `sourceOnly` / `liveExpected: false`: they remain valid composite sources but are
   neither required live templates nor reflow-stamping dependencies.
-- Live verification has explicit `current`, `w2-release`, and `all-live` scopes.
-  `w2-release` is exactly the EN/ES composites plus the EN/ES training rosters.
-  Every PDF page must contain ink. The first-page geometry check measures the body
-  band against both expected margins while excluding the deliberately wider packet
-  footer. PDF.js uses its bundled standard-font and WASM decoder directories with
+- Live verification has explicit `current`, `w2-release`, `w2-cutover`, and `all-live`
+  scopes. `w2-release` is the EN/ES v3 packets plus the EN/ES training rosters;
+  `w2-cutover` additionally requires both retained flattened v2 packets. For v3 it
+  requires the measured manifest and UUID-stamped reflow artifacts, validates all 15
+  provider document UUIDs/order/canonical filenames/digests and every field's exact
+  attachment, source-local page, geometry, type, and submitter, then proves 82/87 total
+  pages and rasterizes every page. The first global page's geometry check measures the body band
+  against both expected margins while excluding the deliberately wider packet footer.
+  PDF.js uses its bundled standard-font and WASM decoder directories with
   system fonts disabled; remaining `TT: undefined function` / `invalid function id`
   console warnings come from malformed embedded TrueType hint programs in source
   PDFs, not missing standard-font or OpenJPEG assets.
-- Safe local validation: 154/154 repository Node tests pass. Markdown → HTML →
-  reflow → Letter PDF measurement passed twice with 82 byte-identical retained
-  artifacts. Page totals remained 82 EN / 87 ES. First/last composite footers, Spanish
-  DWC pages 13-18, and the real cached Spanish DE-2515 reader order have literal
-  regressions and were visually inspected locally. `build-templates` dry-run preflight
-  passed without credentials or network access. Syntax checks for every pipeline/test
-  module and `git diff --check` pass. Read-only production raster verification passes
-  all 4 `w2-release`, all 10 `current`, and all 16 `all-live` templates. The retained
-  policy acknowledgments deliberately pin their historical live 33-field/30+3-owner
-  shape separately from the current 34-field/31+3-owner build-source truth. No
-  production mutation occurred during verification. Commit, push, and deployment were
-  intentionally not run.
+- Cutover plan: (1) review deterministic v3 output and dry preflight; (2) create v3 as
+  two new templates, never mutate v2; (3) pass exact creation readback; (4) confirm both
+  post-create UUID-stamped v3 reflow files and the merged v2+v3 index exist, then commit
+  `pipeline/packet-topology.mjs`, all v3 code, those stamped files, and the index; push and
+  deploy that exact commit and verify the live revision; (5) run `--scope w2-cutover` and
+  prove Platform's exact v3 binding with a synthetic no-send plan; (6) only then complete
+  an authorized disposable v3 E2E; (7) archive 378/379 only if submission inventory proves
+  no active/sent dependency. Any v2 dependency keeps that template retained.
+- Safe local validation: 190/190 repository Node tests pass. EN and ES v3 each build
+  15 ordered attachment PDFs plus the 82/87-page reference composite. Complete build-tree
+  hashes (manifest, fields, print/reflow HTML, both composites, and all 30 attachments)
+  are byte-identical across repeated builds. All 62 EN and 61 ES reflow anchors map, and
+  every field's source-local page recomputes exactly from its global range. Final
+  `build-templates` dry preflight passes with layout digests
+  `807edd24d43288e8c22f78417e97b3dee1fa3cc247c0dbe90e156ddba5c749db` (EN) and
+  `5c53b672990268fc4eef23abac36984c9b1bf010b8f7f4559e2cd110bde558a0` (ES).
+  Syntax checks for every pipeline/test module and `git diff --check` pass. V3 live
+  verification cannot run until v3 is created; the prior flattened v2 and retained
+  templates remain unchanged. No production creation, mutation, archival, outbound
+  delivery, commit, push, or deployment occurred during this v3 correction.
 
 ---
 
@@ -150,6 +187,9 @@ Rebuilding renumbers them. **Resolve by name.** IDs 365–377 are not active dep
 357 Acuse de Recibo de Políticas     33f   364 Code of Safe Practices         2f
 378 W-2 Initial Employment Packet v2 62f   379 Paquete Inicial W-2 v2         61f
 ```
+
+Templates 378/379 are the confirmed one-attachment topology and are retained only for
+safe cutover. They are not valid v3 release targets. No v3 production IDs exist yet.
 
 **All 5 safety-program submissions were signed on 2026-07-29 and API-verified
 completed.** The links sent
@@ -335,8 +375,9 @@ node pipeline/build-docs.mjs
 node pipeline/measure.mjs
 node pipeline/stamp-reflow.mjs            # read-only current live UUID mapping report
 node pipeline/verify-templates.mjs --scope current      # 10 current templates
-node pipeline/verify-templates.mjs --scope w2-release   # exact 4-template W-2 release
-node pipeline/verify-templates.mjs --scope all-live     # 16 current + retained legacy
+node pipeline/verify-templates.mjs --scope w2-release   # exact v3 + roster release
+node pipeline/verify-templates.mjs --scope w2-cutover  # exact v2 + v3 + roster proof
+node pipeline/verify-templates.mjs --scope all-live     # 18 total after v3 creation
 # ERB — a bad layout 500s every signer page. The harness MUST wrap the compiled
 # template in a method, or a layout that legitimately yields reports "Invalid yield":
 docker run --rm -v "<dir>:/chk:ro" -v "<erbcheck2.rb>:/e.rb:ro" -w /app \
@@ -430,7 +471,8 @@ hamilton-esign/
   patches/docuseal-inline-fields.mjs    14 asserted signer-component edits
   brand/                      hamilton.css, form.html.erb, _decline_form.html.erb, icons, fonts
   brand/reflow/               generated reading views + index.json (template name → slug)
-  pipeline/                   build-docs, measure, build-templates, verify-templates,
+  pipeline/                   build-docs, measure, packet-topology, build-templates,
+                              template-creation-recovery, verify-templates,
                               onboarding, onboarding-state, run-packet, worker-types,
                               send-signing-link, send-pamphlets, send-programs,
                               file-to-drive, safe

@@ -8,8 +8,10 @@ import {
   inspectInkBands,
   liveExpectation,
   parseVerifierArgs,
+  stampedReflowUuidMap,
   validateActiveInventory,
   validateFirstPageBodyInk,
+  validateProviderDocumentTopology,
 } from '../pipeline/template-verifier.mjs';
 
 test('first-page verifier ignores a wide footer and rejects overflow, narrow, or shifted body ink', () => {
@@ -48,23 +50,106 @@ test('pdfjs verifier assets point at installed fonts and wasm decoders', () => {
 test('verifier scope targets the explicit four-template W-2 release', () => {
   const current = [
     { slug: 'standalone' },
-    { slug: 'w2-initial-packet-v2', sources: [{ slug: 'a' }, { slug: 'b' }] },
-    { slug: 'w2-initial-packet-es-v2', sources: [{ slug: 'a-es' }, { slug: 'b-es' }] },
+    { slug: 'w2-initial-packet-v3', sources: [{ slug: 'a' }, { slug: 'b' }] },
+    { slug: 'w2-initial-packet-es-v3', sources: [{ slug: 'a-es' }, { slug: 'b-es' }] },
     { slug: 'safety-training-roster' },
     { slug: 'safety-training-roster-es' },
   ];
   assert.deepEqual(parseVerifierArgs([]), { scope: 'current' });
   assert.deepEqual(parseVerifierArgs(['--scope', 'w2-release']), { scope: 'w2-release' });
+  assert.deepEqual(parseVerifierArgs(['--scope=w2-cutover']), { scope: 'w2-cutover' });
   assert.deepEqual(parseVerifierArgs(['--scope=all-live']), { scope: 'all-live' });
   assert.deepEqual(
     entriesForScope({ current, retainedLegacy: [{ slug: 'legacy' }] }, 'w2-release').map((entry) => entry.slug),
-    ['w2-initial-packet-v2', 'w2-initial-packet-es-v2', 'safety-training-roster', 'safety-training-roster-es'],
+    ['w2-initial-packet-v3', 'w2-initial-packet-es-v3', 'safety-training-roster', 'safety-training-roster-es'],
+  );
+  const retainedLegacy = [
+    { slug: 'w2-initial-packet-v2' },
+    { slug: 'w2-initial-packet-es-v2' },
+    { slug: 'legacy' },
+  ];
+  assert.deepEqual(
+    entriesForScope({ current, retainedLegacy }, 'w2-cutover').map((entry) => entry.slug),
+    [
+      'w2-initial-packet-v3', 'w2-initial-packet-es-v3',
+      'safety-training-roster', 'safety-training-roster-es',
+      'w2-initial-packet-v2', 'w2-initial-packet-es-v2',
+    ],
   );
   assert.deepEqual(
-    entriesForScope({ current, retainedLegacy: [{ slug: 'legacy' }] }, 'all-live').at(-1),
+    entriesForScope({ current, retainedLegacy }, 'all-live').at(-1),
     { slug: 'legacy' },
   );
-  assert.throws(() => parseVerifierArgs(['--scope', 'composites']), /current, w2-release, or all-live/);
+  assert.throws(() => parseVerifierArgs(['--scope', 'composites']), /current, w2-release, w2-cutover, or all-live/);
+});
+
+test('v3 verifier requires 15 ordered measured provider documents and local field pages', () => {
+  const sources = Array.from({ length: 15 }, (_, index) => ({
+    order: index,
+    slug: `source-${index + 1}`,
+    attachmentFilename: `source-${index + 1}.pdf`,
+    attachmentSha256: String(index % 10).repeat(64),
+    pageCount: index === 14 ? 12 : 5,
+  }));
+  const schema = sources.map((source, index) => ({
+    name: source.attachmentFilename.replace(/\.pdf$/, ''),
+    attachment_uuid: `doc-${index + 1}`,
+  }));
+  const documents = schema.map((document, index) => ({
+    uuid: document.attachment_uuid,
+    filename: sources[index].attachmentFilename,
+  }));
+  const inspections = sources.map((source) => ({
+    sha256: source.attachmentSha256,
+    pages: Array.from({ length: source.pageCount }, () => ({ full: { ink: 1 } })),
+  }));
+  const entry = { slug: 'packet-v3', providerDocuments: 15, pageCount: 82, orderedSourceAttachments: true };
+  const expectedField = {
+    id: 'anchor-1', sourceSlug: 'source-15', attachmentOrder: 14, sourcePage: 11,
+    owner: 'worker', type: 'signature', x: 0.1, y: 0.2, w: 0.3, h: 0.04,
+  };
+  const measured = { slug: entry.slug, sources, fields: [expectedField] };
+  const template = {
+    schema,
+    documents,
+    submitters: [{ uuid: 'worker-role', name: 'Worker' }],
+    fields: [{
+      uuid: 'field-1', type: 'signature', submitter_uuid: 'worker-role',
+      areas: [{ attachment_uuid: 'doc-15', page: 11, x: 0.1, y: 0.2, w: 0.3, h: 0.04 }],
+    }],
+  };
+  const uuidByFieldId = new Map([['anchor-1', 'field-1']]);
+  const validate = (candidate = template) => validateProviderDocumentTopology({
+    entry, template: candidate, measured, inspections, uuidByFieldId,
+  });
+  assert.deepEqual(
+    validate(),
+    { totalPages: 82, attachmentUuids: schema.map((document) => document.attachment_uuid) },
+  );
+  for (const [mutate, pattern] of [
+    [(copy) => { copy.fields[0].areas[0].page = 10; }, /attachment\/local page\/geometry/],
+    [(copy) => { copy.fields[0].areas[0].x = 0.11; }, /attachment\/local page\/geometry/],
+    // doc-14 is intentionally fieldless; a merely in-range page must still fail exact ownership.
+    [(copy) => { copy.fields[0].areas[0].attachment_uuid = 'doc-14'; copy.fields[0].areas[0].page = 0; }, /attachment\/local page\/geometry/],
+  ]) {
+    const changed = structuredClone(template);
+    mutate(changed);
+    assert.throws(() => validate(changed), pattern);
+  }
+  const duplicateUuid = structuredClone(template);
+  duplicateUuid.schema[1].attachment_uuid = duplicateUuid.schema[0].attachment_uuid;
+  assert.throws(() => validate(duplicateUuid), /UUID\/order differs/);
+  const reordered = structuredClone(template);
+  [reordered.documents[0], reordered.documents[1]] = [reordered.documents[1], reordered.documents[0]];
+  assert.throws(() => validate(reordered), /UUID\/order differs/);
+});
+
+test('stamped reflow mapping requires exact unique field and UUID coverage', () => {
+  const fields = [{ id: 'a' }, { id: 'b' }];
+  const html = '<span id="a" data-hx-uuid="u1"></span><span id="b" data-hx-uuid="u2"></span>';
+  assert.deepEqual([...stampedReflowUuidMap(html, fields)], [['a', 'u1'], ['b', 'u2']]);
+  assert.throws(() => stampedReflowUuidMap(html.replace(' data-hx-uuid="u2"', ''), fields), /present and unique/);
+  assert.throws(() => stampedReflowUuidMap(html.replace('u2', 'u1'), fields), /present and unique/);
 });
 
 test('retained live templates may pin historical field expectations without changing build truth', () => {

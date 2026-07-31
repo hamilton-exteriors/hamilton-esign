@@ -417,6 +417,9 @@ async function run() {
     ? compositeRegistry.filter((entry) => entry.slug === requestedSlug)
     : compositeRegistry;
   if (!registry.length) throw new Error(`unknown current composite document slug: ${requestedSlug}`);
+  if (registry.some((entry) => entry.orderedSourceAttachments)) {
+    throw new Error('v3 ordered-source templates are creation-only; in-place composite migration is unsupported');
+  }
 
   const journalStore = createFileJournalStore();
   if (!apply && journalStore.exists()) {

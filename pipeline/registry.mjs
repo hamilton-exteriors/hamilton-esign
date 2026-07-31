@@ -2,6 +2,21 @@ import { statutorySources } from './statutory-assets.mjs';
 
 export const BUILD_MANIFEST_SCHEMA_VERSION = 2;
 
+function w2PacketSources(language) {
+  const es = language === 'es';
+  return [
+    { kind: 'markdown', slug: es ? 'employment-agreement-es' : 'employment-agreement' },
+    { kind: 'markdown', slug: es ? 'wage-notice-2810-5-es' : 'wage-notice-2810-5' },
+    ...statutorySources(language),
+    { kind: 'markdown', slug: es ? 'iipp-es' : 'iipp' },
+    { kind: 'markdown', slug: es ? 'heat-illness-prevention-plan-es' : 'heat-illness-prevention-plan' },
+    { kind: 'markdown', slug: es ? 'fall-protection-program-es' : 'fall-protection-program' },
+    { kind: 'markdown', slug: 'code-of-safe-practices' },
+    // This attests receipt of every preceding notice and program, so it must be last.
+    { kind: 'markdown', slug: es ? 'policy-acknowledgment-es' : 'policy-acknowledgment' },
+  ];
+}
+
 export const TEMPLATE_REGISTRY = [
   { title: 'Independent Contractor Agreement', slug: 'independent-contractor-agreement', fields: 12, owners: { worker: 10, hamilton: 2 } },
   // Retained so existing separate-template submissions and snapshots remain readable.
@@ -18,17 +33,10 @@ export const TEMPLATE_REGISTRY = [
     version: 2,
     fields: 62,
     owners: { worker: 41, hamilton: 21 },
-    sources: [
-      { kind: 'markdown', slug: 'employment-agreement' },
-      { kind: 'markdown', slug: 'wage-notice-2810-5' },
-      ...statutorySources('en'),
-      { kind: 'markdown', slug: 'iipp' },
-      { kind: 'markdown', slug: 'heat-illness-prevention-plan' },
-      { kind: 'markdown', slug: 'fall-protection-program' },
-      { kind: 'markdown', slug: 'code-of-safe-practices' },
-      // This attests receipt of every preceding notice and program, so it must be last.
-      { kind: 'markdown', slug: 'policy-acknowledgment' },
-    ],
+    sources: w2PacketSources('en'),
+    legacy: true,
+    providerDocuments: 1,
+    pageCount: 82,
   },
   {
     title: 'Paquete Inicial de Empleo W-2 v2',
@@ -36,17 +44,32 @@ export const TEMPLATE_REGISTRY = [
     version: 2,
     fields: 61,
     owners: { worker: 41, hamilton: 20 },
-    sources: [
-      { kind: 'markdown', slug: 'employment-agreement-es' },
-      { kind: 'markdown', slug: 'wage-notice-2810-5-es' },
-      ...statutorySources('es'),
-      { kind: 'markdown', slug: 'iipp-es' },
-      { kind: 'markdown', slug: 'heat-illness-prevention-plan-es' },
-      { kind: 'markdown', slug: 'fall-protection-program-es' },
-      { kind: 'markdown', slug: 'code-of-safe-practices' },
-      // This attests receipt of every preceding notice and program, so it must be last.
-      { kind: 'markdown', slug: 'policy-acknowledgment-es' },
-    ],
+    sources: w2PacketSources('es'),
+    legacy: true,
+    providerDocuments: 1,
+    pageCount: 87,
+  },
+  {
+    title: 'W-2 Initial Employment Packet v3',
+    slug: 'w2-initial-packet-v3',
+    version: 3,
+    fields: 62,
+    owners: { worker: 41, hamilton: 21 },
+    sources: w2PacketSources('en'),
+    providerDocuments: 15,
+    pageCount: 82,
+    orderedSourceAttachments: true,
+  },
+  {
+    title: 'Paquete Inicial de Empleo W-2 v3',
+    slug: 'w2-initial-packet-es-v3',
+    version: 3,
+    fields: 61,
+    owners: { worker: 41, hamilton: 20 },
+    sources: w2PacketSources('es'),
+    providerDocuments: 15,
+    pageCount: 87,
+    orderedSourceAttachments: true,
   },
   { title: 'Safety Training Roster', slug: 'safety-training-roster', fields: 65, owners: { worker: 54, hamilton: 11 } },
   { title: 'Registro de Capacitación en Seguridad', slug: 'safety-training-roster-es', fields: 65, owners: { worker: 54, hamilton: 11 } },

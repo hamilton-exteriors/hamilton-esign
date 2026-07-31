@@ -10,6 +10,7 @@ import {
 } from '../pipeline/template-mutation-safety.mjs';
 
 function createdFixture() {
+  const digest = 'a'.repeat(64);
   const schema = [{ name: 'packet.pdf', attachment_uuid: 'doc-1' }];
   const submitters = [
     { uuid: 'role-worker', name: 'Worker' },
@@ -35,12 +36,15 @@ function createdFixture() {
       name: 'Packet',
       id: 123,
       schema: structuredClone(schema),
+      documents: [{ uuid: 'doc-1', filename: 'packet.pdf' }],
       submitters: structuredClone(submitters),
       fields: structuredClone(fields),
     },
     expectedId: 123,
     expectedName: 'Packet',
     expectedSchema: schema,
+    expectedDocuments: [{ uuid: 'doc-1', filename: 'packet.pdf', sha256: digest }],
+    savedDocumentDigests: new Map([['doc-1', digest]]),
     expectedSubmitters: submitters,
     expectedFields: fields,
     measuredFields,
@@ -59,12 +63,55 @@ test('created-template readback proves document, UUID, type, owner, geometry, an
     (copy) => { copy.saved.fields[0].type = 'text'; },
     (copy) => { copy.saved.fields[0].submitter_uuid = 'role-employer'; },
     (copy) => { copy.saved.fields[0].areas[0].x = 0.11; },
+    (copy) => { copy.saved.fields[0].areas[0].page = 1; },
     (copy) => { copy.saved.fields[0].areas[0].attachment_uuid = 'other-doc'; },
   ]) {
     const copy = structuredClone(fixture);
     mutate(copy);
     assert.throws(() => verifyCreatedTemplateReadback(copy), /identity|document UUID|omitted field UUID|type, role ownership, geometry, or document UUID/);
   }
+});
+
+test('created-template readback canonicalizes only a stripped final .pdf suffix', () => {
+  const fixture = createdFixture();
+  fixture.saved.schema[0].name = 'packet';
+  fixture.saved.documents[0].filename = 'packet';
+  assert.deepEqual(verifyCreatedTemplateReadback(fixture), { f1: 'field-1', f2: 'field-2' });
+  for (const name of [' packet', 'folder/packet.pdf', 'packet.PDF', 'packet.pdf.pdf']) {
+    const changed = createdFixture();
+    changed.saved.schema[0].name = name;
+    assert.throws(() => verifyCreatedTemplateReadback(changed), /provider PDF name|document UUID\/name\/order/);
+  }
+});
+
+test('created-template readback accepts 15 ordered documents including fieldless sources', () => {
+  const fixture = createdFixture();
+  const schema = Array.from({ length: 15 }, (_, index) => ({
+    name: `source-${index + 1}.pdf`,
+    attachment_uuid: `doc-${index + 1}`,
+  }));
+  const digestEntries = schema.map((document, index) => [document.attachment_uuid, String(index % 10).repeat(64)]);
+  fixture.expectedSchema = schema;
+  fixture.saved.schema = structuredClone(schema);
+  fixture.expectedDocuments = schema.map((document, index) => ({
+    uuid: document.attachment_uuid,
+    filename: document.name,
+    sha256: digestEntries[index][1],
+  }));
+  fixture.saved.documents = fixture.expectedDocuments.map(({ uuid, filename }) => ({ uuid, filename }));
+  fixture.savedDocumentDigests = new Map(digestEntries);
+  fixture.expectedFields[1].areas[0].attachment_uuid = 'doc-15';
+  fixture.saved.fields[1].areas[0].attachment_uuid = 'doc-15';
+  assert.deepEqual(verifyCreatedTemplateReadback(fixture), { f1: 'field-1', f2: 'field-2' });
+
+  const reordered = structuredClone(fixture);
+  [reordered.saved.documents[0], reordered.saved.documents[1]] =
+    [reordered.saved.documents[1], reordered.saved.documents[0]];
+  assert.throws(() => verifyCreatedTemplateReadback(reordered), /UUID\/filename\/order changed/);
+
+  const changedDigest = structuredClone(fixture);
+  changedDigest.savedDocumentDigests.set('doc-8', 'f'.repeat(64));
+  assert.throws(() => verifyCreatedTemplateReadback(changedDigest), /document 7 digest changed/);
 });
 
 test('created-template readback rejects a required policy acknowledgment made optional', () => {

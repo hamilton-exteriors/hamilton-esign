@@ -33,9 +33,10 @@ Deployed on Railway (project `backoffice`, service `docuseal`).
 Markdown source of truth lives in
 `~/.claude/skills/onboard-worker/references/documents/`. Immutable statutory PDF
 assets and their SHA-256/page-count lock live in `statutory/`; normal builds are
-fully offline. The W-2 initial packet orders the agreement and wage notice first,
-then eight statutory PDFs and all four company safety programs, and only then the
-policy acknowledgment that attests receipt of those materials:
+fully offline. The versioned v3 W-2 initial packet is one DocuSeal submission with
+15 ordered provider documents, not one flattened provider attachment. It orders the
+agreement and wage notice first, then eight statutory PDFs and all four company safety
+programs, and only then the policy acknowledgment that attests receipt of those materials:
 
 1. Injury and Illness Prevention Program (IIPP)
 2. Heat Illness Prevention Plan
@@ -43,7 +44,26 @@ policy acknowledgment that attests receipt of those materials:
 4. Code of Safe Practices
 
 Those program pages are read-only in each hire packet; the safety training roster
-remains its own post-training signing event. Nothing is authored in DocuSeal's builder.
+remains its own post-training signing event. The build retains an 82-page EN / 87-page
+ES composite PDF only as a deterministic reference artifact. Template creation uploads
+the 15 measured source PDFs in manifest order, preserves each source filename and
+SHA-256, and maps every field from its global composite page to the owning attachment
+UUID and source-local page. Before any journal or provider access, `--apply` atomically
+acquires one ownership lock and holds it through recovery, both creates/readbacks, local
+staging, rollback, and completion. Live, foreign, malformed, and uncertain owners block
+with zero provider access; only a demonstrably dead owner or verified PID-reuse identity
+can be reclaimed. Windows ownership uses a bounded, strictly validated PowerShell
+`Get-Process` start-time identity and fails closed when it cannot prove that identity. One
+exclusive append-only transaction journal, bound to that lock's owner token, covers both
+creates, both exact readbacks, the two UUID-stamped reflow files, and the merged index. It
+records each POST immediately before mutation plus preimages and durable target bytes
+and digests for every local artifact. The journal is removed only after all three target
+files pass readback. A missing Location header or crash at any boundary is reconciled;
+every tracked or possible partial template is archived and every local artifact is rolled
+back before another create can begin. If cleanup fails and the owner releases its lock,
+the next fresh exclusive owner atomically records adoption from the prior token before
+retrying; adoption is impossible while the prior lock remains live. Nothing is authored
+in DocuSeal's builder.
 
     bun install
     node pipeline/build-docs.mjs        # ordered sources -> print + reflow HTML
@@ -52,14 +72,20 @@ remains its own post-training signing event. Nothing is authored in DocuSeal's b
     node pipeline/build-templates.mjs --apply  # explicit production creation only
     node pipeline/stamp-reflow.mjs      # publish generated reflow + verify/stamp live UUIDs
     node pipeline/verify-templates.mjs --scope current      # read-only current live inventory
-    node pipeline/verify-templates.mjs --scope w2-release   # read-only two packets + two rosters
+    node pipeline/verify-templates.mjs --scope w2-release   # read-only v3 packets + two rosters
+    node pipeline/verify-templates.mjs --scope w2-cutover  # read-only v2 + v3 packets + rosters
     node pipeline/verify-templates.mjs --scope all-live     # current plus retained legacy templates
     node pipeline/file-to-drive.mjs sweep   # file completed submissions into Drive
 
 The live verifier rasterizes every page using PDF.js's bundled standard fonts and
 WASM image decoders. Its first-page layout assertion measures the body band against
 both expected Letter-page margins, excluding the deliberately wider packet footer;
-the full page is still required to contain ink. Spanish IIPP and fall-protection
+the full page is still required to contain ink. V3 verification also requires the
+post-create UUID-stamped reflow artifacts and compares every live field by UUID against
+its exact measured attachment, source-local page, geometry, type, and submitter. Moving
+a field onto any other document, including an otherwise valid fieldless source, fails.
+Provider filenames are strict path-free slugs; only omission of one final lowercase
+`.pdf` suffix is canonicalized. Spanish IIPP and fall-protection
 identities are composite sources only (`sourceOnly`, `liveExpected: false`), so they
 are not standalone live or reflow-stamping dependencies. An active source-only or
 unknown template fails inventory validation.
@@ -175,15 +201,17 @@ inspect the conversation before explicitly using `--retry-ambiguous`.
 
 ## California new-hire statutory PDFs
 
-The versioned EN/ES composite initial packet embeds eight statutory PDFs and all four
+The versioned EN/ES v3 initial packet presents eight statutory PDFs and all four
 company safety programs before the policy acknowledgment's receipt attestations.
+DocuSeal stores those as 15 ordered source documents inside one template/submission.
 Normal builds use the immutable source files in `statutory/` and verify those cached
 source bytes against `statutory/lock.json`; they do not depend on live network content
-and fail closed on any source digest or page-count drift. The composed packet pages are
-not byte-for-byte copies of those cached PDFs: composition removes source annotations
-and form widgets, masks superseded source footer labels, and stamps the packet's single
-`Page X of N` footer. The build manifest records cached-source digests separately from
-the final composed-PDF digest.
+and fail closed on any source digest or page-count drift. The reference composite and
+15 measured attachment PDFs are not byte-for-byte copies of the cached PDFs:
+composition removes source annotations and form widgets, masks superseded source footer
+labels, and stamps the packet's single global `Page X of N` sequence. The build manifest
+records cached-source digests, measured attachment digests, and the final reference-PDF
+digest separately.
 
 `pipeline/refresh-statutory-assets.mjs` checks the allowlisted issuing-agency URLs and
 expected hashes. It is dry-run by default; `--apply` is required to replace the checked
@@ -192,6 +220,29 @@ cache after deliberate review. Sources are DIR/DWC (Time of Hire and DWC 9783), 
 (sexual harassment). DWC 9783 is officially published only in English, so the Spanish
 composite labels that English-only source truthfully rather than implying a translation.
 
-Direct standalone pamphlet delivery remains disabled. New W-2 execution uses the
-immutable canonical Platform plan and the composite template; the separate safety
-training roster is sent only after actual training evidence exists.
+Direct standalone pamphlet delivery remains disabled. New W-2 execution binds only to
+v3 and uses the 15-document template; the separate safety training roster is sent only
+after actual training evidence exists. The active v2 flattened templates remain retained
+legacy until cutover proof is complete.
+
+Safe v3 cutover order:
+
+1. Review the deterministic v3 build and run `build-templates.mjs` without `--apply`.
+2. Create v3 as new templates; never rewrite v2 in place. One transaction journal remains
+   durable across both POSTs, both readbacks, both UUID-stamped reflow files, and the merged
+   index. Any uncertain POST or crash is reconciled by cleaning every tracked/candidate
+   template and restoring every artifact preimage before another create can begin.
+3. Read back all 15 document UUIDs, order, canonical filenames, bytes/digests, exact
+   field attachment/local-page/geometry mappings, page totals, and preferences.
+4. Confirm the completed transaction produced both UUID-stamped v3 files under
+   `brand/reflow/` and merged both v3 name mappings into `brand/reflow/index.json` without removing v2. Commit
+   `pipeline/packet-topology.mjs`, the complete v3 code, both stamped reflow files, and
+   the merged index; push that exact commit and deploy that exact commit. Verify the live
+   deployment revision before any disposable or real signing E2E.
+5. Run `verify-templates.mjs --scope w2-cutover` so both retained v2 templates, both v3
+   templates, and both rosters are proved together. Then prove Platform resolves the
+   exact v3 registry slugs/version with a synthetic no-send plan.
+6. Complete one authorized disposable end-to-end v3 signing test only after the stamped
+   reading views are deployed and the cutover verifier passes.
+7. Inventory submissions for v2. Archive v2 only after it has no active or sent
+   dependency and v3 has passed the authorized disposable E2E.

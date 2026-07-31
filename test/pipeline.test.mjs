@@ -17,6 +17,14 @@ import { sourceManifest, validateManifestEntry, assertCurrentSources, validateMe
 import { deterministicPdfBytes, packetFooterDescriptors } from '../pipeline/pdf-determinism.mjs';
 import { fetchStatutoryPdf, locateStatutoryFooterMasks, orderStatutoryTextItems, statutoryPdfToReflow } from '../pipeline/statutory-assets.mjs';
 import { matchGeneratedFields } from '../pipeline/field-match.mjs';
+import {
+  appendOrderedSourceUploads,
+  bytesSha256,
+  canonicalProviderPdfName,
+  mapFieldsToSourceAttachments,
+  orderedSourceUploads,
+  providerFieldGeometry,
+} from '../pipeline/packet-topology.mjs';
 import { packetFor, validate } from '../pipeline/worker-types.mjs';
 import { scopeCss, assertScoped, normalizeReflowTables, scopeDocumentLanguages, classify } from '../pipeline/build-docs.mjs';
 import { stampReflowAnchors } from '../pipeline/reflow-anchor.mjs';
@@ -73,7 +81,7 @@ test('template resolution fails on zero or duplicate active names', () => {
   assert.throws(() => requireUniqueActiveTemplate([], template.name), /found 0/);
   assert.throws(() => requireUniqueActiveTemplate([template, { ...template, id: 2 }], template.name), /found 2/);
   assert.ok(DEFAULT_DOCUMENT_SLUGS.includes('independent-contractor-agreement'));
-  assert.ok(DEFAULT_DOCUMENT_SLUGS.includes('w2-initial-packet-v2'));
+  assert.ok(DEFAULT_DOCUMENT_SLUGS.includes('w2-initial-packet-v3'));
   assert.ok(!DEFAULT_DOCUMENT_SLUGS.includes('iipp-es'));
   assert.ok(!DEFAULT_DOCUMENT_SLUGS.includes('fall-protection-program-es'));
   assert.deepEqual(
@@ -141,7 +149,7 @@ test('composite build manifest pins markdown and statutory PDF sources and detec
 });
 
 test('W-2 composites put the receipt acknowledgment after all statutory PDFs and four programs', () => {
-  for (const slug of ['w2-initial-packet-v2', 'w2-initial-packet-es-v2']) {
+  for (const slug of ['w2-initial-packet-v3', 'w2-initial-packet-es-v3']) {
     const sources = orderedSources(TEMPLATE_BY_SLUG.get(slug));
     assert.equal(sources.filter((source) => source.kind === 'pdf').length, 8);
     const sourceSlugs = sources.map((source) => source.slug);
@@ -258,23 +266,105 @@ test('combined packet footers use one exact first and last page label', () => {
   }
 });
 
-test('field matching is independent of API array order', () => {
+test('field matching is attachment-aware and independent of API array order', () => {
+  const sources = [
+    { order: 0, slug: 'agreement', outputStartPage: 0, pageCount: 2 },
+    { order: 1, slug: 'acknowledgment', outputStartPage: 2, pageCount: 2 },
+  ];
   const generated = [
-    { id: 'f1', name: 'Name', owner: 'worker', type: 'text', page: 0, x: 0.1, y: 0.2, w: 0.3, h: 0.04 },
-    { id: 'f2', name: 'Date', owner: 'employer', type: 'date', page: 1, x: 0.4, y: 0.5, w: 0.2, h: 0.03 },
+    { id: 'f1', name: 'Name', sourceSlug: 'agreement', sourcePage: 0, owner: 'worker', type: 'text', page: 0, x: 0.1, y: 0.2, w: 0.3, h: 0.04 },
+    { id: 'f2', name: 'Date', sourceSlug: 'acknowledgment', sourcePage: 1, owner: 'employer', type: 'date', page: 3, x: 0.4, y: 0.5, w: 0.2, h: 0.03 },
   ];
   const live = {
+    schema: [
+      { name: 'agreement.pdf', attachment_uuid: 'doc-agreement' },
+      { name: 'acknowledgment.pdf', attachment_uuid: 'doc-acknowledgment' },
+    ],
     submitters: [{ name: 'Worker', uuid: 'sw' }, { name: 'Hamilton', uuid: 'sh' }],
     fields: [
-      { uuid: 'u2', type: 'date', submitter_uuid: 'sh', areas: [{ page: 1, x: 0.4, y: 0.5, w: 0.2, h: 0.03 }] },
-      { uuid: 'u1', type: 'text', submitter_uuid: 'sw', areas: [{ page: 0, x: 0.1, y: 0.2, w: 0.3, h: 0.04 }] },
+      { uuid: 'u2', type: 'date', submitter_uuid: 'sh', areas: [{ attachment_uuid: 'doc-acknowledgment', page: 1, x: 0.4, y: 0.5, w: 0.2, h: 0.03 }] },
+      { uuid: 'u1', type: 'text', submitter_uuid: 'sw', areas: [{ attachment_uuid: 'doc-agreement', page: 0, x: 0.1, y: 0.2, w: 0.3, h: 0.04 }] },
     ],
   };
-  const matched = matchGeneratedFields(generated, live);
+  const matched = matchGeneratedFields(generated, live, sources);
   assert.equal(matched.get('f1'), 'u1');
   assert.equal(matched.get('f2'), 'u2');
-  live.fields[0].areas[0].x = 0.41;
-  assert.throws(() => matchGeneratedFields(generated, live), /no live field matches/);
+  live.fields[0].areas[0].attachment_uuid = 'doc-agreement';
+  assert.throws(() => matchGeneratedFields(generated, live, sources), /no live field matches/);
+});
+
+test('global packet pages map to exact source-local boundary pages', () => {
+  const sources = [
+    { order: 0, slug: 'agreement', outputStartPage: 0, pageCount: 6 },
+    { order: 1, slug: 'wage', outputStartPage: 6, pageCount: 5 },
+    { order: 2, slug: 'ack', outputStartPage: 11, pageCount: 5 },
+  ];
+  const fields = [
+    { id: 'agreement-last', sourceSlug: 'agreement', page: 5 },
+    { id: 'wage-first', sourceSlug: 'wage', page: 6 },
+    { id: 'wage-last', sourceSlug: 'wage', page: 10 },
+    { id: 'ack-first', sourceSlug: 'ack', page: 11 },
+  ];
+  const mapped = mapFieldsToSourceAttachments(fields, sources);
+  assert.deepEqual(mapped.map(({ sourcePage, attachmentOrder }) => [sourcePage, attachmentOrder]), [
+    [5, 0], [0, 1], [4, 1], [0, 2],
+  ]);
+  assert.deepEqual(
+    providerFieldGeometry({ ...mapped[3], x: 0.1, y: 0.2, w: 0.3, h: 0.04 }, 'doc-ack'),
+    { attachment_uuid: 'doc-ack', page: 0, x: 0.1, y: 0.2, w: 0.3, h: 0.04 },
+  );
+  assert.throws(
+    () => mapFieldsToSourceAttachments([{ id: 'crossed', sourceSlug: 'agreement', page: 6 }], sources),
+    /falls outside agreement/,
+  );
+});
+
+test('v3 upload plan contains all 15 measured source PDFs in manifest order', () => {
+  const root = mkdtempSync(join(tmpdir(), 'w2-source-uploads-'));
+  const slug = 'packet-v3';
+  const sourceDir = join(root, `${slug}.sources`);
+  mkdirSync(sourceDir);
+  const sources = Array.from({ length: 15 }, (_, order) => {
+    const sourceSlug = `source-${order + 1}`;
+    const attachmentFilename = `${sourceSlug}.pdf`;
+    const bytes = Buffer.from(`deterministic-pdf-${order + 1}`);
+    writeFileSync(join(sourceDir, attachmentFilename), bytes);
+    return {
+      order,
+      slug: sourceSlug,
+      outputStartPage: order,
+      pageCount: 1,
+      attachmentFilename,
+      attachmentSha256: bytesSha256(bytes),
+    };
+  });
+  const fields = mapFieldsToSourceAttachments([
+    { id: 'first', sourceSlug: 'source-1', page: 0 },
+    { id: 'last', sourceSlug: 'source-15', page: 14 },
+  ], sources);
+  const uploads = orderedSourceUploads({ slug, sources, fields, pageCount: 15 }, root, 15);
+  assert.equal(uploads.length, 15);
+  assert.deepEqual(uploads.map((upload) => upload.filename), sources.map((source) => source.attachmentFilename));
+  assert.deepEqual(uploads.map((upload) => bytesSha256(upload.bytes)), sources.map((source) => source.attachmentSha256));
+  const appended = [];
+  assert.equal(appendOrderedSourceUploads({
+    append: (key, value, filename) => appended.push({ key, value, filename }),
+  }, uploads), 15);
+  assert.equal(appended.length, 15);
+  assert.ok(appended.every((item) => item.key === 'files[]' && item.value.type === 'application/pdf'));
+  assert.deepEqual(appended.map((item) => item.filename), uploads.map((upload) => upload.filename));
+});
+
+test('provider PDF names canonicalize only an optional final lowercase suffix', () => {
+  assert.equal(canonicalProviderPdfName('employment-agreement'), 'employment-agreement');
+  assert.equal(canonicalProviderPdfName('employment-agreement.pdf'), 'employment-agreement');
+  for (const value of [
+    ' employment-agreement.pdf', 'employment-agreement.pdf ', 'folder/employment-agreement.pdf',
+    'folder\\employment-agreement.pdf', 'employment-agreement.PDF', 'employment-agreement.pdf.pdf',
+    'employment agreement.pdf',
+  ]) {
+    assert.throws(() => canonicalProviderPdfName(value), /provider PDF name/);
+  }
 });
 
 test('IIPP administrative phone is plain text while review fields remain dates', () => {
@@ -392,7 +482,7 @@ test('worker type is mandatory and packets never fall across classifications', (
   assert.throws(() => packetFor(undefined, 'en'), /worker type is required/);
   assert.deepEqual(packetFor('overseas_contractor', 'en').docs.map((doc) => doc.title),
     ['Independent Contractor Agreement']);
-  assert.ok(packetFor('w2_local', 'en').docs.some((doc) => doc.title === 'W-2 Initial Employment Packet v2'));
+  assert.ok(packetFor('w2_local', 'en').docs.some((doc) => doc.title === 'W-2 Initial Employment Packet v3'));
   const wrong = validate({ type: 'overseas_contractor', name: 'ZZ TEST', phone: '+16509773241' });
   assert.equal(wrong.ok, false);
   assert.match(wrong.problems.join(' '), /looks domestic/);

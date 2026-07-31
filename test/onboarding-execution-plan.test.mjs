@@ -71,10 +71,10 @@ function w2InitialPlan() {
     documents: [
       doc(
         'initial-packet',
-        'W-2 Initial Employment Packet v2',
+        'W-2 Initial Employment Packet v3',
         1,
         'Personnel',
-        { slug: 'w2-initial-packet-v2', version: 2 },
+        { slug: 'w2-initial-packet-v3', version: 3 },
       ),
     ],
     outboundWhatsApp: [{
@@ -171,17 +171,17 @@ test('classification and stage enforce deferred W-2 training and exact document 
 test('schema v2 binds classification, stage, language, and document key to the exact registry template', () => {
   const spanish = mutate(w2InitialPlan(), (copy) => {
     copy.language = 'es';
-    copy.documents[0].template.name = 'Paquete Inicial de Empleo W-2 v2';
-    copy.documents[0].template.registrySlug = 'w2-initial-packet-es-v2';
+    copy.documents[0].template.name = 'Paquete Inicial de Empleo W-2 v3';
+    copy.documents[0].template.registrySlug = 'w2-initial-packet-es-v3';
   });
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(spanish));
 
   const failures = [
-    [mutate(w2InitialPlan(), (copy) => { copy.language = 'es'; }), /registrySlug must equal w2-initial-packet-es-v2/],
-    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.name = 'Paquete Inicial de Empleo W-2 v2'; }), /must equal registry title/],
+    [mutate(w2InitialPlan(), (copy) => { copy.language = 'es'; }), /registrySlug must equal w2-initial-packet-es-v3/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.name = 'Paquete Inicial de Empleo W-2 v3'; }), /must equal registry title/],
     [mutate(w2InitialPlan(), (copy) => { copy.documents[0].key = 'safety-roster'; }), /ordered w2_local initial document set/],
-    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registrySlug = 'safety-training-roster'; }), /registrySlug must equal w2-initial-packet-v2/],
-    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registryVersion = 1; }), /registryVersion must equal 2/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registrySlug = 'safety-training-roster'; }), /registrySlug must equal w2-initial-packet-v3/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registryVersion = 1; }), /registryVersion must equal 3/],
     [mutate(w2InitialPlan(), (copy) => { delete copy.documents[0].template.registryVersion; }), /missing keys: registryVersion/],
   ];
   for (const [input, expected] of failures) assert.throws(() => validateOnboardingExecutionPlan(input), expected);

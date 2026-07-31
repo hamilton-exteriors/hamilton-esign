@@ -1,16 +1,27 @@
 // Create DocuSeal templates from the measured PDFs + field coordinates.
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { PDFDocument } from 'pdf-lib';
 import { BUILD_DIR, DOCS_DIR, loadDocusealSecrets } from './config.mjs';
-import { validateMeasuredBuild } from './build-manifest.mjs';
+import { sha256, validateMeasuredBuild } from './build-manifest.mjs';
 import { createDocusealClient } from './docuseal-api.mjs';
 import { TEMPLATE_BY_SLUG } from './registry.mjs';
 import { stampReflowAnchors } from './reflow-anchor.mjs';
 import {
-  verifyCreatedTemplateReadback,
-  withCreatedTemplateCleanup,
-} from './template-mutation-safety.mjs';
+  appendOrderedSourceUploads,
+  canonicalProviderPdfName,
+  orderedSourceUploads,
+  providerFieldGeometry,
+} from './packet-topology.mjs';
+import {
+  createTemplateCreationJournal,
+  createTemplateCreationProcessLock,
+  pollUncertainCreation,
+  recoverPendingCreationBatch,
+  stageCreationArtifacts,
+} from './template-creation-recovery.mjs';
+import { verifyCreatedTemplateReadback } from './template-mutation-safety.mjs';
 
 const DIR = BUILD_DIR;
 let SEC;
@@ -57,37 +68,89 @@ async function signIn() {
   if (r.status !== 303 && r.status !== 302) throw new Error('sign_in failed ' + r.status);
 }
 
-async function createTemplate(name) {
+async function createTemplate(name, { journal, knownTemplateIds }) {
   let r = await fetch(`${URL_}/templates/new`, { headers: { cookie } }); setCookie(r);
   if (!r.ok) throw new Error(`new template page failed ${r.status}`);
   const tok = tokenFrom(await r.text(), /action="\/templates"/);
   if (!tok) throw new Error('new template page returned no authenticity token');
   const body = new URLSearchParams({ authenticity_token: tok, 'template[name]': name });
-  r = await fetch(`${URL_}/templates`, { method: 'POST', headers: { cookie, 'Content-Type': 'application/x-www-form-urlencoded' }, body, redirect: 'manual' });
-  setCookie(r);
-  const loc = r.headers.get('location') || '';
-  const id = (loc.match(/\/templates\/(\d+)/) || [])[1];
-  if (!id) throw new Error('no template id from ' + loc + ' status ' + r.status);
-  return id;
+  // Persist the ambiguity marker immediately before the only request that can create
+  // remote state. A hard crash after POST can then be reconciled on the next run.
+  const attempt = journal.beginAttempt({ name, knownTemplateIds });
+  let responseError;
+  try {
+    r = await fetch(`${URL_}/templates`, { method: 'POST', headers: { cookie, 'Content-Type': 'application/x-www-form-urlencoded' }, body, redirect: 'manual' });
+    setCookie(r);
+    const loc = r.headers.get('location') || '';
+    const id = (loc.match(/\/templates\/(\d+)/) || [])[1];
+    if (id && !attempt.knownTemplateIds.includes(String(id))) {
+      journal.recordCreated(id, name);
+      return id;
+    }
+    responseError = new Error(`template POST returned no trustworthy new id (status ${r.status}, location ${loc || 'none'})`);
+  } catch (error) {
+    responseError = error;
+  }
+
+  const candidates = await pollUncertainCreation({
+    attempt,
+    listInventory: () => client.listAll('/api/templates', { what: `uncertain creation ${name}` }),
+  });
+  if (candidates.length === 1) {
+    const id = String(candidates[0].id);
+    journal.recordCreated(id, name);
+    return id;
+  }
+  if (candidates.length > 1) {
+    throw new Error(`ambiguous template creation produced ${candidates.length} templates; batch recovery must archive every candidate`);
+  }
+  throw new Error(`${responseError.message}; no candidate became visible and ambiguity journal is retained at ${journal.path}`);
 }
 
-async function uploadPdf(id, slug) {
+async function uploadPdfs(id, document) {
   const r0 = await fetch(`${URL_}/templates/${id}/edit`, { headers: { cookie } }); setCookie(r0);
   if (!r0.ok) throw new Error(`template ${id} edit page failed ${r0.status}`);
   const csrf = ((await r0.text()).match(/name="csrf-token" content="([^"]+)"/) || [])[1];
   if (!csrf) throw new Error(`template ${id} edit page returned no CSRF token`);
   const fd = new FormData();
-  fd.append('files[]', new Blob([readFileSync(`${DIR}/${slug}.pdf`)], { type: 'application/pdf' }), `${slug}.pdf`);
+  appendOrderedSourceUploads(fd, orderedSourceUploads(document, DIR, 15));
   const r = await fetch(`${URL_}/templates/${id}/documents`, {
     method: 'POST', headers: { cookie, 'X-CSRF-Token': csrf, Accept: 'application/json' }, body: fd });
   setCookie(r);
   const text = await r.text();
-  if (!r.ok) throw new Error(`upload ${slug} failed ${r.status}: ${text.slice(0, 160)}`);
+  if (!r.ok) throw new Error(`upload ${document.slug} failed ${r.status}: ${text.slice(0, 160)}`);
   let j;
   try { j = JSON.parse(text); }
-  catch { throw new Error(`upload ${slug} returned non-JSON content`); }
-  if (!j.schema) throw new Error('upload failed: ' + JSON.stringify(j).slice(0, 200));
+  catch { throw new Error(`upload ${document.slug} returned non-JSON content`); }
+  if (!Array.isArray(j.schema) || j.schema.length !== document.sources.length) {
+    throw new Error(`${document.slug}: upload returned ${j.schema?.length ?? 'no'} schema documents, expected ${document.sources.length}`);
+  }
+  const attachmentUuids = new Set();
+  j.schema.forEach((schemaDocument, index) => {
+    const source = document.sources[index];
+    if (!schemaDocument?.attachment_uuid || attachmentUuids.has(schemaDocument.attachment_uuid)) {
+      throw new Error(`${document.slug}: upload schema attachment UUIDs are missing or duplicated`);
+    }
+    attachmentUuids.add(schemaDocument.attachment_uuid);
+    if (canonicalProviderPdfName(schemaDocument.name) !== canonicalProviderPdfName(source.attachmentFilename)) {
+      throw new Error(`${document.slug}: uploaded document ${index} is ${schemaDocument.name}, expected ${source.attachmentFilename}`);
+    }
+  });
   return { schema: j.schema, csrf };
+}
+
+async function providerDocumentDigests(saved) {
+  if (!Array.isArray(saved?.documents)) throw new Error('created template readback omitted documents');
+  const digests = new Map();
+  for (const document of saved.documents) {
+    if (!document?.uuid || !document?.url || digests.has(document.uuid)) {
+      throw new Error('created template document identity or source URL is missing/duplicated');
+    }
+    const response = await fetch(document.url);
+    if (!response.ok) throw new Error(`created template document ${document.uuid} returned ${response.status}`);
+    digests.set(document.uuid, sha256(Buffer.from(await response.arrayBuffer())));
+  }
+  return digests;
 }
 
 async function saveTemplate(id, schema, csrf, submitters, fields) {
@@ -141,10 +204,10 @@ const args = process.argv.slice(2);
 const apply = args.includes('--apply');
 if (args.some((arg) => arg !== '--apply')) throw new Error('usage: node pipeline/build-templates.mjs [--apply]');
 const generated = JSON.parse(readFileSync(`${DIR}/fields.json`, 'utf8'));
-const docs = generated.filter((document) => TEMPLATE_BY_SLUG.get(document.slug)?.version === 2);
-if (docs.length !== 2 || !docs.some((document) => document.slug === 'w2-initial-packet-v2') ||
-  !docs.some((document) => document.slug === 'w2-initial-packet-es-v2')) {
-  throw new Error('build-templates requires exactly the two versioned W-2 composite artifacts');
+const docs = generated.filter((document) => TEMPLATE_BY_SLUG.get(document.slug)?.version === 3);
+if (docs.length !== 2 || !docs.some((document) => document.slug === 'w2-initial-packet-v3') ||
+  !docs.some((document) => document.slug === 'w2-initial-packet-es-v3')) {
+  throw new Error('build-templates requires exactly the two versioned W-2 v3 source-attachment artifacts');
 }
 for (const document of docs) {
   const entry = TEMPLATE_BY_SLUG.get(document.slug);
@@ -160,10 +223,39 @@ if (!apply) {
   console.log('dry run only; rerun with --apply for explicit transactional creation');
   process.exit(0);
 }
+const processLock = createTemplateCreationProcessLock();
+const lockAcquisition = processLock.acquire();
+try {
 SEC = loadDocusealSecrets();
 client = createDocusealClient(SEC);
 URL_ = SEC.url;
-const inventory = await client.listAll('/api/templates', { what: 'template inventory' });
+const REFLOW_DIR = new URL('../brand/reflow/', import.meta.url);
+mkdirSync(REFLOW_DIR, { recursive: true });
+const indexPath = new URL('index.json', REFLOW_DIR);
+const artifactPaths = [
+  ...docs.map((document) => fileURLToPath(new URL(`${document.slug}.reflow.html`, REFLOW_DIR))),
+  fileURLToPath(indexPath),
+];
+const creationJournal = createTemplateCreationJournal(undefined, {
+  lockOwner: lockAcquisition.metadata,
+  reclaimedOwner: lockAcquisition.reclaimed ? lockAcquisition.previous : null,
+});
+const recovered = await recoverPendingCreationBatch({
+  journal: creationJournal,
+  listInventory: () => client.listAll('/api/templates', { what: 'pending template creation recovery' }),
+  cleanupTemplate: (id) => client.request(
+    `/api/templates/${id}`,
+    { method: 'DELETE' },
+    `archive interrupted template ${id}`,
+  ),
+});
+let inventory = await client.listAll(
+  '/api/templates',
+  { what: recovered.cleaned.length ? 'template inventory after recovery' : 'template inventory' },
+);
+if (recovered.cleaned.length) {
+  console.log(`cleaned ${recovered.cleaned.length} template(s) from an interrupted creation transaction`);
+}
 for (const document of docs) {
   const entry = TEMPLATE_BY_SLUG.get(document.slug);
   const collisions = inventory.filter((template) => template.name === entry.title && !template.archived_at);
@@ -173,14 +265,19 @@ for (const document of docs) {
 }
 await signIn();
 console.log('signed in\n');
+creationJournal.beginBatch({
+  artifactPaths,
+  templates: docs.map((document) => ({ slug: document.slug, name: TITLES[document.slug] || document.slug })),
+});
 const built = [];
-await withCreatedTemplateCleanup(async (trackCreated) => {
+const knownTemplateIds = new Set(inventory.map((template) => String(template.id)));
+try {
 for (const d of docs) {
   const name = TITLES[d.slug] || d.slug;
-  const id = await createTemplate(name);
-  trackCreated(id);
-  const { schema, csrf } = await uploadPdf(id, d.slug);
-  const au = schema[0].attachment_uuid;
+  const id = await createTemplate(name, { journal: creationJournal, knownTemplateIds });
+  knownTemplateIds.add(String(id));
+  const { schema, csrf } = await uploadPdfs(id, d);
+  const attachmentUuidByOrder = schema.map((source) => source.attachment_uuid);
 
   // Two-party where the document actually has two parties. The worker signs
   // first; Hamilton countersigns. Never let one role own both blocks.
@@ -235,23 +332,33 @@ for (const d of docs) {
     return { uuid: randomUUID(), submitter_uuid: (subs[f.owner] || submitters[0]).uuid,
       name: nm, type: f.type, required: !conditional,
       ...(f.section ? { description: f.section } : {}),
-      areas: [{ x: f.x, y: f.y, w: f.w, h: f.h, attachment_uuid: au, page: f.page }] };
+      areas: [providerFieldGeometry(f, attachmentUuidByOrder[f.attachmentOrder])] };
   });
   const st = await saveTemplate(id, schema, csrf, submitters, fields);
   const es = /(?:^|-)es(?:-|$)/.test(d.slug);
   const twoParty = submitters.length > 1;
   const pst = await savePreferences(id, csrf, es, twoParty);
   const saved = await client.request(`/api/templates/${id}`, {}, `saved template ${id}`);
+  const expectedDocuments = d.sources.map((source, index) => ({
+    uuid: schema[index].attachment_uuid,
+    filename: source.attachmentFilename,
+    sha256: source.attachmentSha256,
+  }));
+  const savedDocumentDigests = await providerDocumentDigests(saved);
+  const providerMeasuredFields = d.fields.map((field) => ({ ...field, page: field.sourcePage }));
   const uuidById = verifyCreatedTemplateReadback({
     saved,
     expectedId: id,
     expectedName: name,
     expectedSchema: schema,
+    expectedDocuments,
+    savedDocumentDigests,
     expectedSubmitters: submitters,
     expectedFields: fields,
-    measuredFields: d.fields,
+    measuredFields: providerMeasuredFields,
     ownerUuidByOwner: Object.fromEntries(Object.entries(subs).map(([owner, submitter]) => [owner, submitter.uuid])),
   });
+  creationJournal.recordReadback(id);
   const split = owners.map(o => `${o}:${d.fields.filter(f => f.owner === o).length}`).join(' ');
   console.log(`${String(id).padStart(3)}  ${name.padEnd(44)} ${String(fields.length).padStart(3)}f  [${split}]  save=${st} prefs=${pst}`);
   built.push({ id, slug: d.slug, name, roles: submitters.map(s => s.name), fields: fields.length, uuidById });
@@ -264,15 +371,16 @@ console.log('\nbuilt ' + built.length + ' templates');
 // signer page exposes: pages are anchored as page-<attachment_uuid>-<n> and the
 // source filename never reaches the browser. This is the one place that knows
 // both the slug and the template name, so the index is written here.
-const REFLOW_DIR = new URL('../brand/reflow/', import.meta.url);
-mkdirSync(REFLOW_DIR, { recursive: true });
-const index = {};
+const index = existsSync(indexPath)
+  ? JSON.parse(readFileSync(indexPath, 'utf8'))
+  : {};
+const stagedArtifacts = [];
 for (const b of built) {
   const src = `${DIR}/${b.slug}.reflow.html`;
-  if (!existsSync(src)) { console.log(`  no reading view for ${b.slug}, skipped`); continue; }
+  if (!existsSync(src)) throw new Error(`missing reading view for ${b.slug}`);
   const mapping = new Map(Object.entries(b.uuidById || {}));
-  const generated = docs.find((document) => document.slug === b.slug);
-  const stampedView = stampReflowAnchors(readFileSync(src, 'utf8'), generated.fields, mapping);
+  const generatedDocument = docs.find((document) => document.slug === b.slug);
+  const stampedView = stampReflowAnchors(readFileSync(src, 'utf8'), generatedDocument.fields, mapping);
   const html = stampedView.html;
   const markers = (html.match(/class="ds[^"]*"/g) || []).length;
   if (stampedView.stamped !== markers) {
@@ -280,15 +388,33 @@ for (const b of built) {
       `view has ${markers} marker(s). A blank with no uuid silently becomes unfillable ` +
       'in the reflowed view, so this is a hard stop rather than a warning.');
   }
-  writeFileSync(new URL(`${b.slug}.reflow.html`, REFLOW_DIR), html);
+  stagedArtifacts.push({
+    path: fileURLToPath(new URL(`${b.slug}.reflow.html`, REFLOW_DIR)),
+    contents: html,
+  });
   index[b.name] = b.slug;
 }
-writeFileSync(new URL('index.json', REFLOW_DIR), JSON.stringify(index, null, 2) + '\n');
+stagedArtifacts.push({ path: fileURLToPath(indexPath), contents: JSON.stringify(index, null, 2) + '\n' });
+stageCreationArtifacts({ journal: creationJournal, artifacts: stagedArtifacts });
+creationJournal.complete();
 console.log(`staged ${Object.keys(index).length} reading view(s) into brand/reflow/`);
-}, {
-  cleanupTemplate: (id) => client.request(
-    `/api/templates/${id}`,
-    { method: 'DELETE' },
-    `archive partial template ${id}`,
-  ),
-});
+} catch (error) {
+  try {
+    await recoverPendingCreationBatch({
+      journal: creationJournal,
+      listInventory: () => client.listAll('/api/templates', { what: 'failed creation transaction recovery' }),
+      cleanupTemplate: (id) => client.request(
+        `/api/templates/${id}`,
+        { method: 'DELETE' },
+        `archive failed transaction template ${id}`,
+      ),
+    });
+  } catch (recoveryError) {
+    throw new AggregateError([error, recoveryError],
+      `template creation transaction failed and automatic recovery was incomplete; journal retained at ${creationJournal.path}`);
+  }
+  throw error;
+}
+} finally {
+  processLock.release();
+}

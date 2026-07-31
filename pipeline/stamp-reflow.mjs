@@ -25,7 +25,7 @@ for (const entry of STAMP_TEMPLATE_REGISTRY) {
     const generated = bySlug.get(entry.slug);
     if (!generated) throw new Error('not present in fields.json');
     const full = await client.request(`/api/templates/${template.id}`, {}, `template ${template.id}`);
-    const mapping = matchGeneratedFields(generated.fields, full);
+    const mapping = matchGeneratedFields(generated.fields, full, generated.sources);
 
     const path = new URL(`../brand/reflow/${entry.slug}.reflow.html`, import.meta.url);
     const generatedPath = `${BUILD_DIR}/${entry.slug}.reflow.html`;

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BUILD_MANIFEST_SCHEMA_VERSION, orderedSources, sourceSlugs } from './registry.mjs';
+import { validateSourceAttachmentSet } from './packet-topology.mjs';
 
 const SHA256 = /^[a-f0-9]{64}$/;
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -21,8 +22,13 @@ export function manifestDigest(value) {
     title: value.title,
     templateVersion: value.templateVersion,
     composite: value.composite,
-    sources: value.sources.map(({ outputStartPage, pageCount, ...source }) =>
-      source.kind === 'pdf' ? { ...source, pageCount } : source),
+    sources: value.sources.map(({
+      outputStartPage,
+      pageCount,
+      attachmentFilename,
+      attachmentSha256,
+      ...source
+    }) => source.kind === 'pdf' ? { ...source, pageCount } : source),
   };
   return sha256(Buffer.from(JSON.stringify(canonical(provenance)), 'utf8'));
 }
@@ -38,10 +44,13 @@ export function measuredLayoutDigest(value) {
       outputStartPage: source.outputStartPage,
       pageCount: source.pageCount,
       sha256: source.sha256,
+      attachmentFilename: source.attachmentFilename,
+      attachmentSha256: source.attachmentSha256,
     })),
     fields: value.fields.map((field) => ({
       id: field.id, sourceSlug: field.sourceSlug, owner: field.owner, type: field.type,
-      page: field.page, x: field.x, y: field.y, w: field.w, h: field.h,
+      page: field.page, sourcePage: field.sourcePage, attachmentOrder: field.attachmentOrder,
+      x: field.x, y: field.y, w: field.w, h: field.h,
     })),
   };
   return sha256(Buffer.from(JSON.stringify(canonical(layout)), 'utf8'));
@@ -192,6 +201,12 @@ export function validateMeasuredBuild(document, entry, docsDir, buildDir, pdfByt
     if (!range || range.kind !== 'markdown' || field.page < range.start || field.page >= range.end) {
       throw new Error(`${document.slug}: field ${field.id} falls outside its source page range`);
     }
+  }
+  if (entry.pageCount !== undefined && document.pageCount !== entry.pageCount) {
+    throw new Error(`${document.slug}: build has ${document.pageCount} pages, expected ${entry.pageCount}`);
+  }
+  if (entry.orderedSourceAttachments) {
+    validateSourceAttachmentSet(document, buildDir, entry.providerDocuments);
   }
   if (!SHA256.test(document.layoutSha256 || '') || document.layoutSha256 !== measuredLayoutDigest(document)) {
     throw new Error(`${document.slug}: measured layout digest is invalid`);

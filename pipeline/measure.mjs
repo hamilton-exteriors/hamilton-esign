@@ -1,6 +1,6 @@
 // Load each field-marked HTML, paginate it, refine field types from DOM context,
 // measure exact boxes, then emit PDF + DocuSeal-normalised field coordinates.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { PDFDocument, PDFName, StandardFonts, rgb } from 'pdf-lib';
 import { BUILD_DIR } from './config.mjs';
@@ -19,6 +19,10 @@ import { validateGeneratedGeometry } from './field-geometry.mjs';
 import { measuredLayoutDigest, sha256 } from './build-manifest.mjs';
 import { deterministicPdfBytes, packetFooterDescriptors } from './pdf-determinism.mjs';
 import { locateStatutoryFooterMasks } from './statutory-assets.mjs';
+import {
+  attachmentFilenameForSource,
+  mapFieldsToSourceAttachments,
+} from './packet-topology.mjs';
 const manifest = JSON.parse(readFileSync(`${DIR}/manifest.json`, 'utf8'));
 
 // Injected: flow content into fixed pages, refine types, measure.
@@ -402,6 +406,43 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
   return { pageCount: pages.length, pageSources: pages.map((page) => page.dataset.sourceSlug), fields: out, overflow, footers, footerProblems };
 };
 
+async function emitSourceAttachments(entry, compositeBytes, sources, fields) {
+  const composite = await PDFDocument.load(compositeBytes, { updateMetadata: false });
+  const sourceDir = `${DIR}/${entry.slug}.sources`;
+  mkdirSync(sourceDir, { recursive: true });
+  const attachmentSources = [];
+  for (const source of sources) {
+    const attachment = await PDFDocument.create({ updateMetadata: false });
+    const indices = Array.from({ length: source.pageCount }, (_, index) => source.outputStartPage + index);
+    const copied = await attachment.copyPages(composite, indices);
+    copied.forEach((page) => attachment.addPage(page));
+    const raw = await attachment.save({
+      useObjectStreams: false,
+      addDefaultPage: false,
+      objectsPerTick: Infinity,
+      updateFieldAppearances: false,
+    });
+    const attachmentFilename = attachmentFilenameForSource(source);
+    const bytes = await deterministicPdfBytes(raw, {
+      title: `${entry.title} — ${source.slug}`,
+    });
+    writeFileSync(`${sourceDir}/${attachmentFilename}`, bytes);
+    const parsed = await PDFDocument.load(bytes, { updateMetadata: false });
+    if (parsed.getPageCount() !== source.pageCount) {
+      throw new Error(`${entry.slug}: ${attachmentFilename} page count changed while slicing packet`);
+    }
+    attachmentSources.push({
+      ...source,
+      attachmentFilename,
+      attachmentSha256: sha256(bytes),
+    });
+  }
+  return {
+    sources: attachmentSources,
+    fields: mapFieldsToSourceAttachments(fields, attachmentSources),
+  };
+}
+
 async function composeOrderedPdf(manifestEntry, measured, basePdfPath, outputPath) {
   const entry = TEMPLATE_BY_SLUG.get(manifestEntry.slug);
   if (!entry) throw new Error(`${manifestEntry.slug}: registry entry is missing during PDF composition`);
@@ -501,8 +542,9 @@ async function composeOrderedPdf(manifestEntry, measured, basePdfPath, outputPat
     objectsPerTick: Infinity,
     updateFieldAppearances: false,
   });
-  writeFileSync(outputPath, bytes);
-  const verified = await PDFDocument.load(bytes, { updateMetadata: false });
+  const serialized = Buffer.from(bytes);
+  writeFileSync(outputPath, serialized);
+  const verified = await PDFDocument.load(serialized, { updateMetadata: false });
   const hasWidgetAnnotations = verified.getPages().some((page) => {
     const annotations = page.node.Annots();
     return annotations?.asArray().some((reference) =>
@@ -514,7 +556,13 @@ async function composeOrderedPdf(manifestEntry, measured, basePdfPath, outputPat
   if (verified.getPageCount() !== output.getPageCount()) {
     throw new Error(`${entry.slug}: serialized PDF page count changed during composition`);
   }
-  return { fields, sources, pageCount: verified.getPageCount(), footers: finalFooters };
+  const attachments = await emitSourceAttachments(entry, serialized, sources, fields);
+  return {
+    fields: attachments.fields,
+    sources: attachments.sources,
+    pageCount: verified.getPageCount(),
+    footers: finalFooters,
+  };
 }
 
 const browser = await chromium.launch();

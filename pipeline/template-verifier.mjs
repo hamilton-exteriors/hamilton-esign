@@ -1,6 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PAGE } from './build-docs.mjs';
+import { canonicalProviderPdfName } from './packet-topology.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PDFJS_ROOT = join(HERE, '..', 'node_modules', 'pdfjs-dist');
@@ -76,27 +77,151 @@ export function parseVerifierArgs(argv) {
     const value = argv[index];
     if (value === '--scope') {
       const next = argv[index + 1];
-      if (!next) throw new Error('--scope requires current, w2-release, or all-live');
+      if (!next) throw new Error('--scope requires current, w2-release, w2-cutover, or all-live');
       scope = next;
       index += 1;
     } else if (value.startsWith('--scope=')) {
       scope = value.slice('--scope='.length);
     } else {
-      throw new Error('usage: node pipeline/verify-templates.mjs [--scope current|w2-release|all-live]');
+      throw new Error('usage: node pipeline/verify-templates.mjs [--scope current|w2-release|w2-cutover|all-live]');
     }
   }
-  if (!['current', 'w2-release', 'all-live'].includes(scope)) {
-    throw new Error('--scope must be current, w2-release, or all-live');
+  if (!['current', 'w2-release', 'w2-cutover', 'all-live'].includes(scope)) {
+    throw new Error('--scope must be current, w2-release, w2-cutover, or all-live');
   }
   return { scope };
 }
 
 const W2_RELEASE_SLUGS = new Set([
-  'w2-initial-packet-v2',
-  'w2-initial-packet-es-v2',
+  'w2-initial-packet-v3',
+  'w2-initial-packet-es-v3',
   'safety-training-roster',
   'safety-training-roster-es',
 ]);
+
+const W2_CUTOVER_SLUGS = new Set([
+  ...W2_RELEASE_SLUGS,
+  'w2-initial-packet-v2',
+  'w2-initial-packet-es-v2',
+]);
+
+export function stampedReflowUuidMap(html, measuredFields) {
+  if (typeof html !== 'string') throw new Error('stamped reflow artifact is required');
+  const expectedIds = new Set(measuredFields.map((field) => field.id));
+  const mapping = new Map();
+  for (const match of html.matchAll(/<span\b[^>]*>/g)) {
+    const tag = match[0];
+    const id = (tag.match(/\bid="([^"]+)"/) || [])[1];
+    if (!expectedIds.has(id)) continue;
+    const uuid = (tag.match(/\bdata-hx-uuid="([^"]+)"/) || [])[1];
+    if (!uuid || mapping.has(id) || [...mapping.values()].includes(uuid)) {
+      throw new Error('stamped reflow field IDs and UUIDs must be present and unique');
+    }
+    mapping.set(id, uuid);
+  }
+  if (mapping.size !== expectedIds.size) {
+    throw new Error(`stamped reflow covers ${mapping.size} fields, expected ${expectedIds.size}`);
+  }
+  return mapping;
+}
+
+const FIELD_GEOMETRY_KEYS = ['page', 'x', 'y', 'w', 'h'];
+
+function verifierOwner(value) {
+  if (/hamilton/i.test(value || '')) return 'employer';
+  if (/worker/i.test(value || '')) return 'worker';
+  return '';
+}
+
+function verifyExactMeasuredFields(template, measured, schema, uuidByFieldId) {
+  if (!(uuidByFieldId instanceof Map) || uuidByFieldId.size !== measured.fields.length) {
+    throw new Error('exact stamped reflow UUID mapping is required for v3 field verification');
+  }
+  const liveByUuid = new Map((template.fields || []).map((field) => [field.uuid, field]));
+  if (liveByUuid.size !== measured.fields.length || liveByUuid.size !== (template.fields || []).length) {
+    throw new Error('provider field UUID coverage differs from measured packet');
+  }
+  const roles = new Map((template.submitters || []).map((submitter) => [submitter.uuid, submitter.name]));
+  for (const expected of measured.fields) {
+    const uuid = uuidByFieldId.get(expected.id);
+    const actual = liveByUuid.get(uuid);
+    const source = measured.sources[expected.attachmentOrder];
+    const expectedAttachmentUuid = schema[expected.attachmentOrder]?.attachment_uuid;
+    if (!actual || source?.slug !== expected.sourceSlug || !expectedAttachmentUuid) {
+      throw new Error(`${expected.id}: provider field identity/source mapping is incomplete`);
+    }
+    if (actual.type !== expected.type || verifierOwner(roles.get(actual.submitter_uuid)) !== expected.owner ||
+      actual.areas?.length !== 1) {
+      throw new Error(`${expected.id}: provider field type/submitter/area differs from measured packet`);
+    }
+    const area = actual.areas[0];
+    const expectedGeometry = {
+      page: expected.sourcePage,
+      x: expected.x,
+      y: expected.y,
+      w: expected.w,
+      h: expected.h,
+    };
+    if (area.attachment_uuid !== expectedAttachmentUuid ||
+      FIELD_GEOMETRY_KEYS.some((key) => area[key] !== expectedGeometry[key])) {
+      throw new Error(`${expected.id}: provider field attachment/local page/geometry differs from measured packet`);
+    }
+  }
+}
+
+export function validateProviderDocumentTopology({ entry, template, measured, inspections, uuidByFieldId }) {
+  const schema = template?.schema || [];
+  const documents = template?.documents || [];
+  const expectedCount = entry.providerDocuments ?? 1;
+  if (schema.length !== expectedCount || documents.length !== expectedCount || inspections.length !== expectedCount) {
+    throw new Error(`provider documents ${documents.length}, schema ${schema.length}, inspected ${inspections.length}; expected ${expectedCount}`);
+  }
+  const seen = new Set();
+  documents.forEach((document, index) => {
+    const attachmentUuid = schema[index]?.attachment_uuid;
+    if (!attachmentUuid || seen.has(attachmentUuid) || document?.uuid !== attachmentUuid) {
+      throw new Error(`provider document ${index} UUID/order differs from schema`);
+    }
+    seen.add(attachmentUuid);
+    if (canonicalProviderPdfName(schema[index]?.name) !== canonicalProviderPdfName(document.filename)) {
+      throw new Error(`provider document ${index} filename/order differs from schema`);
+    }
+  });
+  if (entry.orderedSourceAttachments) {
+    if (!measured || measured.slug !== entry.slug || measured.sources?.length !== expectedCount) {
+      throw new Error('local measured source-attachment manifest is required for v3 verification');
+    }
+    measured.sources.forEach((source, index) => {
+      if (canonicalProviderPdfName(documents[index].filename) !== canonicalProviderPdfName(source.attachmentFilename)) {
+        throw new Error(`provider source ${index} filename differs from measured manifest`);
+      }
+      if (inspections[index].sha256 !== source.attachmentSha256) {
+        throw new Error(`provider source ${index} digest differs from measured manifest`);
+      }
+      if (inspections[index].pages.length !== source.pageCount) {
+        throw new Error(`provider source ${index} has ${inspections[index].pages.length} pages, expected ${source.pageCount}`);
+      }
+    });
+    verifyExactMeasuredFields(template, measured, schema, uuidByFieldId);
+  }
+  const pagesByAttachment = new Map(schema.map((document, index) => [
+    document.attachment_uuid,
+    inspections[index].pages.length,
+  ]));
+  for (const field of template.fields || []) {
+    if (field.areas?.length !== 1) throw new Error(`field ${field.uuid} must have exactly one area`);
+    const area = field.areas[0];
+    const pages = pagesByAttachment.get(area.attachment_uuid);
+    if (!pages || !Number.isInteger(area.page) || area.page < 0 || area.page >= pages) {
+      throw new Error(`field ${field.uuid} has invalid attachment/local page`);
+    }
+  }
+  const totalPages = inspections.reduce((total, inspection) => total + inspection.pages.length, 0);
+  if (entry.pageCount !== undefined && totalPages !== entry.pageCount) {
+    throw new Error(`provider source documents total ${totalPages} pages, expected ${entry.pageCount}`);
+  }
+  return { totalPages, attachmentUuids: [...seen] };
+}
 
 export function validateActiveInventory(active, allowedEntries, sourceOnlyEntries) {
   const sourceOnlyTitles = new Set(sourceOnlyEntries.map((entry) => entry.title));
@@ -120,6 +245,7 @@ export function liveExpectation(entry) {
 
 export function entriesForScope({ current, retainedLegacy }, scope) {
   if (scope === 'w2-release') return current.filter((entry) => W2_RELEASE_SLUGS.has(entry.slug));
+  if (scope === 'w2-cutover') return [...current, ...retainedLegacy].filter((entry) => W2_CUTOVER_SLUGS.has(entry.slug));
   if (scope === 'all-live') return [...current, ...retainedLegacy];
   return current;
 }

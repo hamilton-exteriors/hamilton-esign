@@ -11,46 +11,72 @@ const numberKey = (value) => {
   return number.toFixed(5);
 };
 
-export function generatedFieldKey(field) {
+function geometryKey(sourceSlug, page, x, y, w, h, type, owner) {
+  if (!sourceSlug) throw new Error('field source attachment identity is missing');
   return [
-    Number(field.page),
-    numberKey(field.x),
-    numberKey(field.y),
-    numberKey(field.w),
-    numberKey(field.h),
-    field.type,
-    ownerName(field.owner),
+    sourceSlug,
+    Number(page),
+    numberKey(x),
+    numberKey(y),
+    numberKey(w),
+    numberKey(h),
+    type,
+    ownerName(owner),
   ].join('|');
 }
 
-export function liveFieldKey(field, submitters) {
+export function generatedFieldKey(field) {
+  return geometryKey(
+    field.sourceSlug,
+    field.sourcePage ?? field.page,
+    field.x, field.y, field.w, field.h,
+    field.type,
+    field.owner,
+  );
+}
+
+export function liveFieldKey(field, submitters, sourceSlugByAttachmentUuid) {
   const area = field.areas?.[0];
   if (!area || field.areas.length !== 1) {
     throw new Error(`live field ${field.uuid || field.name} must have exactly one area`);
   }
   const submitter = submitters.find((entry) => entry.uuid === field.submitter_uuid);
   if (!submitter) throw new Error(`live field ${field.uuid || field.name} has an unknown submitter`);
-  return [
-    Number(area.page),
-    numberKey(area.x),
-    numberKey(area.y),
-    numberKey(area.w),
-    numberKey(area.h),
+  const sourceSlug = sourceSlugByAttachmentUuid.get(area.attachment_uuid);
+  return geometryKey(
+    sourceSlug,
+    area.page,
+    area.x, area.y, area.w, area.h,
     field.type,
-    ownerName(submitter.name),
-  ].join('|');
+    submitter.name,
+  );
 }
 
-export function matchGeneratedFields(generatedFields, liveTemplate) {
+function sourceAttachmentMap(sources, schema) {
+  if (!Array.isArray(sources) || !sources.length || !Array.isArray(schema) || schema.length !== sources.length) {
+    throw new Error('source manifest and live attachment schema must have equal nonzero length');
+  }
+  const map = new Map();
+  schema.forEach((document, index) => {
+    const uuid = document?.attachment_uuid;
+    const slug = sources[index]?.slug;
+    if (!uuid || !slug || map.has(uuid)) throw new Error('live attachment order/identity is invalid');
+    map.set(uuid, slug);
+  });
+  return map;
+}
+
+export function matchGeneratedFields(generatedFields, liveTemplate, sources) {
   const liveFields = liveTemplate.fields || [];
   const submitters = liveTemplate.submitters || [];
   if (generatedFields.length !== liveFields.length) {
     throw new Error(`field count mismatch: generated ${generatedFields.length}, live ${liveFields.length}`);
   }
+  const sourceSlugByAttachmentUuid = sourceAttachmentMap(sources, liveTemplate.schema);
 
   const liveByKey = new Map();
   for (const field of liveFields) {
-    const key = liveFieldKey(field, submitters);
+    const key = liveFieldKey(field, submitters, sourceSlugByAttachmentUuid);
     if (liveByKey.has(key)) throw new Error(`ambiguous live fields share ${key}`);
     if (!field.uuid) throw new Error(`live field ${field.name || key} has no uuid`);
     liveByKey.set(key, field);

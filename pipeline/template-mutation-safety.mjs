@@ -6,6 +6,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 
+import { canonicalProviderPdfName } from './packet-topology.mjs';
+
 export const DOCUSEAL_TEMPLATE_MUTATION_CAPABILITIES = Object.freeze({
   conditionalMutation: false,
   reason: 'DocuSeal template upload/PUT endpoints expose no ETag, version precondition, or other atomic compare-and-swap mutation',
@@ -77,6 +79,7 @@ export async function assertNoBlockingSubmissions({ submissions, targetTemplateI
 }
 
 const GEOMETRY_KEYS = ['page', 'x', 'y', 'w', 'h'];
+const SHA256 = /^[a-f0-9]{64}$/;
 const sameGeometry = (left, right) => GEOMETRY_KEYS.every((key) => left?.[key] === right?.[key]);
 
 function canonicalOptionalDescription(value, context) {
@@ -116,6 +119,8 @@ export function verifyCreatedTemplateReadback({
   expectedId,
   expectedName,
   expectedSchema,
+  expectedDocuments,
+  savedDocumentDigests,
   expectedSubmitters,
   expectedFields,
   measuredFields,
@@ -126,14 +131,49 @@ export function verifyCreatedTemplateReadback({
   }
   if (saved?.name !== expectedName) throw new Error('created template name failed read-back verification');
 
-  const expectedAttachments = (expectedSchema || []).map((document) => document?.attachment_uuid);
-  const savedAttachments = (saved?.schema || []).map((document) => document?.attachment_uuid);
+  const expectedSchemaDocuments = (expectedSchema || []).map((document) => ({
+    attachment_uuid: document?.attachment_uuid,
+    name: document?.name,
+  }));
+  const savedSchemaDocuments = (saved?.schema || []).map((document) => ({
+    attachment_uuid: document?.attachment_uuid,
+    name: document?.name,
+  }));
+  const expectedAttachments = expectedSchemaDocuments.map((document) => document.attachment_uuid);
   if (!expectedAttachments.length || expectedAttachments.some((uuid) => !uuid) ||
-      new Set(expectedAttachments).size !== expectedAttachments.length) {
-    throw new Error('expected document UUID coverage is invalid');
+      new Set(expectedAttachments).size !== expectedAttachments.length ||
+      expectedSchemaDocuments.some((document) => !document.name)) {
+    throw new Error('expected document UUID/name coverage is invalid');
   }
-  if (JSON.stringify(savedAttachments) !== JSON.stringify(expectedAttachments)) {
-    throw new Error('created template document UUID coverage differs from the uploaded schema');
+  if (savedSchemaDocuments.length !== expectedSchemaDocuments.length) {
+    throw new Error('created template document UUID/name/order differs from the uploaded schema');
+  }
+  expectedSchemaDocuments.forEach((expected, index) => {
+    const actual = savedSchemaDocuments[index];
+    if (actual.attachment_uuid !== expected.attachment_uuid ||
+      canonicalProviderPdfName(actual.name) !== canonicalProviderPdfName(expected.name)) {
+      throw new Error('created template document UUID/name/order differs from the uploaded schema');
+    }
+  });
+  if (!Array.isArray(expectedDocuments) || expectedDocuments.length !== expectedAttachments.length ||
+      !Array.isArray(saved?.documents) || saved.documents.length !== expectedAttachments.length) {
+    throw new Error('created template provider document coverage changed');
+  }
+  const digestMap = savedDocumentDigests instanceof Map
+    ? savedDocumentDigests
+    : new Map(Object.entries(savedDocumentDigests || {}));
+  expectedDocuments.forEach((expected, index) => {
+    const actual = saved.documents[index];
+    if (expected.uuid !== expectedAttachments[index] || actual?.uuid !== expected.uuid ||
+      canonicalProviderPdfName(actual?.filename) !== canonicalProviderPdfName(expected.filename)) {
+      throw new Error(`created template provider document ${index} UUID/filename/order changed`);
+    }
+    if (!SHA256.test(expected.sha256 || '') || digestMap.get(expected.uuid) !== expected.sha256) {
+      throw new Error(`created template provider document ${index} digest changed`);
+    }
+  });
+  if (digestMap.size !== expectedDocuments.length) {
+    throw new Error('created template provider document digest coverage changed');
   }
 
   const expectedRoles = uniqueUuidMap(expectedSubmitters, 'expected submitter');
@@ -151,7 +191,6 @@ export function verifyCreatedTemplateReadback({
   if (expectedByUuid.size !== savedByUuid.size) throw new Error('created template field UUID coverage changed');
 
   const uuidById = {};
-  const coveredAttachments = new Set();
   for (let index = 0; index < measuredFields.length; index += 1) {
     const measured = measuredFields[index];
     const expected = expectedFields[index];
@@ -171,11 +210,7 @@ export function verifyCreatedTemplateReadback({
         !sameGeometry(actual.areas[0], measured) || actual.areas[0].attachment_uuid !== expected.areas[0].attachment_uuid) {
       throw new Error(`${measured.id}: provider field type, role ownership, geometry, or document UUID differs from measured mapping`);
     }
-    coveredAttachments.add(actual.areas[0].attachment_uuid);
     uuidById[measured.id] = actual.uuid;
-  }
-  if (expectedAttachments.some((uuid) => !coveredAttachments.has(uuid))) {
-    throw new Error('created template fields do not cover every document UUID');
   }
   return uuidById;
 }

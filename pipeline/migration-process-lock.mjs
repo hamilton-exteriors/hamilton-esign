@@ -11,6 +11,7 @@ import {
 } from 'node:fs';
 import { hostname } from 'node:os';
 import { dirname } from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 const LOCK_VERSION = 1;
 const DEFAULT_STALE_AFTER_MS = 60_000;
@@ -44,14 +45,54 @@ function linuxProcessStartIdentity(pid) {
   }
 }
 
-export function inspectProcessLiveness(pid) {
+export function windowsProcessStartIdentity(pid, {
+  spawnSyncImpl = spawnSync,
+  timeout = 2_000,
+} = {}) {
+  if (!Number.isSafeInteger(pid) || pid <= 0 || !Number.isFinite(timeout) || timeout <= 0) return null;
+  const command = `(Get-Process -Id ${pid} -ErrorAction Stop).StartTime.ToUniversalTime().ToFileTimeUtc()`;
+  let result;
   try {
-    process.kill(pid, 0);
+    result = spawnSyncImpl('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout,
+      maxBuffer: 1024,
+    });
+  } catch {
+    return null;
+  }
+  if (!result || result.error || result.signal || result.status !== 0 ||
+      typeof result.stdout !== 'string' || typeof result.stderr !== 'string' || result.stderr.trim()) return null;
+  const match = result.stdout.match(/^\s*([1-9]\d*)\s*$/);
+  return match ? `windows:${match[1]}` : null;
+}
+
+export function processStartIdentityFor(pid, {
+  platform = process.platform,
+  spawnSyncImpl = spawnSync,
+} = {}) {
+  if (platform === 'linux') return linuxProcessStartIdentity(pid);
+  if (platform === 'win32') return windowsProcessStartIdentity(pid, { spawnSyncImpl });
+  return null;
+}
+
+export function inspectProcessLiveness(pid, {
+  kill = process.kill.bind(process),
+  platform = process.platform,
+  spawnSyncImpl = spawnSync,
+} = {}) {
+  try {
+    kill(pid, 0);
   } catch (error) {
     if (error?.code === 'ESRCH') return { state: 'dead', startIdentity: null };
     return { state: 'uncertain', startIdentity: null };
   }
-  return { state: 'alive', startIdentity: linuxProcessStartIdentity(pid) };
+  const startIdentity = processStartIdentityFor(pid, { platform, spawnSyncImpl });
+  if ((platform === 'linux' || platform === 'win32') && !startIdentity) {
+    return { state: 'uncertain', startIdentity: null };
+  }
+  return { state: 'alive', startIdentity };
 }
 
 function parseLock(raw) {
@@ -91,7 +132,7 @@ export function createMigrationProcessLock({
   pid = process.pid,
   tokenFactory = randomUUID,
   processStartedAt = new Date(Date.now() - process.uptime() * 1000).toISOString(),
-  processStartIdentity = linuxProcessStartIdentity(process.pid),
+  processStartIdentity = processStartIdentityFor(process.pid),
   inspectProcess = inspectProcessLiveness,
 } = {}) {
   if (!path || !workflowId) throw new Error('migration lock path and workflow ID are required');

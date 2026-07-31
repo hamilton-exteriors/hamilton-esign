@@ -1,7 +1,10 @@
 // Verify the complete live template inventory against every page of DocuSeal's
 // source PDF plus field ownership metadata. Zero or partial work is failure.
+import { existsSync, readFileSync } from 'node:fs';
 import { createCanvas, DOMMatrix, ImageData, Path2D } from '@napi-rs/canvas';
 import { createDocusealClient } from './docuseal-api.mjs';
+import { BUILD_DIR } from './config.mjs';
+import { sha256 } from './build-manifest.mjs';
 import {
   CURRENT_TEMPLATE_REGISTRY,
   RETAINED_LEGACY_TEMPLATE_REGISTRY,
@@ -15,8 +18,10 @@ import {
   inspectInkBands,
   liveExpectation,
   parseVerifierArgs,
+  stampedReflowUuidMap,
   validateActiveInventory,
   validateFirstPageBodyInk,
+  validateProviderDocumentTopology,
 } from './template-verifier.mjs';
 
 globalThis.DOMMatrix ||= DOMMatrix;
@@ -28,6 +33,10 @@ const registry = entriesForScope({
   current: CURRENT_TEMPLATE_REGISTRY,
   retainedLegacy: RETAINED_LEGACY_TEMPLATE_REGISTRY,
 }, scope);
+const measuredPath = `${BUILD_DIR}/fields.json`;
+const measuredBySlug = existsSync(measuredPath)
+  ? new Map(JSON.parse(readFileSync(measuredPath, 'utf8')).map((document) => [document.slug, document]))
+  : new Map();
 
 const client = createDocusealClient();
 
@@ -54,7 +63,7 @@ async function inspectPdf(url) {
   } finally {
     await loadingTask.destroy();
   }
-  return pages;
+  return { sha256: sha256(bytes), pages };
 }
 
 const inventory = await client.listAll('/api/templates', { what: 'template inventory' });
@@ -90,20 +99,33 @@ for (const entry of registry) {
       throw new Error('submitter order is not preserved');
     }
 
-    const sourceUrl = full.documents?.[0]?.url;
-    if (!sourceUrl) throw new Error('no source PDF URL');
-    const pages = await inspectPdf(sourceUrl);
-    const minimumPages = Math.max(1,
-      ...fields.flatMap((field) => field.areas || []).map((area) => Number(area.page) + 1));
-    if (pages.length < minimumPages) {
-      throw new Error(`PDF has ${pages.length} pages, fields require at least ${minimumPages}`);
+    if (!Array.isArray(full.documents) || !full.documents.length ||
+      full.documents.some((document) => !document.url)) {
+      throw new Error('provider source PDF URLs are incomplete');
     }
+    const inspections = [];
+    for (const document of full.documents) inspections.push(await inspectPdf(document.url));
+    const measured = measuredBySlug.get(entry.slug);
+    let uuidByFieldId;
+    if (entry.orderedSourceAttachments) {
+      const reflowPath = new URL(`../brand/reflow/${entry.slug}.reflow.html`, import.meta.url);
+      if (!existsSync(reflowPath)) throw new Error('post-create UUID-stamped reflow artifact is missing');
+      uuidByFieldId = stampedReflowUuidMap(readFileSync(reflowPath, 'utf8'), measured?.fields || []);
+    }
+    const topology = validateProviderDocumentTopology({
+      entry,
+      template: full,
+      measured,
+      inspections,
+      uuidByFieldId,
+    });
+    const pages = inspections.flatMap((inspection) => inspection.pages);
     for (let index = 0; index < pages.length; index++) {
       const result = pages[index];
-      if (!result.full.ink) throw new Error(`page ${index + 1} has no ink`);
+      if (!result.full.ink) throw new Error(`global page ${index + 1} has no ink`);
       if (index === 0) validateFirstPageBodyInk(result);
     }
-    console.log(`  ok  ${String(template.id).padStart(3)}  ${entry.title.padEnd(48)} ${pages.length}p ${fields.length}f`);
+    console.log(`  ok  ${String(template.id).padStart(3)}  ${entry.title.padEnd(48)} ${topology.totalPages}p ${full.documents.length}d ${fields.length}f`);
   } catch (error) {
     failures.push(`${entry.title}: ${error.message}`);
     console.error(`  FAIL  ${entry.title}: ${error.message}`);

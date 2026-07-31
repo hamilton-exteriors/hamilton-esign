@@ -21,8 +21,8 @@ const CLASSIFICATION_RULES = {
         documents: ['initial-packet'],
         destinations: ['Personnel'],
         templateSlugs: {
-          en: ['w2-initial-packet-v2'],
-          es: ['w2-initial-packet-es-v2'],
+          en: ['w2-initial-packet-v3'],
+          es: ['w2-initial-packet-es-v3'],
         },
       },
       training: {
