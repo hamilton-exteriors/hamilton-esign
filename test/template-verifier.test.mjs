@@ -52,7 +52,7 @@ test('provider raw digest is captured before PDF.js can take ownership of respon
   const source = readFileSync(new URL('../pipeline/verify-templates.mjs', import.meta.url), 'utf8');
   const inspect = source.slice(source.indexOf('async function inspectPdf'), source.indexOf('const inventory ='));
   assert.ok(inspect.indexOf('const rawSha256 = sha256(bytes)') < inspect.indexOf('getDocument({ data: bytes'));
-  assert.match(inspect, /return \{ sha256: rawSha256, fingerprint, pages \}/);
+  assert.match(inspect, /return \{ sha256: rawSha256, sourceByteLength, fingerprint, pages \}/);
 });
 
 test('verifier scope targets the explicit four-template W-2 release', () => {
@@ -116,8 +116,9 @@ test('v3 verifier requires 15 ordered measured provider documents and local fiel
     uuid: document.attachment_uuid,
     filename: sources[index].attachmentFilename,
   }));
-  const inspections = sources.map((source) => ({
+  const inspections = sources.map((source, index) => ({
     sha256: source.attachmentSha256,
+    sourceByteLength: 1000 + index,
     fingerprint: source.attachmentFingerprint,
     pages: Array.from({ length: source.pageCount }, () => ({ full: { ink: 1 } })),
   }));
@@ -151,9 +152,22 @@ test('v3 verifier requires 15 ordered measured provider documents and local fiel
     documents: documents.map((document, index) => ({
       uuid: document.uuid,
       filename: document.filename,
+      sourceByteLength: inspections[index].sourceByteLength,
       localRawSha256: sources[index].attachmentSha256,
       providerRawSha256: inspections[index].sha256,
       fingerprint: inspections[index].fingerprint,
+      fieldRegions: index === 14 ? [{
+        order: 0,
+        id: expectedField.id,
+        uuid: 'field-1',
+        type: expectedField.type,
+        owner: expectedField.owner,
+        page: expectedField.sourcePage,
+        x: expectedField.x,
+        y: expectedField.y,
+        w: expectedField.w,
+        h: expectedField.h,
+      }] : [],
     })),
   };
   const attestation = buildProviderAttestation([
@@ -161,12 +175,50 @@ test('v3 verifier requires 15 ordered measured provider documents and local fiel
     { ...attestationInput, slug: 'packet-es-v3', templateId: 381, templateName: 'Packet ES v3' },
   ]);
   const attestationEntry = attestation.entries[0];
+  assert.equal(attestation.schemaVersion, 2);
+  const changedLengthInput = structuredClone(attestationInput);
+  changedLengthInput.documents[0].sourceByteLength += 1;
+  const changedLengthAttestation = buildProviderAttestation([
+    changedLengthInput,
+    { ...changedLengthInput, slug: 'packet-es-v3', templateId: 381, templateName: 'Packet ES v3' },
+  ]);
+  assert.notEqual(changedLengthAttestation.entries[0].entrySha256, attestationEntry.entrySha256);
+  assert.notEqual(changedLengthAttestation.attestationSha256, attestation.attestationSha256);
+  const changedRegionInput = structuredClone(attestationInput);
+  changedRegionInput.documents[14].fieldRegions[0].x += 0.01;
+  const changedRegionAttestation = buildProviderAttestation([
+    changedRegionInput,
+    { ...changedRegionInput, slug: 'packet-es-v3', templateId: 381, templateName: 'Packet ES v3' },
+  ]);
+  assert.notEqual(changedRegionAttestation.entries[0].entrySha256, attestationEntry.entrySha256);
+  assert.notEqual(changedRegionAttestation.attestationSha256, attestation.attestationSha256);
+  for (const mutate of [
+    (copy) => { delete copy.documents[14].fieldRegions; },
+    (copy) => { copy.documents[14].fieldRegions[0].page = 12; },
+    (copy) => { copy.documents[14].fieldRegions[0].w = 1; },
+    (copy) => { copy.documents[14].fieldRegions.push({ ...copy.documents[14].fieldRegions[0], order: 1 }); },
+  ]) {
+    const invalidRegion = structuredClone(attestationInput);
+    mutate(invalidRegion);
+    assert.throws(() => buildProviderAttestation([
+      invalidRegion,
+      { ...invalidRegion, slug: 'packet-es-v3', templateId: 381, templateName: 'Packet ES v3' },
+    ]), /field region/);
+  }
   const mismatchedAttestationInput = structuredClone(attestationInput);
   mismatchedAttestationInput.documents[0].providerRawSha256 = 'c'.repeat(64);
   assert.throws(() => buildProviderAttestation([
     mismatchedAttestationInput,
     { ...mismatchedAttestationInput, slug: 'packet-es-v3', templateId: 381, templateName: 'Packet ES v3' },
-  ]), /byte-identical to the approved local source/);
+  ]), /positive source length and be byte-identical to the approved local source/);
+  for (const sourceByteLength of [undefined, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    const invalidLength = structuredClone(attestationInput);
+    invalidLength.documents[0].sourceByteLength = sourceByteLength;
+    assert.throws(() => buildProviderAttestation([
+      invalidLength,
+      { ...invalidLength, slug: 'packet-es-v3', templateId: 381, templateName: 'Packet ES v3' },
+    ]), /positive source length/);
+  }
   const uuidByFieldId = new Map([['anchor-1', 'field-1']]);
   const validate = (candidate = template) => validateProviderDocumentTopology({
     entry, template: candidate, measured, inspections, uuidByFieldId, attestation, attestationEntry,
@@ -175,10 +227,20 @@ test('v3 verifier requires 15 ordered measured provider documents and local fiel
     validate(),
     { totalPages: 82, attachmentUuids: schema.map((document) => document.attachment_uuid) },
   );
+  assert.throws(() => validateProviderDocumentTopology({
+    entry, template, measured, inspections, uuidByFieldId,
+    attestation: changedRegionAttestation,
+    attestationEntry: changedRegionAttestation.entries[0],
+  }), /attested field regions differ from measured\/live fields/);
   const rawDrift = structuredClone(inspections);
   rawDrift[0].sha256 = 'c'.repeat(64);
   assert.throws(() => validateProviderDocumentTopology({
     entry, template, measured, inspections: rawDrift, uuidByFieldId, attestation, attestationEntry,
+  }), /raw bytes\/identity differ from the approved local source/);
+  const lengthDrift = structuredClone(inspections);
+  lengthDrift[0].sourceByteLength += 1;
+  assert.throws(() => validateProviderDocumentTopology({
+    entry, template, measured, inspections: lengthDrift, uuidByFieldId, attestation, attestationEntry,
   }), /raw bytes\/identity differ from the approved local source/);
   assert.throws(() => validateProviderDocumentTopology({
     entry, template, measured, inspections, uuidByFieldId,

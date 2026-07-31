@@ -9,6 +9,7 @@ import { CURRENT_TEMPLATE_REGISTRY, requireUniqueActiveTemplate } from './regist
 import { canonicalProviderPdfName } from './packet-topology.mjs';
 import { fingerprintPdf, fingerprintsEqual } from './pdf-fingerprint.mjs';
 import { buildProviderAttestation } from './provider-attestation.mjs';
+import { stampedReflowUuidMap, verifyExactMeasuredFields } from './template-verifier.mjs';
 
 if (process.argv.length !== 2) throw new Error('usage: node pipeline/capture-provider-attestation.mjs');
 const entries = CURRENT_TEMPLATE_REGISTRY.filter((entry) => entry.version === 3 && entry.orderedSourceAttachments);
@@ -24,9 +25,14 @@ for (const entry of entries) {
   const template = await client.request(`/api/templates/${summary.id}`, {}, `read-only template ${summary.id}`);
   const local = measuredBySlug.get(entry.slug);
   validateMeasuredBuild(local, entry, DOCS_DIR, BUILD_DIR, readFileSync(`${BUILD_DIR}/${entry.slug}.pdf`));
+  const reflowPath = new URL(`../brand/reflow/${entry.slug}.reflow.html`, import.meta.url);
+  if (!existsSync(reflowPath)) throw new Error(`${entry.slug}: UUID-stamped reflow artifact is missing`);
+  const reflowBytes = readFileSync(reflowPath);
+  const uuidByFieldId = stampedReflowUuidMap(reflowBytes.toString('utf8'), local.fields);
   if (template.schema?.length !== 15 || template.documents?.length !== 15) {
     throw new Error(`${entry.slug}: provider topology is not 15 ordered documents`);
   }
+  verifyExactMeasuredFields(template, local, template.schema, uuidByFieldId);
   const documents = [];
   for (let index = 0; index < 15; index += 1) {
     const schema = template.schema[index];
@@ -50,20 +56,33 @@ for (const entry of entries) {
     documents.push({
       uuid: provider.uuid,
       filename: provider.filename,
+      sourceByteLength: bytes.byteLength,
       localRawSha256: source.attachmentSha256,
       providerRawSha256,
       fingerprint,
+      fieldRegions: local.fields
+        .filter((field) => field.attachmentOrder === index)
+        .map((field, order) => ({
+          order,
+          id: field.id,
+          uuid: uuidByFieldId.get(field.id),
+          type: field.type,
+          owner: field.owner,
+          page: field.sourcePage,
+          x: field.x,
+          y: field.y,
+          w: field.w,
+          h: field.h,
+        })),
     });
   }
-  const reflowPath = new URL(`../brand/reflow/${entry.slug}.reflow.html`, import.meta.url);
-  if (!existsSync(reflowPath)) throw new Error(`${entry.slug}: UUID-stamped reflow artifact is missing`);
   attestationEntries.push({
     slug: entry.slug,
     registryVersion: entry.version,
     templateId: template.id,
     templateName: template.name,
     layoutSha256: local.layoutSha256,
-    reflowSha256: sha256(readFileSync(reflowPath)),
+    reflowSha256: sha256(reflowBytes),
     documents,
   });
 }

@@ -153,6 +153,7 @@ async function providerDocumentInspections(saved) {
     const bytes = new Uint8Array(await response.arrayBuffer());
     inspections.set(document.uuid, {
       rawSha256: sha256(bytes),
+      sourceByteLength: bytes.byteLength,
       fingerprint: await fingerprintPdf(bytes),
     });
   }
@@ -378,7 +379,12 @@ for (const d of docs) {
       filename: document.filename,
       localRawSha256: d.sources[index].attachmentSha256,
       providerRawSha256: savedDocumentInspections.get(document.uuid).rawSha256,
+      sourceByteLength: savedDocumentInspections.get(document.uuid).sourceByteLength,
       fingerprint: savedDocumentInspections.get(document.uuid).fingerprint,
+      fieldRegions: d.fields.filter((field) => field.attachmentOrder === index).map((field, order) => ({
+        order, id: field.id, uuid: uuidById.get(field.id), type: field.type, owner: field.owner,
+        page: field.sourcePage, x: field.x, y: field.y, w: field.w, h: field.h,
+      })),
     })),
   });
 }

@@ -122,7 +122,7 @@ function verifierOwner(value) {
   return '';
 }
 
-function verifyExactMeasuredFields(template, measured, schema, uuidByFieldId) {
+export function verifyExactMeasuredFields(template, measured, schema, uuidByFieldId) {
   if (!(uuidByFieldId instanceof Map) || uuidByFieldId.size !== measured.fields.length) {
     throw new Error('exact stamped reflow UUID mapping is required for v3 field verification');
   }
@@ -198,7 +198,8 @@ export function validateProviderDocumentTopology({
         canonicalProviderPdfName(pinned.filename) !== canonicalProviderPdfName(documents[index].filename) ||
         pinned.localRawSha256 !== source.attachmentSha256 ||
         pinned.providerRawSha256 !== source.attachmentSha256 ||
-        inspections[index].sha256 !== source.attachmentSha256) {
+        inspections[index].sha256 !== source.attachmentSha256 ||
+        inspections[index].sourceByteLength !== pinned.sourceByteLength) {
         throw new Error(`provider source ${index} raw bytes/identity differ from the approved local source`);
       }
       const expectedFingerprint = source.attachmentFingerprint;
@@ -223,6 +224,25 @@ export function validateProviderDocumentTopology({
       }
     });
     verifyExactMeasuredFields(template, measured, schema, uuidByFieldId);
+    measured.sources.forEach((_, index) => {
+      const expectedRegions = measured.fields
+        .filter((field) => field.attachmentOrder === index)
+        .map((field, order) => ({
+          order,
+          id: field.id,
+          uuid: uuidByFieldId.get(field.id),
+          type: field.type,
+          owner: field.owner,
+          page: field.sourcePage,
+          x: field.x,
+          y: field.y,
+          w: field.w,
+          h: field.h,
+        }));
+      if (JSON.stringify(attestationEntry.documents[index].fieldRegions) !== JSON.stringify(expectedRegions)) {
+        throw new Error(`provider source ${index} attested field regions differ from measured/live fields`);
+      }
+    });
   }
   const pagesByAttachment = new Map(schema.map((document, index) => [
     document.attachment_uuid,

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "entries": [
     {
       "slug": "w2-initial-packet-v3",
@@ -13,6 +13,7 @@
           "order": 0,
           "uuid": "c4f75a73-6665-4bd6-9c8c-293524bb2f9f",
           "filename": "employment-agreement.pdf",
+          "sourceByteLength": 126471,
           "localRawSha256": "bc536ef9f489531fa5b23921daf0ff3990868f0ff5efba0dd89f9d7d85131b30",
           "providerRawSha256": "bc536ef9f489531fa5b23921daf0ff3990868f0ff5efba0dd89f9d7d85131b30",
           "fingerprint": {
@@ -22,12 +23,123 @@
             "semanticSha256": "dd44a5eb65ee6b1645d1ccfe050d7567f14a9a2ed45d1b79bf9a7faa3a48a555",
             "visualSha256": "940986b502578a01ba47e1e096917773c86f36019460aa1beabafbe823a13016",
             "operatorSha256": "75d20d4884b9fe123e5452f010f676bc8d6fba5f3bccd9ec855e6ef878d10897"
-          }
+          },
+          "fieldRegions": [
+            {
+              "order": 0,
+              "id": "f1",
+              "uuid": "e5048b3e-4eb3-48b1-a3b9-2abfb8ad6c34",
+              "type": "text",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.26802,
+              "y": 0.30303,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 1,
+              "id": "f2",
+              "uuid": "8897e020-9b7c-41ae-b0e3-55af2e7c0aab",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 0,
+              "x": 0.25463,
+              "y": 0.33617,
+              "w": 0.01593,
+              "h": 0.01231
+            },
+            {
+              "order": 2,
+              "id": "f3",
+              "uuid": "67f5e77b-29eb-4923-b012-e63237f3f2d6",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 0,
+              "x": 0.33774,
+              "y": 0.33617,
+              "w": 0.01593,
+              "h": 0.01231
+            },
+            {
+              "order": 3,
+              "id": "f4",
+              "uuid": "62725ac8-4f17-429e-906a-c074b68de96e",
+              "type": "date",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.26608,
+              "y": 0.36458,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 4,
+              "id": "f5",
+              "uuid": "ee8f00f5-2039-4698-9239-1392472fc934",
+              "type": "signature",
+              "owner": "worker",
+              "page": 5,
+              "x": 0.25946,
+              "y": 0.48769,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 5,
+              "id": "f6",
+              "uuid": "29b6d31c-8698-4248-a304-8644c16d65d7",
+              "type": "text",
+              "owner": "worker",
+              "page": 5,
+              "x": 0.26898,
+              "y": 0.53125,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 6,
+              "id": "f7",
+              "uuid": "2f03d2bc-c234-47ac-bcdf-922001780b9c",
+              "type": "date",
+              "owner": "worker",
+              "page": 5,
+              "x": 0.22225,
+              "y": 0.5625,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 7,
+              "id": "f8",
+              "uuid": "d5c9b4ab-317d-413e-8a12-0f466bd13fe3",
+              "type": "signature",
+              "owner": "employer",
+              "page": 5,
+              "x": 0.25946,
+              "y": 0.62405,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 8,
+              "id": "f9",
+              "uuid": "9aefe22c-b115-4e96-bdc2-d9f6db196553",
+              "type": "date",
+              "owner": "employer",
+              "page": 5,
+              "x": 0.22225,
+              "y": 0.66761,
+              "w": 0.15931,
+              "h": 0.01989
+            }
+          ]
         },
         {
           "order": 1,
           "uuid": "b3f47944-2260-4cec-9f30-76118d4916ee",
           "filename": "wage-notice-2810-5.pdf",
+          "sourceByteLength": 123842,
           "localRawSha256": "217104b89e77b04e7764354eb9b7fa3cac1a1ec1c8320c7d8191139d4352fcc0",
           "providerRawSha256": "217104b89e77b04e7764354eb9b7fa3cac1a1ec1c8320c7d8191139d4352fcc0",
           "fingerprint": {
@@ -37,12 +149,243 @@
             "semanticSha256": "0b5e7cf2c8f6fef99358557c850f10d672f932b4d4b354329afc467165de6483",
             "visualSha256": "c99ecece1d73ec74f9d3874d74625fe3c780a0998a1ed9b7911a599ae7e42b4a",
             "operatorSha256": "4f1756816381c9065969dd4efb287433a4bdf63fc99a344bba48d2a700ed8423"
-          }
+          },
+          "fieldRegions": [
+            {
+              "order": 0,
+              "id": "f10",
+              "uuid": "17b0f281-667b-4686-aac1-7fb066022b3d",
+              "type": "text",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.23177,
+              "y": 0.35417,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 1,
+              "id": "f11",
+              "uuid": "f20893a4-b991-4dbd-af32-6a120d67ca9f",
+              "type": "date",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.2604,
+              "y": 0.38542,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 2,
+              "id": "f12",
+              "uuid": "e299cc1b-3a87-40bc-8b96-09e015eda4f9",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 1,
+              "x": 0.18382,
+              "y": 0.46686,
+              "w": 0.05392,
+              "h": 0.01231
+            },
+            {
+              "order": 3,
+              "id": "f13",
+              "uuid": "d13019e8-187e-4b40-a5b6-e74fcfa63948",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 1,
+              "x": 0.18382,
+              "y": 0.5,
+              "w": 0.05392,
+              "h": 0.01231
+            },
+            {
+              "order": 4,
+              "id": "f14",
+              "uuid": "0dc02bce-471f-4a9b-84e8-cb9122c2a7e1",
+              "type": "text",
+              "owner": "employer",
+              "page": 2,
+              "x": 0.29282,
+              "y": 0.50095,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 5,
+              "id": "f15",
+              "uuid": "738c5755-8811-4c53-8172-e428d70c0bdd",
+              "type": "text",
+              "owner": "employer",
+              "page": 2,
+              "x": 0.30519,
+              "y": 0.5322,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 6,
+              "id": "f16",
+              "uuid": "c49f3a3b-cbd9-4a99-a71a-9e03f2322587",
+              "type": "text",
+              "owner": "employer",
+              "page": 2,
+              "x": 0.3138,
+              "y": 0.56345,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 7,
+              "id": "f17",
+              "uuid": "441dabe3-e692-4c18-82af-481df52f230c",
+              "type": "phone",
+              "owner": "employer",
+              "page": 2,
+              "x": 0.32902,
+              "y": 0.5947,
+              "w": 0.18382,
+              "h": 0.01989
+            },
+            {
+              "order": 8,
+              "id": "f18",
+              "uuid": "33b0112f-9393-49af-8da2-d11f8a6883af",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 2,
+              "x": 0.17647,
+              "y": 0.84659,
+              "w": 0.01593,
+              "h": 0.01231
+            },
+            {
+              "order": 9,
+              "id": "f19",
+              "uuid": "f70f7a72-b400-495a-bd57-f9f9d484bd1b",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 2,
+              "x": 0.70018,
+              "y": 0.84659,
+              "w": 0.01593,
+              "h": 0.01231
+            },
+            {
+              "order": 10,
+              "id": "f20",
+              "uuid": "5e844de6-5ef9-4bff-b967-13d5bd80803e",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 3,
+              "x": 0.17647,
+              "y": 0.50379,
+              "w": 0.01593,
+              "h": 0.01231
+            },
+            {
+              "order": 11,
+              "id": "f21",
+              "uuid": "384c04ba-76d9-474e-9a4e-1f529c9a1ab8",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 3,
+              "x": 0.17647,
+              "y": 0.52273,
+              "w": 0.01593,
+              "h": 0.01231
+            },
+            {
+              "order": 12,
+              "id": "f22",
+              "uuid": "897f17b8-4576-4c03-bd62-f1825f4851ac",
+              "type": "signature",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.25946,
+              "y": 0.60038,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 13,
+              "id": "f23",
+              "uuid": "3badcdc1-0c51-4601-900c-6f882a39fe73",
+              "type": "text",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.26898,
+              "y": 0.64394,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 14,
+              "id": "f24",
+              "uuid": "038cdafa-0cc9-48f5-b11f-afc0d4b9ae4c",
+              "type": "date",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.22225,
+              "y": 0.67519,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 15,
+              "id": "f25",
+              "uuid": "94ac3ed7-3834-499c-a15e-015107208ea6",
+              "type": "signature",
+              "owner": "employer",
+              "page": 3,
+              "x": 0.25946,
+              "y": 0.73674,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 16,
+              "id": "f26",
+              "uuid": "80cad979-9166-42d0-8021-9f3861a5afd2",
+              "type": "text",
+              "owner": "employer",
+              "page": 3,
+              "x": 0.27279,
+              "y": 0.7803,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 17,
+              "id": "f27",
+              "uuid": "18c0faa7-e4f6-4ae9-9cd0-ca95c225bfcc",
+              "type": "date",
+              "owner": "employer",
+              "page": 3,
+              "x": 0.22225,
+              "y": 0.81155,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 18,
+              "id": "f28",
+              "uuid": "f5e5f9dc-6c36-41b3-967a-13383fb6d70b",
+              "type": "text",
+              "owner": "employer",
+              "page": 4,
+              "x": 0.39583,
+              "y": 0.11364,
+              "w": 0.22059,
+              "h": 0.01989
+            }
+          ]
         },
         {
           "order": 2,
           "uuid": "f905aca1-8354-4617-a6af-2d642d73d737",
           "filename": "statutory-dwc-time-of-hire.pdf",
+          "sourceByteLength": 1268779,
           "localRawSha256": "380a8c7856287362cbe7c38d56562f2fef33335bdeccb3cf4c123b2788e82ba6",
           "providerRawSha256": "380a8c7856287362cbe7c38d56562f2fef33335bdeccb3cf4c123b2788e82ba6",
           "fingerprint": {
@@ -52,12 +395,14 @@
             "semanticSha256": "1699f079612ed7ad4d7529e9fac7fe2427df24ec2d958c7a943054c7ce42672c",
             "visualSha256": "a5581714b16ab6fce18b5d6d8471bdc0e585ff0ddae4e607a14de707cca1c357",
             "operatorSha256": "7cf402bb078238a054e4ea65c95ea4bd81938ea1f18b54321e1dc31e176630e5"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 3,
           "uuid": "2417ae05-91f4-4d15-955d-e4666ca41b76",
           "filename": "statutory-dwc-predesignation.pdf",
+          "sourceByteLength": 196753,
           "localRawSha256": "0757a861866612b8122e7db6d7b0510cfb8506b9a75b8b6d66b27817f0532798",
           "providerRawSha256": "0757a861866612b8122e7db6d7b0510cfb8506b9a75b8b6d66b27817f0532798",
           "fingerprint": {
@@ -67,12 +412,14 @@
             "semanticSha256": "ba27156f65abc410255aea6eb418d0fbab3cf49a0db1d92f38699f7de22b2aa1",
             "visualSha256": "8fb14207f04d9ae0b382313e49ad6cf6e1a9c9b6312d4208880c24c29f24eff5",
             "operatorSha256": "5ca5622e96af3f398e95b4348d71afa39b50625c8dc6380b5e3043eded8430fe"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 4,
           "uuid": "0ef44d4e-4c7f-4a2b-a109-09f851d53919",
           "filename": "statutory-de-2320.pdf",
+          "sourceByteLength": 197575,
           "localRawSha256": "bea0a479795469a101b6f9ab2233c3537eba7f1b2bf821bdf79a256b6aa14e8e",
           "providerRawSha256": "bea0a479795469a101b6f9ab2233c3537eba7f1b2bf821bdf79a256b6aa14e8e",
           "fingerprint": {
@@ -82,12 +429,14 @@
             "semanticSha256": "8cf6427048fe4414e8b76542fac3d64d8592f5b85dd91bd63bbd61bc2099caa4",
             "visualSha256": "be7953a2d8f9a16e96af53ebfa931da8f9ed10a057e564861e35f158f3178f28",
             "operatorSha256": "2749127abda97ff04cf7c369e443cf5e9bd8c1980aad3f1b32c4ba23fa7eb80c"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 5,
           "uuid": "a80356b0-d548-4bd8-8ff4-64ca39db3812",
           "filename": "statutory-de-2515.pdf",
+          "sourceByteLength": 1692148,
           "localRawSha256": "4582fa51dedf08941f32849e1044a9808aef3f8267d1830779f69fe1ef2a15ad",
           "providerRawSha256": "4582fa51dedf08941f32849e1044a9808aef3f8267d1830779f69fe1ef2a15ad",
           "fingerprint": {
@@ -97,12 +446,14 @@
             "semanticSha256": "a70e5c929355fc5919a39d1359771481102b49ad1fe9dbc5c37f7fb96b0da8d5",
             "visualSha256": "ab44917a29877e1e329c1ddc30cc75af1cb79e61691feac49b8655d3b034fd3b",
             "operatorSha256": "60b7189a46e8752f4fe34976905eaae638c239c760ef201a2a2dde15bf4cd9c2"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 6,
           "uuid": "8f07c5f2-e5c2-42dc-b05e-b80c5a9d210b",
           "filename": "statutory-de-2511.pdf",
+          "sourceByteLength": 565455,
           "localRawSha256": "af3fa4c20ce7fc43d3d0777e7cde5c08d102a286c30b75393ded0e77b5df5a39",
           "providerRawSha256": "af3fa4c20ce7fc43d3d0777e7cde5c08d102a286c30b75393ded0e77b5df5a39",
           "fingerprint": {
@@ -112,12 +463,14 @@
             "semanticSha256": "e78239d68b51960dee343381b50f7f71db178721ee0538995c617fa30c5c0048",
             "visualSha256": "5bd14230500399d6edc44c8baf4d0375c23e34921a7e60b927f576865902269e",
             "operatorSha256": "5eaf2df01d8d5e6d2ffe41bf9cd1950eb695194d36531070e07899fe5f402abd"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 7,
           "uuid": "63caa7ba-66ef-4c15-a427-ea97ea22daf5",
           "filename": "statutory-paid-sick-leave.pdf",
+          "sourceByteLength": 151306,
           "localRawSha256": "d628d28132f5908c6723855b95e620811bdbb780c6e43db5d1607ea615600567",
           "providerRawSha256": "d628d28132f5908c6723855b95e620811bdbb780c6e43db5d1607ea615600567",
           "fingerprint": {
@@ -127,12 +480,14 @@
             "semanticSha256": "0b5d78839fa56a023f96d18fe9ed6f9aab7c8e178e0533cb1e5bc9f16874123c",
             "visualSha256": "ff60e89e6fa439617f0b3520975e67a227a171191d49d6cd6af9ab45ecc55f20",
             "operatorSha256": "153682b64e6383b4ca7dfa87460fa0b5425d3e0c365900d3d6aebb8bba361118"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 8,
           "uuid": "62460d40-dcc0-40ad-9341-a6b21014e73c",
           "filename": "statutory-crd-sexual-harassment.pdf",
+          "sourceByteLength": 4117090,
           "localRawSha256": "03439f75e13e5b473fb2233b3a25ab954d2e150d85f99962ecacd0320bdb2d31",
           "providerRawSha256": "03439f75e13e5b473fb2233b3a25ab954d2e150d85f99962ecacd0320bdb2d31",
           "fingerprint": {
@@ -142,12 +497,14 @@
             "semanticSha256": "9038233b17c52fa05c95c692d4315f53dc770ff5d1e91140263439398a4e50bb",
             "visualSha256": "48024ddd6d5ca8e07aafac18fd5b94248437e972d4ec4b521df3b3e74f7245cc",
             "operatorSha256": "0409890aa83f0861d06bd87d58c14f51cc4872b9c4ed29a385bff63281ed3180"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 9,
           "uuid": "a444b183-cac1-49ad-8380-f59e579d1621",
           "filename": "statutory-victims-rights.pdf",
+          "sourceByteLength": 439873,
           "localRawSha256": "a8e8067834d29bd539d472617adf42b9afb5f732e63a8085a2e7b771e26c7433",
           "providerRawSha256": "a8e8067834d29bd539d472617adf42b9afb5f732e63a8085a2e7b771e26c7433",
           "fingerprint": {
@@ -157,12 +514,14 @@
             "semanticSha256": "da42a1588465148c67cdee919c7a294cf6453a1cce6f0f8dc99f2a8be5a0d790",
             "visualSha256": "5597803ee030be5041b95d700316d18ce2db78617eb8bef6a4603d187e6857ea",
             "operatorSha256": "f2b9d37dac862766e82b6a4cd035c9f56bb7590301795a1d535ddbaa24ab9198"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 10,
           "uuid": "bd002928-6f49-4513-befb-48bc61dd0a35",
           "filename": "iipp.pdf",
+          "sourceByteLength": 127716,
           "localRawSha256": "3fcc2c4010c805db56dae766daf7dbbe2760669aa323afcd4db8177bfdb63d06",
           "providerRawSha256": "3fcc2c4010c805db56dae766daf7dbbe2760669aa323afcd4db8177bfdb63d06",
           "fingerprint": {
@@ -172,12 +531,14 @@
             "semanticSha256": "904ead8191c72bbab7d1ba2d4dbee522438b5b1261e5bd64543211fbb2199f67",
             "visualSha256": "2e0586a17753c33ff119fd54200c71a7e5ad698e6a8d893edf72a25dc3babb1b",
             "operatorSha256": "c9f04dbb83846f96746e4f929c5625c426834bedc0765bd32a9c028648efae35"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 11,
           "uuid": "02782099-3c73-45b1-8135-be5b1b4175a0",
           "filename": "heat-illness-prevention-plan.pdf",
+          "sourceByteLength": 126454,
           "localRawSha256": "82428e6bb2d23198207f3c96f4c266f6ecc9af1f8067aaea0c6f163309950927",
           "providerRawSha256": "82428e6bb2d23198207f3c96f4c266f6ecc9af1f8067aaea0c6f163309950927",
           "fingerprint": {
@@ -187,12 +548,14 @@
             "semanticSha256": "bb05d76208fdc428913b3a1b24064b36545673f5483d081dd00f9263bc6dd702",
             "visualSha256": "3bd3e27f1343f470019117674e614c9de290cc6dd9565d3c3a578ac77b271116",
             "operatorSha256": "6f3fa1815de496a2c27ddb69c6a84a809bd04efec7f705b4610765fff0d23cb1"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 12,
           "uuid": "738a7b03-0bf8-49a3-ad43-f1343cfbecbb",
           "filename": "fall-protection-program.pdf",
+          "sourceByteLength": 130914,
           "localRawSha256": "f48e9f815ad27ef8a2399db9c1c759772ace10bbdb483668dd17bc496d947124",
           "providerRawSha256": "f48e9f815ad27ef8a2399db9c1c759772ace10bbdb483668dd17bc496d947124",
           "fingerprint": {
@@ -202,12 +565,14 @@
             "semanticSha256": "ee5bf15303d480d1c980bf76c3e143ab2f865aa7a202f6c75374f296f25c0808",
             "visualSha256": "ebc2c338c2af5ffaa4457345198bf1562c155e636b806d7498ff2830adc222f5",
             "operatorSha256": "e71594e2f31d50fb2ac33041a1e3af6e39e9866daef204754423e0bfe79a5ab2"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 13,
           "uuid": "7d7851ba-fe85-4910-bddd-104dd39220e0",
           "filename": "code-of-safe-practices.pdf",
+          "sourceByteLength": 109514,
           "localRawSha256": "e07672af91491df76c549304ef84301d6156f42fe5a16d8651e36f7f2cd55519",
           "providerRawSha256": "e07672af91491df76c549304ef84301d6156f42fe5a16d8651e36f7f2cd55519",
           "fingerprint": {
@@ -217,12 +582,14 @@
             "semanticSha256": "519312975a53e9cc31a91952d920b6027158fa43b00970308775a11bc1d1a8a1",
             "visualSha256": "000b28cfa8a367cf72c6a18dc115255133ad903d45ecab8bc9e2f172cf2511cf",
             "operatorSha256": "6c73bd144bb4d44e46033de83ee7908a1ad1940daed1f76cad6c8de799f297d2"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 14,
           "uuid": "5dad8c5e-9d51-4576-b22a-9f6dbf2180cc",
           "filename": "policy-acknowledgment.pdf",
+          "sourceByteLength": 123758,
           "localRawSha256": "dc140c84b7503e142c22dc12f8edafe35ff32187cecfaf405cbce15d7fd14634",
           "providerRawSha256": "dc140c84b7503e142c22dc12f8edafe35ff32187cecfaf405cbce15d7fd14634",
           "fingerprint": {
@@ -232,10 +599,420 @@
             "semanticSha256": "65c4251723484e8333a91c6cbe73232706861de542a78d2ead70945b0460ac9c",
             "visualSha256": "c251c13ab403ad058858b6d174b93ca1f697c5a38c0b394b6c820e739c9bf52a",
             "operatorSha256": "7f82ab7a088bb428e68511d34ae2a89c18890319e1bd94b96d48abbb6ab96157"
-          }
+          },
+          "fieldRegions": [
+            {
+              "order": 0,
+              "id": "f29",
+              "uuid": "ed20f9d3-f0e2-4cfe-856f-b530f5b8ad25",
+              "type": "text",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.26231,
+              "y": 0.24242,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 1,
+              "id": "f30",
+              "uuid": "94ef9036-8d81-4b90-bd6c-5a5d8e346a96",
+              "type": "date",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.2604,
+              "y": 0.27367,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 2,
+              "id": "f31",
+              "uuid": "c2d40d16-b4be-4b86-999c-798f8b3eabac",
+              "type": "initials",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.77528,
+              "y": 0.48201,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 3,
+              "id": "f32",
+              "uuid": "3de43436-6f9f-49e2-abf5-013c24604420",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.15436,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 4,
+              "id": "f33",
+              "uuid": "b73c143c-27e4-4fff-8a68-e3e99810da69",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.20455,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 5,
+              "id": "f34",
+              "uuid": "9ebf6171-e63a-4d87-979f-9ad4313bc1c5",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.24053,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 6,
+              "id": "f35",
+              "uuid": "8af5915e-5db2-4d3f-9c8c-0f2a66ed260a",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.27652,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 7,
+              "id": "f36",
+              "uuid": "c88b8836-8d49-4474-aeb1-bb9b89fac0b8",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.3125,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 8,
+              "id": "f37",
+              "uuid": "6a2a473e-cd11-4116-b424-1dfe55c46a0f",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.34848,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 9,
+              "id": "f38",
+              "uuid": "f3669001-097a-4f4d-a255-860518e371aa",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.38447,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 10,
+              "id": "f39",
+              "uuid": "81c3751c-08b0-4c29-8ee3-92220c4ad3df",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.42045,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 11,
+              "id": "f40",
+              "uuid": "3cb115f6-69ca-4d42-9694-86f117411fe7",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.45644,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 12,
+              "id": "f41",
+              "uuid": "08616d57-a2c0-48c5-8e0f-31e8c3bc41a5",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.49242,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 13,
+              "id": "f42",
+              "uuid": "1a9c6cda-18a9-471e-b9e3-6d59d3ac6dfa",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.52841,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 14,
+              "id": "f43",
+              "uuid": "eb5c93ea-215f-4ea0-bd98-09b55d27af71",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.56439,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 15,
+              "id": "f44",
+              "uuid": "b3ecfa46-4435-47ab-a2b1-b3480702c967",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.77755,
+              "y": 0.60038,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 16,
+              "id": "f45",
+              "uuid": "2d79e784-509d-40c2-85b0-04b62a20ea02",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.43109,
+              "y": 0.76042,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 17,
+              "id": "f46",
+              "uuid": "2ff7c77c-eba4-46c0-8235-4d41cf7f47ba",
+              "type": "initials",
+              "owner": "worker",
+              "page": 2,
+              "x": 0.62944,
+              "y": 0.21496,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 18,
+              "id": "f47",
+              "uuid": "df0053ee-19df-4633-880d-610004dce251",
+              "type": "initials",
+              "owner": "worker",
+              "page": 2,
+              "x": 0.67297,
+              "y": 0.38542,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 19,
+              "id": "f48",
+              "uuid": "d4a2517d-c2ec-483e-8984-fd8f3e4c8018",
+              "type": "initials",
+              "owner": "worker",
+              "page": 2,
+              "x": 0.23369,
+              "y": 0.61269,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 20,
+              "id": "f49",
+              "uuid": "fc9c1779-c7bf-4884-8acc-090cd14ce969",
+              "type": "initials",
+              "owner": "worker",
+              "page": 2,
+              "x": 0.17647,
+              "y": 0.82102,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 21,
+              "id": "f50",
+              "uuid": "4eb0e1b4-a24b-4a4e-9cf3-e49ada0b4d89",
+              "type": "initials",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.474,
+              "y": 0.21496,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 22,
+              "id": "f51",
+              "uuid": "40838cd9-be41-4f1a-9fe6-282796120e4a",
+              "type": "text",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.50573,
+              "y": 0.30966,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 23,
+              "id": "f52",
+              "uuid": "9457128a-7389-494c-b190-c0fe6e90b58a",
+              "type": "initials",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.76645,
+              "y": 0.37879,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 24,
+              "id": "f53",
+              "uuid": "88ac4e9b-c044-4adb-9fb2-f9ac372d84d4",
+              "type": "initials",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.38245,
+              "y": 0.5303,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 25,
+              "id": "f54",
+              "uuid": "474a4b46-2c9b-44df-96fe-a22717b595dd",
+              "type": "initials",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.36052,
+              "y": 0.70076,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 26,
+              "id": "f55",
+              "uuid": "daa8710a-c759-47ea-be43-df7f9a070ce7",
+              "type": "text",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.52072,
+              "y": 0.79545,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 27,
+              "id": "f56",
+              "uuid": "77af72fa-c7ee-4fa0-9d97-21e07bfdf757",
+              "type": "initials",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.74489,
+              "y": 0.8267,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 28,
+              "id": "f57",
+              "uuid": "b7e07f44-c171-40ad-a820-bbd98dd20123",
+              "type": "signature",
+              "owner": "worker",
+              "page": 4,
+              "x": 0.25946,
+              "y": 0.14394,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 29,
+              "id": "f58",
+              "uuid": "534f3d49-048c-48e5-a206-88f18efe32c2",
+              "type": "text",
+              "owner": "worker",
+              "page": 4,
+              "x": 0.26898,
+              "y": 0.1875,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 30,
+              "id": "f59",
+              "uuid": "3467dc52-44d1-4741-8502-de5a731f711d",
+              "type": "date",
+              "owner": "worker",
+              "page": 4,
+              "x": 0.22225,
+              "y": 0.21875,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 31,
+              "id": "f60",
+              "uuid": "7bae2fe6-5e67-445b-946d-f6b24e6150c4",
+              "type": "signature",
+              "owner": "employer",
+              "page": 4,
+              "x": 0.25946,
+              "y": 0.2803,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 32,
+              "id": "f61",
+              "uuid": "7496e4ac-b423-4eb3-b566-3d2e3c6d2f3f",
+              "type": "text",
+              "owner": "employer",
+              "page": 4,
+              "x": 0.27279,
+              "y": 0.32386,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 33,
+              "id": "f62",
+              "uuid": "a24d7c70-1aa3-4ae0-8d3e-550a763ed579",
+              "type": "date",
+              "owner": "employer",
+              "page": 4,
+              "x": 0.22225,
+              "y": 0.35511,
+              "w": 0.15931,
+              "h": 0.01989
+            }
+          ]
         }
       ],
-      "entrySha256": "300d3a94c4829f99561411ca364fc5762d02a13e572d34851ffc032417a291db"
+      "entrySha256": "cc3781008faa757a6747727ccd74099c81c10d3dd730ea1d10e1683cfb6a9f2f"
     },
     {
       "slug": "w2-initial-packet-es-v3",
@@ -249,6 +1026,7 @@
           "order": 0,
           "uuid": "bfc84cf1-c747-43ba-8ef9-9c9fb9be88a9",
           "filename": "employment-agreement-es.pdf",
+          "sourceByteLength": 127682,
           "localRawSha256": "b787f6e5ea3e2eb6f41cd4b1fb152eda41dae2a9f5f663de758dd1a85eca76a6",
           "providerRawSha256": "b787f6e5ea3e2eb6f41cd4b1fb152eda41dae2a9f5f663de758dd1a85eca76a6",
           "fingerprint": {
@@ -258,12 +1036,123 @@
             "semanticSha256": "8b713796b810e515ea93a6337c190314663dfdecfdc2228817c889d9a209e1ef",
             "visualSha256": "010bf11f5e17190720471d93d0d99b80c6899b2ae548065ba02782883ec1153e",
             "operatorSha256": "0523fd7374a87daed9f94075534c83246b6ead01322ba57832a5a3cdae7e898c"
-          }
+          },
+          "fieldRegions": [
+            {
+              "order": 0,
+              "id": "f1",
+              "uuid": "19d1846c-647e-48ba-ad57-9fe83d730758",
+              "type": "text",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.26896,
+              "y": 0.30303,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 1,
+              "id": "f2",
+              "uuid": "ef23f1f3-51e2-44d4-aa55-b573b1b637dd",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 0,
+              "x": 0.24416,
+              "y": 0.33617,
+              "w": 0.01593,
+              "h": 0.01231
+            },
+            {
+              "order": 2,
+              "id": "f3",
+              "uuid": "9a7bbcc9-bbd8-45de-8137-11ddc54b41e3",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 0,
+              "x": 0.34603,
+              "y": 0.33617,
+              "w": 0.01593,
+              "h": 0.01231
+            },
+            {
+              "order": 3,
+              "id": "f4",
+              "uuid": "16212a5a-4af6-47db-b19c-7f8ee75dcfd6",
+              "type": "date",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.31091,
+              "y": 0.36458,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 4,
+              "id": "f5",
+              "uuid": "f8fdfcd3-ef8f-4257-9fd6-f394d3a78ea9",
+              "type": "signature",
+              "owner": "worker",
+              "page": 5,
+              "x": 0.22986,
+              "y": 0.84564,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 5,
+              "id": "f6",
+              "uuid": "ef365c5f-4cc9-4c59-a911-0653d4f6b2a1",
+              "type": "text",
+              "owner": "worker",
+              "page": 5,
+              "x": 0.38436,
+              "y": 0.8892,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 6,
+              "id": "f7",
+              "uuid": "71c57ca1-5b60-425c-b80b-a72161ff0bf1",
+              "type": "date",
+              "owner": "worker",
+              "page": 6,
+              "x": 0.2337,
+              "y": 0.11364,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 7,
+              "id": "f8",
+              "uuid": "84415806-6689-42d2-85cf-26a4ee3c87a9",
+              "type": "signature",
+              "owner": "employer",
+              "page": 6,
+              "x": 0.22986,
+              "y": 0.17519,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 8,
+              "id": "f9",
+              "uuid": "6ef73f07-e888-46c1-b281-20bb0cda7970",
+              "type": "date",
+              "owner": "employer",
+              "page": 6,
+              "x": 0.2337,
+              "y": 0.21875,
+              "w": 0.15931,
+              "h": 0.01989
+            }
+          ]
         },
         {
           "order": 1,
           "uuid": "d517cb11-0fa5-4abb-b429-9ef4c0cedf73",
           "filename": "wage-notice-2810-5-es.pdf",
+          "sourceByteLength": 125750,
           "localRawSha256": "9bc4b5d515ffd680c633eba28b40a388f8923008261caf738b3db4286abb74a1",
           "providerRawSha256": "9bc4b5d515ffd680c633eba28b40a388f8923008261caf738b3db4286abb74a1",
           "fingerprint": {
@@ -273,12 +1162,231 @@
             "semanticSha256": "aaa3c401f95fd1575ce68ae16116789a9de70af7dac845021563a2161725c82b",
             "visualSha256": "4d1e4d7068e8aaf3fd6ddad80600885badab8fef4885179ecd1703ee5131f4ad",
             "operatorSha256": "a2a29801b6b01b6e8b41a39358ed2a5569837e628d084f3bd5ee0bf1734fbb66"
-          }
+          },
+          "fieldRegions": [
+            {
+              "order": 0,
+              "id": "f10",
+              "uuid": "bdef7bfa-2d4d-4ba7-9b3e-d12324f33b5b",
+              "type": "text",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.24703,
+              "y": 0.37595,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 1,
+              "id": "f11",
+              "uuid": "bfdb2d54-d3a3-4fc6-b8d4-3630d3ad131d",
+              "type": "date",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.30141,
+              "y": 0.4072,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 2,
+              "id": "f12",
+              "uuid": "89624bb0-ceee-4050-9f9a-5d6346a133d0",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 1,
+              "x": 0.18382,
+              "y": 0.50473,
+              "w": 0.05392,
+              "h": 0.01231
+            },
+            {
+              "order": 3,
+              "id": "f13",
+              "uuid": "76fab0cf-2974-4ffb-b9c6-eea7a6dcda0f",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 1,
+              "x": 0.18382,
+              "y": 0.53788,
+              "w": 0.05392,
+              "h": 0.01231
+            },
+            {
+              "order": 4,
+              "id": "f14",
+              "uuid": "e890b8f4-0a28-4787-b588-a3c80bb6ba5d",
+              "type": "text",
+              "owner": "employer",
+              "page": 2,
+              "x": 0.4034,
+              "y": 0.52746,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 5,
+              "id": "f15",
+              "uuid": "c5a4f807-d36d-4d35-b2c8-15faca29a329",
+              "type": "text",
+              "owner": "employer",
+              "page": 2,
+              "x": 0.32996,
+              "y": 0.55871,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 6,
+              "id": "f16",
+              "uuid": "b26e93a1-6a11-45d1-a4b2-95e2dad4e017",
+              "type": "text",
+              "owner": "employer",
+              "page": 2,
+              "x": 0.41676,
+              "y": 0.58996,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 7,
+              "id": "f17",
+              "uuid": "0a418251-f3ff-490b-a0f4-b926ae1237f7",
+              "type": "phone",
+              "owner": "employer",
+              "page": 2,
+              "x": 0.40878,
+              "y": 0.62121,
+              "w": 0.18382,
+              "h": 0.01989
+            },
+            {
+              "order": 8,
+              "id": "f18",
+              "uuid": "3d8d49a1-dea6-4580-b1fe-764ab12b07fa",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 3,
+              "x": 0.17647,
+              "y": 0.11553,
+              "w": 0.01593,
+              "h": 0.01231
+            },
+            {
+              "order": 9,
+              "id": "f19",
+              "uuid": "a7342421-4e87-40c9-a8d5-59a14cc3dfce",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 3,
+              "x": 0.17647,
+              "y": 0.13447,
+              "w": 0.01593,
+              "h": 0.01231
+            },
+            {
+              "order": 10,
+              "id": "f20",
+              "uuid": "bd4b890b-3444-402b-8d7e-bcd473488a2a",
+              "type": "checkbox",
+              "owner": "employer",
+              "page": 3,
+              "x": 0.17647,
+              "y": 0.62879,
+              "w": 0.01593,
+              "h": 0.01231
+            },
+            {
+              "order": 11,
+              "id": "f21",
+              "uuid": "8cd32385-dbc2-4dc8-ac33-90f1071307ef",
+              "type": "signature",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.22986,
+              "y": 0.6875,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 12,
+              "id": "f22",
+              "uuid": "8230e443-2c88-4953-b668-02d07f2b3790",
+              "type": "text",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.38436,
+              "y": 0.73106,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 13,
+              "id": "f23",
+              "uuid": "b362efc3-e288-435d-a6fd-e3ad2ebdb9a9",
+              "type": "date",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.2337,
+              "y": 0.76231,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 14,
+              "id": "f24",
+              "uuid": "bc67fcab-7d8f-4b36-9e22-6ae871c57015",
+              "type": "signature",
+              "owner": "employer",
+              "page": 3,
+              "x": 0.22986,
+              "y": 0.82386,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 15,
+              "id": "f25",
+              "uuid": "74b02be6-9a62-46fe-97ad-d1f434bcfb5b",
+              "type": "text",
+              "owner": "employer",
+              "page": 3,
+              "x": 0.29852,
+              "y": 0.86742,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 16,
+              "id": "f26",
+              "uuid": "5ed1d70f-b5ac-4a7b-86a7-5c9d533e68f7",
+              "type": "date",
+              "owner": "employer",
+              "page": 4,
+              "x": 0.2337,
+              "y": 0.11364,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 17,
+              "id": "f27",
+              "uuid": "6c6062cc-abf9-42f0-8c57-d63594a00ba7",
+              "type": "text",
+              "owner": "employer",
+              "page": 4,
+              "x": 0.43114,
+              "y": 0.17992,
+              "w": 0.22059,
+              "h": 0.01989
+            }
+          ]
         },
         {
           "order": 2,
           "uuid": "37c5e5ed-45de-4e82-a194-9a68ed0f4259",
           "filename": "statutory-dwc-time-of-hire-es.pdf",
+          "sourceByteLength": 1197227,
           "localRawSha256": "925a60c0c011c98f0eafee6d6fe462d0d3f47e543af528d0de4e33f38683f1ff",
           "providerRawSha256": "925a60c0c011c98f0eafee6d6fe462d0d3f47e543af528d0de4e33f38683f1ff",
           "fingerprint": {
@@ -288,12 +1396,14 @@
             "semanticSha256": "c2940a5d44359974fbc78fa7e5778c9cf8f89db677672ac14b87daac6bd0d3fe",
             "visualSha256": "13775ee760d7e65ff1f8302dbe6a3447953aa77f6d5c088317ee091b345b7822",
             "operatorSha256": "e4dd1e41a941f872501bea83be0bfcc18e0fb2654df17037b58f6e639585bfe3"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 3,
           "uuid": "4159c315-3eb0-421b-be0a-036a8f37f2cb",
           "filename": "statutory-dwc-predesignation.pdf",
+          "sourceByteLength": 196752,
           "localRawSha256": "b29858ac31960b5006124b87999ddea69abe01a6b8c6e5bd2ae156c6d5c3a37e",
           "providerRawSha256": "b29858ac31960b5006124b87999ddea69abe01a6b8c6e5bd2ae156c6d5c3a37e",
           "fingerprint": {
@@ -303,12 +1413,14 @@
             "semanticSha256": "9833cd73fb46aaffb7c2e053c862b0194e49133d87b861e370814e4fe8814e94",
             "visualSha256": "4b6dce24fa9f3bdd1d6ec2e3be7c7b678856ed890e904ad4935960c269834b7e",
             "operatorSha256": "6224d635c00348698c73eb3b5296ef2657ae6c28df04dafa63365189db3ebab4"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 4,
           "uuid": "d79b12c9-b91b-47f6-b303-be340be85065",
           "filename": "statutory-de-2320-es.pdf",
+          "sourceByteLength": 202050,
           "localRawSha256": "5f00c420f632be5535fb1fbf7219503928231c3a0a84fa0c4ed75ea61cbcd111",
           "providerRawSha256": "5f00c420f632be5535fb1fbf7219503928231c3a0a84fa0c4ed75ea61cbcd111",
           "fingerprint": {
@@ -318,12 +1430,14 @@
             "semanticSha256": "b550bac24051ca6eaaa560cb1ffab49fba8a8c6a40b9f471e2e9454090e4f519",
             "visualSha256": "4c179deaf05bec350cd1060370952a7b973ecb454f218d3e5799070c20e36c4f",
             "operatorSha256": "cedc7dd6884f750c02800e086521ed16e2c82ed7c7bcb8cda4ac471a2a97988b"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 5,
           "uuid": "80cf9ed5-66ca-46ab-b432-8de9f9bab567",
           "filename": "statutory-de-2515-es.pdf",
+          "sourceByteLength": 3063839,
           "localRawSha256": "5432d812feba1920285c591d034cc62254b270cc7347eacd14283bedc2e61d8c",
           "providerRawSha256": "5432d812feba1920285c591d034cc62254b270cc7347eacd14283bedc2e61d8c",
           "fingerprint": {
@@ -333,12 +1447,14 @@
             "semanticSha256": "8c2944e87a14d3fac00122da60bac1b48988313282f719ac13663d79d7516e80",
             "visualSha256": "6bee711f4beaafb963daa8345eb1628d1fb9486d2bd8b153fc5438beeb725fb0",
             "operatorSha256": "9963c034c4922643647c456473849f31bbbdf4cee9548b2e157f13db0ab95adb"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 6,
           "uuid": "f1213a40-eb72-4656-a394-c1c9a0d3b928",
           "filename": "statutory-de-2511-es.pdf",
+          "sourceByteLength": 533050,
           "localRawSha256": "e2c63e841d17227c19c79ea7683c4d52cd495ca27c80f0d9d55a9f35eceed9dc",
           "providerRawSha256": "e2c63e841d17227c19c79ea7683c4d52cd495ca27c80f0d9d55a9f35eceed9dc",
           "fingerprint": {
@@ -348,12 +1464,14 @@
             "semanticSha256": "feeae118dd8ba7f58f61bfcb29c0f82979799f40d3d8880251c46942f8f603b4",
             "visualSha256": "b5200f7ec70af710dc4ede0963b3239c71dea2af17ddb0d9a0aa0167cd2d3845",
             "operatorSha256": "be7d6e43e6c0c410a29b3cd38f0bbabf69e140b154eb6b77d36fa002b7837b1d"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 7,
           "uuid": "b05dcd63-3813-460d-a526-db72ea8914e7",
           "filename": "statutory-paid-sick-leave.pdf",
+          "sourceByteLength": 151306,
           "localRawSha256": "6e5e71740b35f598a60896825b2d3c90d885f98cf2adcdfe72b92267370385d6",
           "providerRawSha256": "6e5e71740b35f598a60896825b2d3c90d885f98cf2adcdfe72b92267370385d6",
           "fingerprint": {
@@ -363,12 +1481,14 @@
             "semanticSha256": "0836c510bbdd8eb0ed9229402b2925dfabfa7bd21427858a3b82d6d39a56d4a5",
             "visualSha256": "59b1c8f6656e86c16db4054b87e2748d764dc338774898fe5d0034145cb2fc1b",
             "operatorSha256": "0d01431fe4db278e8c059cbbdca753d61a27844c92b1182bfcace52948cb44ad"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 8,
           "uuid": "78fdc4e2-84de-4f7a-8a74-c6a4345bc463",
           "filename": "statutory-crd-sexual-harassment-es.pdf",
+          "sourceByteLength": 392159,
           "localRawSha256": "7f985f6fb7765fdc7272cf77b924339a52cfdb6a0411a82105496c2e04c57a39",
           "providerRawSha256": "7f985f6fb7765fdc7272cf77b924339a52cfdb6a0411a82105496c2e04c57a39",
           "fingerprint": {
@@ -378,12 +1498,14 @@
             "semanticSha256": "eb7eb19abc556f6c32ced5e04757835a8c275d10e4fb243d716e5a8288198eaa",
             "visualSha256": "78e14f7bebd5240bb866f452c5609d9b648600266c80217a99f42659ad6b519b",
             "operatorSha256": "405e9350326daa2d1cc5554b9c80b26c36409b2efbbe67ccde1c96abae63e875"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 9,
           "uuid": "176d7d46-e4d3-4a45-8529-af47cc86f1ea",
           "filename": "statutory-victims-rights-es.pdf",
+          "sourceByteLength": 157647,
           "localRawSha256": "8e557887bc0d0c2302c76515f388930c69ce428615d6e4c62b84bb335290bf5e",
           "providerRawSha256": "8e557887bc0d0c2302c76515f388930c69ce428615d6e4c62b84bb335290bf5e",
           "fingerprint": {
@@ -393,12 +1515,14 @@
             "semanticSha256": "29770e973af2a8a8dfe908fe6ce9a50095c7ea4930238bbddae22f408e7d8a23",
             "visualSha256": "de6e3fe03697cbc502a74ea068b1b2ca5ae3f2a41b6f3ba28e9f49d8d3bc9e5b",
             "operatorSha256": "6e3b201d6d48d445e4a0365653cf53e33a4b0304a8e601e201cae5309938de55"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 10,
           "uuid": "fa3e7d14-84a1-4660-9797-32bd219fc6e4",
           "filename": "iipp-es.pdf",
+          "sourceByteLength": 128546,
           "localRawSha256": "5c71de9f5dbfc57c3cd5c217318df26f8fb073ad108daecca39e4911daf81afb",
           "providerRawSha256": "5c71de9f5dbfc57c3cd5c217318df26f8fb073ad108daecca39e4911daf81afb",
           "fingerprint": {
@@ -408,12 +1532,14 @@
             "semanticSha256": "5cc6b64bde59d87d580accb96c6d6aba3425b02b8d389413bc77ae2a0dfc162b",
             "visualSha256": "94ae6797ccfaff7cb704ded0cc83c6d6ef6bef46795718fa054bd5303f89538c",
             "operatorSha256": "642d07d89181157d722d848ad050b681836f87dd8b0fbb19762225e50eed0c35"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 11,
           "uuid": "78aacd11-2df4-4a62-9d9e-244beddf6b66",
           "filename": "heat-illness-prevention-plan-es.pdf",
+          "sourceByteLength": 125950,
           "localRawSha256": "1f814fb24bc390a15f382805f8f58f71f7cf90efaef7afd75fa793286ad78e3b",
           "providerRawSha256": "1f814fb24bc390a15f382805f8f58f71f7cf90efaef7afd75fa793286ad78e3b",
           "fingerprint": {
@@ -423,12 +1549,14 @@
             "semanticSha256": "5c29a37680311d4a2e927e85b6eb63624dd852b9981c3a659e323c9d237dd901",
             "visualSha256": "a40a820874147fd45dbef9f135bb15611c24860415fb72029ca6f2985d7adc1d",
             "operatorSha256": "f725eb29caa6a8e2788c7d2886c753b7f0b23eed86bfd5c9069f8d2db3b88c55"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 12,
           "uuid": "76236e49-6938-4812-93ff-22ea4a4c8f62",
           "filename": "fall-protection-program-es.pdf",
+          "sourceByteLength": 131927,
           "localRawSha256": "e638f9287dccd7c30af9caf5ee9699560124f5cda156441ee298d77317c1b581",
           "providerRawSha256": "e638f9287dccd7c30af9caf5ee9699560124f5cda156441ee298d77317c1b581",
           "fingerprint": {
@@ -438,12 +1566,14 @@
             "semanticSha256": "a873e3f4a54a303d13ef528178142898b3d6605bba1ddd8ca4441685e2acd865",
             "visualSha256": "498853147cc856165668e8fe275c6b55422c8e89fb7a038baac4bdb03a7c0c89",
             "operatorSha256": "c80cfbfab462fd4c4542ae45c0eb84e5a6497304aeb5f2b0d675aaf3818307ee"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 13,
           "uuid": "f7a50df6-f9fc-49cc-a930-a21c6fee99e4",
           "filename": "code-of-safe-practices.pdf",
+          "sourceByteLength": 112305,
           "localRawSha256": "1ad9e61d48c1fa61521208fd97f3b063b9af840f80f6fea7d95cc91e7632dbed",
           "providerRawSha256": "1ad9e61d48c1fa61521208fd97f3b063b9af840f80f6fea7d95cc91e7632dbed",
           "fingerprint": {
@@ -453,12 +1583,14 @@
             "semanticSha256": "0aa0b621c8932340969e5bb5eb354025b979d13adf26a6857ca81b8e1750e57d",
             "visualSha256": "74468e36df33560a7b7dfb3578a19d75f15791f5ca79d0b1c7a7a825580af084",
             "operatorSha256": "a14fa9f0ffa30005d0eb0f442b6ffdd900540b1bfccb00afad4899b1761cbb1e"
-          }
+          },
+          "fieldRegions": []
         },
         {
           "order": 14,
           "uuid": "2a2de056-0bff-48e9-a7fb-3ebfed3f64cf",
           "filename": "policy-acknowledgment-es.pdf",
+          "sourceByteLength": 125889,
           "localRawSha256": "2632d0fb2107e76e5841147c3073a85da5e88fb90baa08a38297818d2bbc83f3",
           "providerRawSha256": "2632d0fb2107e76e5841147c3073a85da5e88fb90baa08a38297818d2bbc83f3",
           "fingerprint": {
@@ -468,11 +1600,421 @@
             "semanticSha256": "a80dc1597f11f13990680a0a6d0f7044ba013e11bcdde393515ed7eb3e975de4",
             "visualSha256": "70a081b211c716a6146748bdc8767e733580e11de3bc8efcb3e25389328e8207",
             "operatorSha256": "bd6fade229f2ee011302acc86e8b10331f5b65869786167e86b8e46c505054f2"
-          }
+          },
+          "fieldRegions": [
+            {
+              "order": 0,
+              "id": "f28",
+              "uuid": "ec5d8c38-d213-4646-acc7-69f1e9d8d19f",
+              "type": "text",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.26327,
+              "y": 0.24242,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 1,
+              "id": "f29",
+              "uuid": "efc7edfb-0493-40e7-a264-c54fdb0a0155",
+              "type": "date",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.30141,
+              "y": 0.27367,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 2,
+              "id": "f30",
+              "uuid": "c9993d24-63ea-4911-ae64-86f0d1aed78e",
+              "type": "initials",
+              "owner": "worker",
+              "page": 0,
+              "x": 0.76065,
+              "y": 0.48201,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 3,
+              "id": "f31",
+              "uuid": "a72e8247-fa8d-42e6-bef2-810677bafd24",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.15436,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 4,
+              "id": "f32",
+              "uuid": "8ee46242-4ec6-47aa-bd5a-799f536e89af",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.20455,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 5,
+              "id": "f33",
+              "uuid": "96c07868-8ecb-457d-94b2-f3562af0b53d",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.24053,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 6,
+              "id": "f34",
+              "uuid": "77654ec8-3fa6-454b-821a-d09edfea06b8",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.29072,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 7,
+              "id": "f35",
+              "uuid": "26bc0b07-66eb-48cd-a019-1103b887d723",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.34091,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 8,
+              "id": "f36",
+              "uuid": "62caa10b-5f7b-4d49-a91d-d2d5d89284d7",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.37689,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 9,
+              "id": "f37",
+              "uuid": "04c3321c-b1ce-4fcb-b7e9-944c65314bb8",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.41288,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 10,
+              "id": "f38",
+              "uuid": "25c3e864-e857-4ef6-a653-2b3c16274830",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.44886,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 11,
+              "id": "f39",
+              "uuid": "369129c0-c33a-42c2-992a-177e60b1a87b",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.48485,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 12,
+              "id": "f40",
+              "uuid": "813e9324-573d-43b1-b8bf-eed23c967213",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.53504,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 13,
+              "id": "f41",
+              "uuid": "ba9f4dac-b40e-4ccd-8a3c-18dab3127000",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.57102,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 14,
+              "id": "f42",
+              "uuid": "80e84e31-432a-48ad-8035-20ed27fad091",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.60701,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 15,
+              "id": "f43",
+              "uuid": "6352521b-acfc-479a-9e99-8b2ede3312c1",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.76574,
+              "y": 0.64299,
+              "w": 0.05392,
+              "h": 0.01989
+            },
+            {
+              "order": 16,
+              "id": "f44",
+              "uuid": "3b114a09-1559-441f-8b89-187edfd99534",
+              "type": "initials",
+              "owner": "worker",
+              "page": 1,
+              "x": 0.54647,
+              "y": 0.80303,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 17,
+              "id": "f45",
+              "uuid": "908adb0f-4d95-45b4-b378-e0bf3f4405c0",
+              "type": "initials",
+              "owner": "worker",
+              "page": 2,
+              "x": 0.41776,
+              "y": 0.2339,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 18,
+              "id": "f46",
+              "uuid": "bc0c73a7-f350-4668-8a26-be95d718bca5",
+              "type": "initials",
+              "owner": "worker",
+              "page": 2,
+              "x": 0.45874,
+              "y": 0.4233,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 19,
+              "id": "f47",
+              "uuid": "df21ede6-143b-4cdc-a454-b6e7f41750de",
+              "type": "initials",
+              "owner": "worker",
+              "page": 2,
+              "x": 0.36912,
+              "y": 0.66951,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 20,
+              "id": "f48",
+              "uuid": "af6173de-740c-4860-9f36-914158401dab",
+              "type": "initials",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.45305,
+              "y": 0.29072,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 21,
+              "id": "f49",
+              "uuid": "06214ffa-45fd-47dd-8e8f-432b12c3e7a9",
+              "type": "initials",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.17647,
+              "y": 0.46117,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 22,
+              "id": "f50",
+              "uuid": "35adf98a-138c-4f2d-b3c3-5b785a57612f",
+              "type": "text",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.55505,
+              "y": 0.55587,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 23,
+              "id": "f51",
+              "uuid": "7bf1263f-c19e-4ec9-910e-95c25fcfc55b",
+              "type": "initials",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.26134,
+              "y": 0.64394,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 24,
+              "id": "f52",
+              "uuid": "35e96091-9c9e-4a27-ad9e-67b0b30f4639",
+              "type": "initials",
+              "owner": "worker",
+              "page": 3,
+              "x": 0.17647,
+              "y": 0.81439,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 25,
+              "id": "f53",
+              "uuid": "97a965ac-93d4-4c49-88df-210d99835829",
+              "type": "initials",
+              "owner": "worker",
+              "page": 4,
+              "x": 0.59325,
+              "y": 0.2339,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 26,
+              "id": "f54",
+              "uuid": "c376d63c-ca44-4899-9951-1f0e58d966ad",
+              "type": "text",
+              "owner": "worker",
+              "page": 4,
+              "x": 0.50643,
+              "y": 0.3286,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 27,
+              "id": "f55",
+              "uuid": "0fb6809c-2a49-4c68-9d05-bf609106b1b7",
+              "type": "initials",
+              "owner": "worker",
+              "page": 4,
+              "x": 0.17647,
+              "y": 0.37879,
+              "w": 0.08578,
+              "h": 0.01989
+            },
+            {
+              "order": 28,
+              "id": "f56",
+              "uuid": "38d231b5-777d-4086-ad66-2a3eb9733d36",
+              "type": "signature",
+              "owner": "worker",
+              "page": 4,
+              "x": 0.22986,
+              "y": 0.47538,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 29,
+              "id": "f57",
+              "uuid": "b50a2f19-ddf9-481b-ad63-505c71f42a33",
+              "type": "text",
+              "owner": "worker",
+              "page": 4,
+              "x": 0.38436,
+              "y": 0.51894,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 30,
+              "id": "f58",
+              "uuid": "0c427df3-17ad-42cd-8d53-09e5a7402621",
+              "type": "date",
+              "owner": "worker",
+              "page": 4,
+              "x": 0.2337,
+              "y": 0.55019,
+              "w": 0.15931,
+              "h": 0.01989
+            },
+            {
+              "order": 31,
+              "id": "f59",
+              "uuid": "a4fe1802-f1d1-41ad-99f3-0884f9919aee",
+              "type": "signature",
+              "owner": "employer",
+              "page": 4,
+              "x": 0.22986,
+              "y": 0.61174,
+              "w": 0.30637,
+              "h": 0.0322
+            },
+            {
+              "order": 32,
+              "id": "f60",
+              "uuid": "df114558-cf6b-4bb2-afb8-132172eab803",
+              "type": "text",
+              "owner": "employer",
+              "page": 4,
+              "x": 0.29852,
+              "y": 0.6553,
+              "w": 0.22059,
+              "h": 0.01989
+            },
+            {
+              "order": 33,
+              "id": "f61",
+              "uuid": "2e232f0c-6d8a-41e2-9031-1a141ccb61e1",
+              "type": "date",
+              "owner": "employer",
+              "page": 4,
+              "x": 0.2337,
+              "y": 0.68655,
+              "w": 0.15931,
+              "h": 0.01989
+            }
+          ]
         }
       ],
-      "entrySha256": "9e60f1e247f12fd2c2d6ffbf23355cc086623a4be37f805b457d547ce3df9ef3"
+      "entrySha256": "254064dd3d69527f87fb8c22462ed8ba5e260ce78a4031cb069019b79463cbda"
     }
   ],
-  "attestationSha256": "e9039d51d8cb462f3cc05306dc62e905de8af06ac1cd21f535cd8324021688e8"
+  "attestationSha256": "3405d89da01acccfae76997d24a4e021831ba84adc8021aa2f23ecbf0cdbb2bf"
 }

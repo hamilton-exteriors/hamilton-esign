@@ -59,6 +59,7 @@ async function inspectPdf(url) {
   // bytes before handing ownership to the parser; hashing afterward can hash a detached
   // or parser-owned view instead of the response that was actually downloaded.
   const rawSha256 = sha256(bytes);
+  const sourceByteLength = bytes.byteLength;
   const fingerprint = await fingerprintPdf(bytes);
   const loadingTask = getDocument({ data: bytes, disableWorker: true, ...PDFJS_NODE_ASSETS });
   const pdf = await loadingTask.promise;
@@ -78,7 +79,7 @@ async function inspectPdf(url) {
   } finally {
     await loadingTask.destroy();
   }
-  return { sha256: rawSha256, fingerprint, pages };
+  return { sha256: rawSha256, sourceByteLength, fingerprint, pages };
 }
 
 const inventory = await client.listAll('/api/templates', { what: 'template inventory' });

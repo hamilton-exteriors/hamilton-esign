@@ -112,8 +112,10 @@ locally for the required commit/deploy gate.
   readback and every live verification. Semantic, visual, geometry, annotation, and operator
   fingerprints are defense-in-depth diagnostics only, and `operatorSha256` is compared
   explicitly; they never permit raw drift. `brand/reflow/provider-attestations.json` pins
-  and exposes the exact `templateId, order, uuid, filename, localRawSha256,
-  providerRawSha256` tuple plus layout/reflow binding. Execution-plan schema v3 binds the
+  and exposes the exact `templateId, order, uuid, filename, sourceByteLength, localRawSha256,
+  providerRawSha256, fingerprint, fieldRegions` tuple plus layout/reflow binding. Each ordered
+  region binds local field ID, provider UUID, type, owner, source-local page, and normalized
+  top-left geometry. Execution-plan schema v4 binds the
   attestation entry into Platform approval/start. That is not an atomicity guarantee:
   Platform owns the post-submission provider-byte reread and exact tuple check before route
   release. Schema v1/v2 are legacy-read only.
@@ -188,10 +190,12 @@ locally for the required commit/deploy gate.
   `d2369b0b652392ac1db3f20e135490396bc76a7be519f4dcbb0372a77881adf0` (EN) and
   `cf4fbb322d0fdf7078e4dad4bbe9a488831675546709b6f1a67a40a211bbf523` (ES).
   The committed provider-attestation aggregate digest is
-  `e9039d51d8cb462f3cc05306dc62e905de8af06ac1cd21f535cd8324021688e8`.
+  `3405d89da01acccfae76997d24a4e021831ba84adc8021aa2f23ecbf0cdbb2bf`.
   Syntax checks for all 58 repository `.mjs` modules and `git diff --check` pass. Final
-  read-only `--scope w2-cutover` verification passes v3 380/381, rosters 358/359, and
-  retained v2 378/379 together. This agent made no production creation, mutation,
+  read-only `--scope w2-release` verification passes v3 380/381 and rosters 358/359.
+  `--scope w2-cutover` remains a reporting failure because retained v2 378/379 are no
+  longer active; both current v3 templates and both rosters still pass before that failure.
+  This agent made no production creation, mutation,
   archival, outbound delivery, commit, push, or deployment.
 
 ---
