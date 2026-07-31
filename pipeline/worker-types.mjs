@@ -31,16 +31,12 @@ export const WORKER_TYPES = {
     // ids change on every pipeline rebuild.
     packet: {
       en: [
-        { key: 'agreement',      title: 'Employment Agreement' },
-        { key: 'wage-notice',    title: 'Wage Notice - Labor Code 2810.5' },
-        { key: 'acknowledgment', title: 'New Hire Policy Acknowledgment' },
-        { key: 'safety-roster',  title: 'Safety Training Roster' },
+        { key: 'initial-packet', title: 'W-2 Initial Employment Packet v2' },
+        { key: 'safety-roster', title: 'Safety Training Roster' },
       ],
       es: [
-        { key: 'agreement',      title: 'Contrato de Empleo' },
-        { key: 'wage-notice',    title: 'Aviso de Salario - Código Laboral 2810.5' },
-        { key: 'acknowledgment', title: 'Acuse de Recibo de Políticas' },
-        { key: 'safety-roster',  title: 'Registro de Capacitación en Seguridad' },
+        { key: 'initial-packet', title: 'Paquete Inicial de Empleo W-2 v2' },
+        { key: 'safety-roster', title: 'Registro de Capacitación en Seguridad' },
       ],
     },
     // Sent over WhatsApp before the acknowledgment, which has the worker

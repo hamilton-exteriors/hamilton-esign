@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { createDocusealClient } from '../pipeline/docuseal-api.mjs';
-import { requireUniqueActiveTemplate, DEFAULT_DOCUMENT_SLUGS } from '../pipeline/registry.mjs';
+import { requireUniqueActiveTemplate, DEFAULT_DOCUMENT_SLUGS, TEMPLATE_BY_SLUG, orderedSources } from '../pipeline/registry.mjs';
+import { sourceManifest, validateManifestEntry, assertCurrentSources, validateMeasuredBuild, measuredLayoutDigest, sha256 } from '../pipeline/build-manifest.mjs';
+import { deterministicPdfBytes, packetFooterDescriptors } from '../pipeline/pdf-determinism.mjs';
+import { fetchStatutoryPdf, locateStatutoryFooterMasks, orderStatutoryTextItems, statutoryPdfToReflow } from '../pipeline/statutory-assets.mjs';
 import { matchGeneratedFields } from '../pipeline/field-match.mjs';
 import { packetFor, validate } from '../pipeline/worker-types.mjs';
 import { scopeCss, assertScoped, normalizeReflowTables, scopeDocumentLanguages, classify } from '../pipeline/build-docs.mjs';
@@ -40,13 +47,200 @@ test('DocuSeal pagination collects every page and stops', async () => {
   assert.deepEqual(calls, [null, '2']);
 });
 
+test('PDF normalization removes wall-clock metadata from retained build intermediates', async () => {
+  const makePdf = async (date) => {
+    const pdf = await PDFDocument.create();
+    pdf.addPage([100, 100]);
+    pdf.setCreationDate(date);
+    pdf.setModificationDate(date);
+    return Buffer.from(await pdf.save({ useObjectStreams: false }));
+  };
+  const left = await deterministicPdfBytes(await makePdf(new Date('2026-01-01T01:02:03Z')), { title: 'Same' });
+  const right = await deterministicPdfBytes(await makePdf(new Date('2026-07-30T04:05:06Z')), { title: 'Same' });
+  assert.equal(sha256(left), sha256(right));
+});
+
 test('template resolution fails on zero or duplicate active names', () => {
   const template = { id: 1, name: 'Employment Agreement', archived_at: null };
   assert.equal(requireUniqueActiveTemplate([template], template.name), template);
   assert.throws(() => requireUniqueActiveTemplate([], template.name), /found 0/);
   assert.throws(() => requireUniqueActiveTemplate([template, { ...template, id: 2 }], template.name), /found 2/);
   assert.ok(DEFAULT_DOCUMENT_SLUGS.includes('independent-contractor-agreement'));
-  assert.equal(DEFAULT_DOCUMENT_SLUGS.length, 14);
+  assert.ok(DEFAULT_DOCUMENT_SLUGS.includes('w2-initial-packet-v2'));
+  assert.equal(DEFAULT_DOCUMENT_SLUGS.length, 12);
+});
+
+test('composite build manifest pins markdown and statutory PDF sources and detects drift', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'hamilton-manifest-'));
+  mkdirSync(join(dir, 'statutory'));
+  const entry = {
+    slug: 'synthetic-composite', title: 'Synthetic Composite', version: 2,
+    fields: 2, owners: { worker: 1, hamilton: 1 },
+    sources: [
+      { kind: 'markdown', slug: 'agreement' },
+      { kind: 'pdf', slug: 'statutory-notice', title: 'Notice', language: 'en', url: 'https://www.dir.ca.gov/notice.pdf' },
+      { kind: 'markdown', slug: 'program' },
+    ],
+  };
+  writeFileSync(join(dir, 'agreement.md'), 'agreement\n');
+  writeFileSync(join(dir, 'program.md'), 'program\n');
+  const statutory = Buffer.from('%PDF- synthetic statutory bytes');
+  writeFileSync(join(dir, 'statutory', 'statutory-notice.pdf'), statutory);
+  const manifest = sourceManifest(entry, dir, new Map([[
+    'statutory-notice', { sha256: sha256(statutory), pageCount: 1 },
+  ]]));
+  assert.deepEqual(manifest.sources.map((source) => source.slug), ['agreement', 'statutory-notice', 'program']);
+  assert.doesNotThrow(() => validateManifestEntry(manifest, entry));
+  assert.doesNotThrow(() => assertCurrentSources(manifest, entry, dir, dir));
+  const pdf = Buffer.from('synthetic composed PDF');
+  const measured = {
+    ...manifest,
+    sources: manifest.sources.map((source, index) => ({ ...source, outputStartPage: index, pageCount: 1 })),
+    pageCount: 3,
+    pdfSha256: sha256(pdf),
+    fields: [
+      { id: 'w1', owner: 'worker', sourceSlug: 'agreement', page: 0 },
+      { id: 'h1', owner: 'employer', sourceSlug: 'program', page: 2 },
+    ],
+  };
+  measured.layoutSha256 = measuredLayoutDigest(measured);
+  assert.doesNotThrow(() => validateMeasuredBuild(measured, entry, dir, dir, pdf));
+  assert.throws(() => validateMeasuredBuild({ ...measured, pdfSha256: 'a'.repeat(64) }, entry, dir, dir, pdf), /PDF digest/);
+  const wrongOwner = structuredClone(measured);
+  wrongOwner.fields[0].owner = 'employer';
+  assert.throws(() => validateMeasuredBuild(wrongOwner, entry, dir, dir, pdf), /owns .* expected/);
+  const wrongSource = structuredClone(measured);
+  wrongSource.fields[0].sourceSlug = 'not-a-source';
+  assert.throws(() => validateMeasuredBuild(wrongSource, entry, dir, dir, pdf), /invalid source ownership/);
+  const wrongOrder = structuredClone(measured);
+  wrongOrder.sources[1].outputStartPage = 0;
+  assert.throws(() => validateMeasuredBuild(wrongOrder, entry, dir, dir, pdf), /page range is not contiguous/);
+  const fieldOutsideSource = structuredClone(measured);
+  fieldOutsideSource.fields[0].page = 2;
+  assert.throws(() => validateMeasuredBuild(fieldOutsideSource, entry, dir, dir, pdf), /outside its source page range/);
+  writeFileSync(join(dir, 'program.md'), 'changed source\n');
+  assert.throws(() => assertCurrentSources(manifest, entry, dir, dir), /canonical source changed after build/);
+  const reordered = structuredClone(manifest);
+  reordered.sources.reverse();
+  assert.throws(() => validateManifestEntry(reordered, entry), /ordered registry source/);
+});
+
+test('W-2 composites put the receipt acknowledgment after all statutory PDFs and four programs', () => {
+  for (const slug of ['w2-initial-packet-v2', 'w2-initial-packet-es-v2']) {
+    const sources = orderedSources(TEMPLATE_BY_SLUG.get(slug));
+    assert.equal(sources.filter((source) => source.kind === 'pdf').length, 8);
+    const sourceSlugs = sources.map((source) => source.slug);
+    const policySlug = slug.includes('-es-') ? 'policy-acknowledgment-es' : 'policy-acknowledgment';
+    const expectedPrograms = slug.includes('-es-')
+      ? ['iipp-es', 'heat-illness-prevention-plan-es', 'fall-protection-program-es', 'code-of-safe-practices']
+      : ['iipp', 'heat-illness-prevention-plan', 'fall-protection-program', 'code-of-safe-practices'];
+    assert.deepEqual(sourceSlugs.slice(-5), [...expectedPrograms, policySlug]);
+    assert.ok(sources.slice(2, -5).every((source) => source.kind === 'pdf'));
+    assert.ok(!sourceSlugs.some((source) => /safety-training-roster/.test(source)));
+  }
+});
+
+test('statutory PDF ingestion validates authoritative bytes and emits actual reflow text', async () => {
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const page = pdf.addPage([612, 792]);
+  page.drawText('California statutory notice content', { x: 72, y: 720, size: 12, font });
+  const bytes = Buffer.from(await pdf.save({ useObjectStreams: false }));
+  const dir = mkdtempSync(join(tmpdir(), 'hamilton-statutory-'));
+  const source = {
+    kind: 'pdf', slug: 'statutory-test', title: 'Statutory Test', language: 'en',
+    url: 'https://www.dir.ca.gov/test.pdf',
+  };
+  const expected = { slug: source.slug, url: source.url, sha256: sha256(bytes), bytes: bytes.length, pageCount: 1 };
+  const fetchPdf = async () => new Response(bytes, {
+    status: 200, headers: { 'content-type': 'application/pdf' },
+  });
+  const artifact = await fetchStatutoryPdf(source, dir, expected, fetchPdf);
+  assert.equal(artifact.sha256, sha256(bytes));
+  const reflow = await statutoryPdfToReflow(source, artifact.bytes);
+  assert.equal(reflow.pageCount, 1);
+  assert.match(reflow.html, /California statutory notice content/);
+  await assert.rejects(
+    fetchStatutoryPdf({ ...source, url: 'https://example.com/test.pdf' }, dir,
+      { ...expected, url: 'https://example.com/test.pdf' }, fetchPdf),
+    /approved authoritative host/,
+  );
+  await assert.rejects(
+    fetchStatutoryPdf(source, dir, expected, async () => new Response('<html>no</html>', {
+      status: 200, headers: { 'content-type': 'text/html' },
+    })),
+    /not a PDF/,
+  );
+});
+
+test('statutory reflow preserves two-column reading order and rejects any unreadable page', async () => {
+  const viewport = { width: 600, scale: 1, convertToViewportPoint: (x, y) => [x, 800 - y] };
+  const item = (str, x, y) => ({ str, width: 60, transform: [1, 0, 0, 1, x, y] });
+  const ordered = orderStatutoryTextItems([
+    item('R1', 360, 700), item('L2', 60, 680), item('R2', 360, 680), item('L1', 60, 700),
+    item('R3', 360, 660), item('L4', 60, 640), item('R4', 360, 640), item('L3', 60, 660),
+  ], viewport);
+  assert.equal(ordered.columns, 2);
+  assert.deepEqual(ordered.lines, ['L1', 'L2', 'L3', 'L4', 'R1', 'R2', 'R3', 'R4']);
+
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  pdf.addPage([612, 792]).drawText('Readable first statutory page content', { x: 72, y: 720, font });
+  pdf.addPage([612, 792]);
+  const source = { slug: 'statutory-two-page-test', title: 'Test', language: 'en' };
+  await assert.rejects(statutoryPdfToReflow(source, Buffer.from(await pdf.save())), /page 2 has no complete readable text layer/);
+});
+
+test('Spanish DE-2515 cached brochure follows its real folded reader order', async () => {
+  const bytes = readFileSync(new URL('../statutory/statutory-de-2515-es.pdf', import.meta.url));
+  const source = { slug: 'statutory-de-2515-es', title: 'DE 2515 Seguro de Incapacidad', language: 'es' };
+  const reflow = await statutoryPdfToReflow(source, bytes);
+  assert.equal(reflow.pageCount, 2);
+  assert.match(reflow.html, /data-columns="4"/);
+  assert.match(reflow.html, /data-reader-order="p1c4,p1c2,p1c1,p2c1,p2c2,p2c3,p2c4,p1c3"/);
+
+  // Literal phrases from the immutable agency brochure pin the semantic sequence,
+  // rather than merely proving that a generic left-to-right column sorter ran.
+  const phrases = [
+    'Disposiciones',
+    '¿Qué es la incapacidad?',
+    '¿Cuáles son mis beneficios',
+    '¿Cómo solicito los',
+    '¿Cuál es el siguiente',
+    '¿Cómo se calculan mis',
+    '¿Cuáles son mis',
+    'Este folleto únicamente ofrece información general',
+  ];
+  const positions = phrases.map((phrase, index) =>
+    reflow.html.indexOf(phrase, index === 6 ? reflow.html.indexOf('¿Cómo se calculan mis') + 1 : 0));
+  assert.ok(positions.every((position) => position >= 0));
+  assert.deepEqual([...positions].sort((a, b) => a - b), positions);
+});
+
+test('Spanish DWC split revision footer fragments are all masked before packet footer stamping', async () => {
+  const bytes = readFileSync(new URL('../statutory/statutory-dwc-time-of-hire-es.pdf', import.meta.url));
+  const masks = await locateStatutoryFooterMasks(bytes);
+  assert.equal(masks.length, 8);
+  for (let page = 0; page < 6; page++) {
+    assert.ok(masks[page].some((mask) =>
+      mask.x < 160 && mask.x + mask.width > 290 && mask.y < 25),
+    `page ${page + 1} leaves the split “Revisado” fragment visible`);
+    assert.ok(masks[page].some((mask) =>
+      mask.x < 160 && mask.x + mask.width > 450 && mask.y < 40),
+    `page ${page + 1} leaves the split “En vigor” fragment visible`);
+    assert.ok(masks[page].some((mask) => mask.x + mask.width > 565 && mask.y < 35),
+      `page ${page + 1} leaves the source page number visible`);
+  }
+});
+
+test('combined packet footers use one exact first and last page label', () => {
+  for (const total of [82, 87]) {
+    const footers = packetFooterDescriptors(total);
+    assert.equal(footers.length, total);
+    assert.equal(footers[0].number, `Page 1 of ${total}`);
+    assert.equal(footers.at(-1).number, `Page ${total} of ${total}`);
+    assert.equal(new Set(footers.map((footer) => footer.page)).size, total);
+  }
 });
 
 test('field matching is independent of API array order', () => {
@@ -183,7 +377,7 @@ test('worker type is mandatory and packets never fall across classifications', (
   assert.throws(() => packetFor(undefined, 'en'), /worker type is required/);
   assert.deepEqual(packetFor('overseas_contractor', 'en').docs.map((doc) => doc.title),
     ['Independent Contractor Agreement']);
-  assert.ok(packetFor('w2_local', 'en').docs.some((doc) => doc.title === 'Employment Agreement'));
+  assert.ok(packetFor('w2_local', 'en').docs.some((doc) => doc.title === 'W-2 Initial Employment Packet v2'));
   const wrong = validate({ type: 'overseas_contractor', name: 'ZZ TEST', phone: '+16509773241' });
   assert.equal(wrong.ok, false);
   assert.match(wrong.problems.join(' '), /looks domestic/);

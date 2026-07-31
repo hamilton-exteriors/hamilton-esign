@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "slug": "statutory-crd-sexual-harassment",
+      "filename": "statutory-crd-sexual-harassment.pdf",
+      "url": "https://www.calcivilrights.ca.gov/wp-content/uploads/sites/32/2022/12/Sexual-Harassment-Poster_ENG.pdf",
+      "sha256": "ea7733399680e7218891ad2302cd2c19931e76cb8bdcc965b36871361a6085ad",
+      "bytes": 4139929,
+      "pageCount": 2
+    },
+    {
+      "slug": "statutory-crd-sexual-harassment-es",
+      "filename": "statutory-crd-sexual-harassment-es.pdf",
+      "url": "https://www.calcivilrights.ca.gov/wp-content/uploads/sites/32/2020/04/Sexual-Harassment-Fact-Sheet_SP.pdf",
+      "sha256": "f5dafb0b72bd91efb25cb88b00465b866e68d04a0aec97de33ce8e877cbeb14d",
+      "bytes": 437341,
+      "pageCount": 2
+    },
+    {
+      "slug": "statutory-de-2320",
+      "filename": "statutory-de-2320.pdf",
+      "url": "https://edd.ca.gov/siteassets/files/pdf_pub_ctr/de2320.pdf",
+      "sha256": "1bd38953786f63c6bbb95b73517ddbe50d0d53d24b5d6f8beb102dfe99417124",
+      "bytes": 719390,
+      "pageCount": 22
+    },
+    {
+      "slug": "statutory-de-2320-es",
+      "filename": "statutory-de-2320-es.pdf",
+      "url": "https://edd.ca.gov/siteassets/files/pdf_pub_ctr/de2320s.pdf",
+      "sha256": "bfb274c6fb2189f36b1ce95f7cb8567c7933ed8416a658fc3623fcb98cd5372f",
+      "bytes": 403060,
+      "pageCount": 26
+    },
+    {
+      "slug": "statutory-de-2511",
+      "filename": "statutory-de-2511.pdf",
+      "url": "https://edd.ca.gov/siteassets/files/pdf_pub_ctr/de2511.pdf",
+      "sha256": "f0bdb75681c08ead08e3214fec332d257fdd7587c453ea6a93aa166ce820d675",
+      "bytes": 595578,
+      "pageCount": 2
+    },
+    {
+      "slug": "statutory-de-2511-es",
+      "filename": "statutory-de-2511-es.pdf",
+      "url": "https://edd.ca.gov/siteassets/files/pdf_pub_ctr/de2511s.pdf",
+      "sha256": "3c2f5346470bb35e1f9c5c9af3a15bb8c0dcdf1d162fe53e626b5a68c4870c7a",
+      "bytes": 635862,
+      "pageCount": 2
+    },
+    {
+      "slug": "statutory-de-2515",
+      "filename": "statutory-de-2515.pdf",
+      "url": "https://edd.ca.gov/siteassets/files/pdf_pub_ctr/de2515.pdf",
+      "sha256": "536b4f400d81da4e3e8ad6243476c308d1915ba32ca36ff18535f0d4a92ffcb3",
+      "bytes": 2009297,
+      "pageCount": 2
+    },
+    {
+      "slug": "statutory-de-2515-es",
+      "filename": "statutory-de-2515-es.pdf",
+      "url": "https://edd.ca.gov/siteassets/files/pdf_pub_ctr/de2515s.pdf",
+      "sha256": "a998a73c0262b1e0aaf9eba26e70db2629731a7f7d0507e8b18f2e3069e537fa",
+      "bytes": 3291203,
+      "pageCount": 2
+    },
+    {
+      "slug": "statutory-dwc-predesignation",
+      "filename": "statutory-dwc-predesignation.pdf",
+      "url": "https://www.dir.ca.gov/dwc/forms/dwcform_9783.pdf",
+      "sha256": "2158526737f5a52a535e4111ea56b7eb3dabe2015e6ba8f18cdb21cd37986d81",
+      "bytes": 1766645,
+      "pageCount": 1
+    },
+    {
+      "slug": "statutory-dwc-time-of-hire",
+      "filename": "statutory-dwc-time-of-hire.pdf",
+      "url": "https://www.dir.ca.gov/dwc/DWCPamphlets/TimeOfHireNotice.pdf",
+      "sha256": "0b4fd1613d80e92b0b84efb6e81a7789a0336f43385b31d286db5c4358c1a8c5",
+      "bytes": 1133062,
+      "pageCount": 8
+    },
+    {
+      "slug": "statutory-dwc-time-of-hire-es",
+      "filename": "statutory-dwc-time-of-hire-es.pdf",
+      "url": "https://www.dir.ca.gov/dwc/DWCPamphlets/TimeOfHireNotice_Spanish.pdf",
+      "sha256": "f040efda3023a45fcabbb5d0766077730cb28c222e22c95321cd3e65eb46e7ea",
+      "bytes": 1053863,
+      "pageCount": 8
+    },
+    {
+      "slug": "statutory-paid-sick-leave",
+      "filename": "statutory-paid-sick-leave.pdf",
+      "url": "https://www.dir.ca.gov/dlse/Publications/Paid_Sick_Days_Poster_Template_(11_2014).pdf",
+      "sha256": "f718a901c1fe115a88035e78c9b2d6e912d48372264f79e163134802c1811744",
+      "bytes": 153217,
+      "pageCount": 1
+    },
+    {
+      "slug": "statutory-victims-rights",
+      "filename": "statutory-victims-rights.pdf",
+      "url": "https://www.dir.ca.gov/dlse/victims_of_domestic_violence_leave_notice.pdf",
+      "sha256": "d73dc9aa3e9649914a72fad60ab2fbcc3218387fb7644dbe517c620ab8469358",
+      "bytes": 439562,
+      "pageCount": 2
+    },
+    {
+      "slug": "statutory-victims-rights-es",
+      "filename": "statutory-victims-rights-es.pdf",
+      "url": "https://www.dir.ca.gov/dlse/Victims_of_Domestic_Violence_Leave_Notice_Spanish.pdf",
+      "sha256": "5de353c61a0324a49aa937fe3681670731cbd49f15bcc9f3d60882ef2ac37d08",
+      "bytes": 160471,
+      "pageCount": 2
+    }
+  ]
+}

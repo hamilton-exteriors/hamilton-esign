@@ -17,7 +17,9 @@ process.env.HAMILTON_ONBOARDING_STATE_DIR = join(scratch, 'onboarding');
 process.env.HAMILTON_PACKET_STATE_DIR = join(scratch, 'packets');
 
 const responses = new Map();
+let fetchCalls = 0;
 globalThis.fetch = async (url) => {
+  fetchCalls++;
   const id = Number(String(url).match(/submissions\/(\d+)/)?.[1]);
   const value = responses.get(id);
   if (!value) return new Response('not found', { status: 404 });
@@ -32,6 +34,9 @@ const {
   contractorStartGate,
   hashCopyBundle,
   synchronize,
+  legacyW2TermsBlocker,
+  start,
+  w2StartGate,
   wageNoticeBlockers,
 } = await import('../pipeline/onboarding.mjs');
 
@@ -145,6 +150,23 @@ test('contractor agreement start validates the canonical scope before pre-send g
   assert.throws(() => contractorStartGate(record), /owner-approved for release/);
 });
 
+test('real local start fails before any outbound or DocuSeal call when W-2 gates are pending', async () => {
+  const record = createRecord('w2_local', {
+    name: 'ZZ TEST Pre-gate', phone: '+16509770003', language: 'en', role: 'Roofer',
+    startDate: '2026-08-01', hourlyGuaranteeRate: 16.90, pieceRatePerSquare: 37.50,
+    comparisonMethod: 'greater_of', workweek: 'sunday_saturday', sickLeaveMethod: 'accrual', payday: 'Friday',
+  }, { id: 'zz-test-pre-gate' });
+  record.phase = 'ready_to_send';
+  const before = fetchCalls;
+  assert.throws(() => w2StartGate(record), /before any outbound delivery/);
+  await assert.rejects(start(record, 'ZZ TEST rw path'), /before any outbound delivery/);
+  assert.equal(fetchCalls, before);
+  recordGate(record, 'wc_5552_bound', 'ZZ TEST WC evidence');
+  recordGate(record, 'wage_notice_wc_fields_verified', 'ZZ TEST wage evidence');
+  await assert.rejects(start(record, 'ZZ TEST rw path'), /requires Platform plan ID/);
+  assert.equal(fetchCalls, before);
+});
+
 test('W-2 wage notice requires both class 5552 and populated live policy fields', () => {
   const record = createRecord('w2_local', {
     name: 'ZZ TEST Roofer',
@@ -152,11 +174,21 @@ test('W-2 wage notice requires both class 5552 and populated live policy fields'
     language: 'en',
     role: 'Roofer',
     startDate: '2026-08-01',
-    baseHourlyRate: 16.90,
-    productionBonusRate: 14.90,
+    hourlyGuaranteeRate: 16.90,
+    pieceRatePerSquare: 37.50,
+    comparisonMethod: 'greater_of',
+    workweek: 'sunday_saturday',
     sickLeaveMethod: 'accrual',
     payday: 'Friday',
   }, { id: 'zz-test-wage-notice-gates' });
+  assert.deepEqual(wageNoticeBlockers(record, { key: 'initial-packet' }), [
+    'wc_5552_bound',
+    'wage_notice_wc_fields_verified',
+  ]);
+  assert.equal(legacyW2TermsBlocker(record), null);
+  const legacy = structuredClone(record);
+  legacy.intake.compensationTermsVersion = 'legacy-v1';
+  assert.match(legacyW2TermsBlocker(legacy), /read-only/);
   const wageNotice = { key: 'wage-notice' };
   assert.deepEqual(wageNoticeBlockers(record, wageNotice), [
     'wc_5552_bound',

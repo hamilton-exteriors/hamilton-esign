@@ -24,8 +24,6 @@ import {
 import { countersignLink, signedCopyCaption } from './send-signing-link.mjs';
 import { createDocusealClient } from './docuseal-api.mjs';
 import { fileSubmission } from './file-to-drive.mjs';
-import { pamphletCopy } from './send-pamphlets.mjs';
-import { programCopy } from './send-programs.mjs';
 import { REFERENCES_DIR } from './config.mjs';
 import { resolveRoleBinding } from './role-catalog.mjs';
 import { createPlatformOnboardingClient, platformCutoverEnabled } from './platform-client.mjs';
@@ -90,6 +88,10 @@ function packetWorker(record) {
     roleKey: intake.roleKey,
     roleExpectationsVersion: intake.roleExpectationsVersion,
     startDate: intake.startDate,
+    hourlyGuaranteeRate: intake.hourlyGuaranteeRate,
+    pieceRatePerSquare: intake.pieceRatePerSquare,
+    comparisonMethod: intake.comparisonMethod,
+    workweek: intake.workweek,
     country: intake.country,
     rateProbation: intake.rateProbation,
     probationMonths: intake.probationMonths,
@@ -116,10 +118,24 @@ export function contractorStartGate(record) {
   }
 }
 
+export function legacyW2TermsBlocker(record) {
+  return record.type === 'w2_local' && record.intake?.compensationTermsVersion === 'legacy-v1'
+    ? 'legacy W-2 compensation records are read-only; create a new intake with the approved greater-of terms before starting a packet'
+    : null;
+}
+
 export function wageNoticeBlockers(record, nextDocument) {
-  if (record.type !== 'w2_local' || nextDocument?.key !== 'wage-notice') return [];
+  if (record.type !== 'w2_local' || !['initial-packet', 'wage-notice'].includes(nextDocument?.key)) return [];
   return ['wc_5552_bound', 'wage_notice_wc_fields_verified']
     .filter((name) => record.gates[name]?.status !== 'satisfied');
+}
+
+export function w2StartGate(record) {
+  if (record.type !== 'w2_local') return;
+  const missing = wageNoticeBlockers(record, { key: 'initial-packet' });
+  if (missing.length) {
+    throw new Error(`W-2 packet remains blocked before any outbound delivery until these gates are evidenced: ${missing.join(', ')}`);
+  }
 }
 
 async function synchronize(record, packet) {
@@ -214,8 +230,10 @@ function validateIntakeForPlatform(type, intake) {
   return type === 'w2_local'
     ? {
       ...common,
-      baseHourlyRate: normalized.baseHourlyRate,
-      productionBonusRate: normalized.productionBonusRate,
+      hourlyGuaranteeRate: normalized.hourlyGuaranteeRate,
+      pieceRatePerSquare: normalized.pieceRatePerSquare,
+      comparisonMethod: normalized.comparisonMethod,
+      workweek: normalized.workweek,
       sickLeaveMethod: normalized.sickLeaveMethod,
       payday: normalized.payday,
     }
@@ -238,6 +256,11 @@ function platformClient() {
 }
 
 async function plan(record) {
+  const legacyBlocker = legacyW2TermsBlocker(record);
+  if (legacyBlocker) throw new Error(legacyBlocker);
+  if (record.type === 'w2_local') {
+    throw new Error('new W-2 execution requires the canonical Platform plan and immutable digest; local planning is read-only disabled');
+  }
   const packet = await startPacket(packetWorker(record), undefined, { dryRun: true });
   const blockers = [...packet.blockers];
   const roleScope = record.type === 'overseas_contractor'
@@ -263,10 +286,7 @@ async function plan(record) {
   const copyBundle = {
     packet: packetCopyPreview(record.type, packet.lang, packet.docs, packet.trainingDocument),
     executedCopy: signedCopyCaption(packet.lang),
-    ...(record.type === 'w2_local' ? {
-      pamphlets: pamphletCopy(packet.lang),
-      safetyPrograms: programCopy(packet.lang),
-    } : {
+    ...(record.type === 'overseas_contractor' ? {
       manualArtifacts: {
         intro: 'Before you sign the agreement, review these two onboarding documents.',
         documents: [
@@ -283,7 +303,7 @@ async function plan(record) {
           },
         ],
       },
-    }),
+    } : {}),
   };
   const copyHash = hashCopyBundle(copyBundle);
   return {
@@ -321,8 +341,12 @@ export async function assertApprovedCopy(record) {
   assertCopyHash(record, currentPlan.copyHash);
 }
 
-async function start(record, rwPath) {
+export async function start(record, rwPath) {
   if (record.phase !== 'ready_to_send') throw new Error('exact outbound copy must be approved before start');
+  w2StartGate(record);
+  if (record.type === 'w2_local') {
+    throw new Error('new W-2 execution requires Platform plan ID, stage, and immutable digest; local start is disabled');
+  }
   await assertApprovedCopy(record);
   contractorStartGate(record);
   let packet;
@@ -606,4 +630,4 @@ if (IS_MAIN) {
   }
 }
 
-export { create, plan, start, advance, training, countersign, file, synchronize, validateIntakeForPlatform };
+export { create, plan, advance, training, countersign, file, synchronize, validateIntakeForPlatform };

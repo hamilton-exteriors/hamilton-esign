@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
+import { TEMPLATE_BY_SLUG } from './registry.mjs';
 
-export const ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION = 1;
+export const ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION = 2;
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const SAFE_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -17,13 +18,21 @@ const CLASSIFICATION_RULES = {
     stages: {
       initial: {
         languages: ['en', 'es'],
-        documents: ['agreement', 'wage-notice', 'acknowledgment'],
-        destinations: ['Personnel', 'Personnel', 'Personnel'],
+        documents: ['initial-packet'],
+        destinations: ['Personnel'],
+        templateSlugs: {
+          en: ['w2-initial-packet-v2'],
+          es: ['w2-initial-packet-es-v2'],
+        },
       },
       training: {
         languages: ['en', 'es'],
         documents: ['safety-roster'],
         destinations: ['SafetyTrainingRosters'],
+        templateSlugs: {
+          en: ['safety-training-roster'],
+          es: ['safety-training-roster-es'],
+        },
       },
     },
     trainingEvidenceRequired: true,
@@ -35,11 +44,20 @@ const CLASSIFICATION_RULES = {
         languages: ['en'],
         documents: ['contractor-agreement'],
         destinations: ['ContractorAgreements'],
+        templateSlugs: {
+          en: ['independent-contractor-agreement'],
+        },
       },
     },
     trainingEvidenceRequired: false,
     roleRelease: true,
   },
+};
+
+const LEGACY_W2_INITIAL_RULES = {
+  languages: ['en', 'es'],
+  documents: ['agreement', 'wage-notice', 'acknowledgment'],
+  destinations: ['Personnel', 'Personnel', 'Personnel'],
 };
 
 function fail(path, message) {
@@ -137,18 +155,33 @@ function roleRelease(value, required, path) {
   };
 }
 
-function template(value, path) {
-  exactKeys(value, ['id', 'name', 'documentSha256', 'snapshotSha256'], path);
+function template(value, path, schemaVersion) {
+  const legacy = schemaVersion === 1;
+  exactKeys(
+    value,
+    legacy
+      ? ['id', 'name', 'documentSha256', 'snapshotSha256']
+      : ['id', 'name', 'registrySlug', 'registryVersion', 'documentSha256', 'snapshotSha256'],
+    path,
+  );
   if (!Number.isSafeInteger(value.id) || value.id <= 0) fail(`${path}.id`, 'must be a positive safe integer');
-  return {
+  const result = {
     id: value.id,
     name: safeString(value.name, `${path}.name`),
-    documentSha256: digest(value.documentSha256, `${path}.documentSha256`),
-    snapshotSha256: digest(value.snapshotSha256, `${path}.snapshotSha256`),
   };
+  if (!legacy) {
+    result.registrySlug = safeString(value.registrySlug, `${path}.registrySlug`, { pattern: SAFE_KEY });
+    if (!Number.isSafeInteger(value.registryVersion) || value.registryVersion <= 0) {
+      fail(`${path}.registryVersion`, 'must be a positive safe integer');
+    }
+    result.registryVersion = value.registryVersion;
+  }
+  result.documentSha256 = digest(value.documentSha256, `${path}.documentSha256`);
+  result.snapshotSha256 = digest(value.snapshotSha256, `${path}.snapshotSha256`);
+  return result;
 }
 
-function document(value, path) {
+function document(value, path, schemaVersion) {
   exactKeys(value, [
     'key', 'template', 'workerVisiblePrefills', 'workerReadonlyFields',
     'hamiltonPrefills', 'countersignRequired', 'filingDestination',
@@ -166,7 +199,7 @@ function document(value, path) {
   if (typeof value.countersignRequired !== 'boolean') fail(`${path}.countersignRequired`, 'must be boolean');
   return {
     key: safeString(value.key, `${path}.key`, { pattern: SAFE_KEY }),
-    template: template(value.template, `${path}.template`),
+    template: template(value.template, `${path}.template`, schemaVersion),
     workerVisiblePrefills,
     workerReadonlyFields,
     hamiltonPrefills: prefills(value.hamiltonPrefills, `${path}.hamiltonPrefills`),
@@ -219,25 +252,53 @@ function outbound(value, path, documentKeys) {
   return { key, kind, ...(hasDocumentKey ? { documentKey } : {}), textTemplate, artifacts };
 }
 
+function validateCurrentTemplateBinding(entry, expectedSlug, path) {
+  const registryTemplate = TEMPLATE_BY_SLUG.get(expectedSlug);
+  if (!registryTemplate || registryTemplate.legacy) {
+    fail(path, `references unavailable current registry template ${expectedSlug}`);
+  }
+  const expectedVersion = registryTemplate.version ?? 1;
+  if (entry.template.registrySlug !== expectedSlug) {
+    fail(`${path}.template.registrySlug`, `must equal ${expectedSlug}`);
+  }
+  if (entry.template.registryVersion !== expectedVersion) {
+    fail(`${path}.template.registryVersion`, `must equal ${expectedVersion} for ${expectedSlug}`);
+  }
+  if (entry.template.name !== registryTemplate.title) {
+    fail(`${path}.template.name`, `must equal registry title ${JSON.stringify(registryTemplate.title)}`);
+  }
+}
+
+function validateExactDocumentLinks(documentKeys, outboundWhatsApp, path) {
+  const mappings = outboundWhatsApp
+    .filter((entry) => entry.kind === 'document-link')
+    .map((entry) => entry.documentKey);
+  if (mappings.length !== documentKeys.length || mappings.some((key, index) => key !== documentKeys[index])) {
+    fail(path, `document-link messages must map exactly once in document order: ${documentKeys.join(', ')}`);
+  }
+}
+
 export function validateOnboardingExecutionPlan(input) {
   const path = 'plan';
   exactKeys(input, [
     'schemaVersion', 'classification', 'stage', 'language', 'recipient', 'roleRelease', 'documents',
     'outboundWhatsApp', 'trainingEvidenceRequired',
   ], path);
-  if (input.schemaVersion !== ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION) {
-    fail(`${path}.schemaVersion`, `must equal ${ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}`);
+  if (![1, ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION].includes(input.schemaVersion)) {
+    fail(`${path}.schemaVersion`, `must equal 1 or ${ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}`);
   }
   const classification = safeString(input.classification, `${path}.classification`, { pattern: /^[a-z][a-z0-9_]*$/ });
   const classificationRules = CLASSIFICATION_RULES[classification];
   if (!classificationRules) fail(`${path}.classification`, 'is unsupported');
   const stage = safeString(input.stage, `${path}.stage`, { pattern: SAFE_KEY });
-  const rules = classificationRules.stages[stage];
+  const rules = input.schemaVersion === 1 && classification === 'w2_local' && stage === 'initial'
+    ? LEGACY_W2_INITIAL_RULES
+    : classificationRules.stages[stage];
   if (!rules) fail(`${path}.stage`, `is unsupported for ${classification}`);
   const language = safeString(input.language, `${path}.language`, { pattern: /^[a-z]{2}$/ });
   if (!rules.languages.includes(language)) fail(`${path}.language`, `is unsupported for ${classification} ${stage}`);
   if (!Array.isArray(input.documents)) fail(`${path}.documents`, 'must be an array');
-  const documents = input.documents.map((entry, index) => document(entry, `${path}.documents[${index}]`));
+  const documents = input.documents.map((entry, index) => document(entry, `${path}.documents[${index}]`, input.schemaVersion));
   const keys = documents.map((entry) => entry.key);
   if (keys.length !== rules.documents.length || keys.some((key, index) => key !== rules.documents[index])) {
     fail(`${path}.documents`, `must use the ordered ${classification} ${stage} document set: ${rules.documents.join(', ')}`);
@@ -245,6 +306,9 @@ export function validateOnboardingExecutionPlan(input) {
   documents.forEach((entry, index) => {
     if (entry.filingDestination !== rules.destinations[index]) {
       fail(`${path}.documents[${index}].filingDestination`, `must equal ${rules.destinations[index]} for ${entry.key}`);
+    }
+    if (input.schemaVersion === ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION) {
+      validateCurrentTemplateBinding(entry, rules.templateSlugs[language][index], `${path}.documents[${index}]`);
     }
   });
   if (!Array.isArray(input.outboundWhatsApp) || input.outboundWhatsApp.length === 0) {
@@ -258,11 +322,14 @@ export function validateOnboardingExecutionPlan(input) {
     seenOutbound.add(result.key);
     return result;
   });
+  if (input.schemaVersion === ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION) {
+    validateExactDocumentLinks(keys, outboundWhatsApp, `${path}.outboundWhatsApp`);
+  }
   if (input.trainingEvidenceRequired !== classificationRules.trainingEvidenceRequired) {
     fail(`${path}.trainingEvidenceRequired`, `must equal ${classificationRules.trainingEvidenceRequired} for ${classification}`);
   }
   return {
-    schemaVersion: ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION,
+    schemaVersion: input.schemaVersion,
     classification,
     stage,
     language,

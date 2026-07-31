@@ -14,9 +14,9 @@ export const PROGRAMS = {
     { row: null, title: 'Code of Safe Practices' },
   ],
   es: [
-    { row: 11, title: 'Injury and Illness Prevention Program (IIPP)' },
+    { row: 11, title: 'Programa de Prevención de Lesiones y Enfermedades (IIPP)' },
     { row: 12, title: 'Plan de Prevención de Enfermedades por Calor' },
-    { row: 13, title: 'Fall Protection Program' },
+    { row: 13, title: 'Programa de Protección contra Caídas' },
     { row: null, title: 'Code of Safe Practices' },
   ],
 };

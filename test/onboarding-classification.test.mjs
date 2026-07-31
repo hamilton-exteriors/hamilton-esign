@@ -18,8 +18,10 @@ const w2 = () => ({
   phone: '+16509770001',
   role: 'Roofer',
   startDate: '2026-08-01',
-  baseHourlyRate: 16.90,
-  productionBonusRate: 14.90,
+  hourlyGuaranteeRate: 16.90,
+  pieceRatePerSquare: 37.50,
+  comparisonMethod: 'greater_of',
+  workweek: 'sunday_saturday',
   sickLeaveMethod: 'accrual',
   payday: 'Friday',
 });
@@ -75,11 +77,15 @@ test('enforces W-2 phone, role, start date, rates, payday, and sick-leave constr
     [{ role: 'ZZ TEST Coordinator' }, /W-2 role must be Roofer or Foreman/],
     [{ startDate: '08/01/2026' }, /startDate must be a valid YYYY-MM-DD date/],
     [{ startDate: '2026-02-30' }, /startDate must be a valid YYYY-MM-DD date/],
-    [{ baseHourlyRate: 0 }, /baseHourlyRate must be a positive number/],
-    [{ baseHourlyRate: 17 }, /must match the current signed packet rate of 16\.90/],
-    [{ productionBonusRate: 'nope' }, /productionBonusRate must be a positive number/],
-    [{ productionBonusRate: 15 }, /must match the current Roofer packet rate of 14\.90/],
-    [{ role: 'Foreman', productionBonusRate: 14.90 }, /must match the current Foreman packet rate of 29\.90/],
+    [{ hourlyGuaranteeRate: 0 }, /hourlyGuaranteeRate must be a positive number/],
+    [{ hourlyGuaranteeRate: 17 }, /must match the current signed packet rate of 16\.90/],
+    [{ pieceRatePerSquare: 'nope' }, /pieceRatePerSquare must be a positive number/],
+    [{ pieceRatePerSquare: 15 }, /must match the current Roofer packet rate of 37\.50/],
+    [{ role: 'Foreman', pieceRatePerSquare: 37.50 }, /must match the current Foreman packet rate of 52\.50/],
+    [{ comparisonMethod: 'additive' }, /comparisonMethod must be greater_of/],
+    [{ workweek: 'monday_sunday' }, /workweek must be sunday_saturday/],
+    [{ baseHourlyRate: 16.90 }, /retired bonus-model field/],
+    [{ productionBonusRate: 14.90 }, /retired bonus-model field/],
     [{ payday: 'Monday' }, /payday must be Friday/],
     [{ sickLeaveMethod: 'frontload' }, /sickLeaveMethod must be accrual/],
   ];
@@ -192,6 +198,29 @@ test('atomically saves and loads synthetic state under the pre-import temporary 
 
 
 
+test('migrates legacy W-2 bonus terms for read compatibility without treating them as current terms', () => {
+  const current = validRecord('w2_local');
+  const legacy = structuredClone(current);
+  legacy.version = 2;
+  delete legacy.intake.hourlyGuaranteeRate;
+  delete legacy.intake.pieceRatePerSquare;
+  delete legacy.intake.comparisonMethod;
+  delete legacy.intake.workweek;
+  legacy.intake.baseHourlyRate = 16.90;
+  legacy.intake.productionBonusRate = 14.90;
+  const migrated = state.migrateRecord(legacy, '2026-07-29T13:00:00.000Z');
+  assert.equal(migrated.version, state.ONBOARDING_VERSION);
+  assert.equal(migrated.intake.compensationTermsVersion, 'legacy-v1');
+  assert.deepEqual(migrated.legacyCompensation, {
+    model: 'hourly_plus_production_bonus',
+    baseHourlyRate: 16.90,
+    productionBonusRate: 14.90,
+  });
+  assert.equal(Object.hasOwn(migrated.intake, 'baseHourlyRate'), false);
+  assert.equal(Object.hasOwn(migrated.intake, 'hourlyGuaranteeRate'), false);
+  assert.doesNotThrow(() => state.assertRecord(migrated));
+});
+
 test('migrates the known v1 contractor role and blocks unknown legacy roles', () => {
   const current = validRecord('overseas_contractor');
   const legacy = structuredClone(current);
@@ -222,11 +251,14 @@ test('source invariants keep signing links private and classification plans cros
   const root = new URL('..', import.meta.url);
   const signingSource = readFileSync(new URL('../pipeline/send-signing-link.mjs', import.meta.url), 'utf8');
   const onboardingSource = readFileSync(new URL('../pipeline/onboarding.mjs', import.meta.url), 'utf8');
+  const packetSource = readFileSync(new URL('../pipeline/run-packet.mjs', import.meta.url), 'utf8');
   assert.match(signingSource, /hamilton:\s*null/);
   assert.match(signingSource, /\?lang=\$\{l\}/);
   assert.match(signingSource, /send_email:\s*false,\s*send_sms:\s*false/);
   assert.match(onboardingSource, /\['W-9', '1099', 'Mercury recipient', 'vendor bill', 'independent contractor agreement'\]/);
   assert.match(onboardingSource, /\['I-9', 'W-4', 'DE 4', 'DE 34', 'California pamphlets', 'workers compensation', 'payroll'\]/);
+  assert.match(packetSource, /const NEEDS_HANDOUTS = new Set\(\['acknowledgment'\]\)/);
+  assert.doesNotMatch(onboardingSource, /pamphletCopy|programCopy/);
   assert.equal(root.protocol, 'file:');
 });
 

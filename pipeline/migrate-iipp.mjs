@@ -1,13 +1,33 @@
 // Guarded, in-place migration for the one active IIPP template. This utility
 // never creates, archives, clones, or replaces a template or submission.
 import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createHash } from 'node:crypto';
 import { BUILD_DIR, loadDocusealSecrets } from './config.mjs';
 import { createDocusealClient } from './docuseal-api.mjs';
 import { TEMPLATE_BY_SLUG, requireUniqueActiveTemplate } from './registry.mjs';
+import {
+  assertNoBlockingSubmissions,
+  DOCUSEAL_TEMPLATE_MUTATION_CAPABILITIES,
+  requireProviderConditionalMutation,
+} from './template-mutation-safety.mjs';
+
+import { createMigrationProcessLock } from './migration-process-lock.mjs';
 
 const SLUG = 'iipp';
+export const IIPP_MIGRATION_WORKFLOW_ID = 'iipp-template-migration';
+const DEFAULT_IIPP_LOCK_PATH = join(
+  homedir(), '.claude', '.hamilton-state', 'template-migrations', 'iipp.lock',
+);
+
+export function createIippMigrationProcessLock(options = {}) {
+  return createMigrationProcessLock({
+    path: process.env.HAMILTON_IIPP_MIGRATION_LOCK || DEFAULT_IIPP_LOCK_PATH,
+    workflowId: IIPP_MIGRATION_WORKFLOW_ID,
+    ...options,
+  });
+}
 const EXPECTED_TEMPLATE_ID = 360;
 const EXPECTED_NAMES = [
   'Effective date',
@@ -169,12 +189,16 @@ export function createAdminSession(secrets, fetchImpl = fetch) {
       setCookie(response);
       if (![302, 303].includes(response.status)) throw new Error(`sign-in failed ${response.status}`);
     },
-    async uploadPdf(templateId, pdf, filename = 'iipp.pdf') {
+    async getCsrf(templateId) {
       const edit = await fetchImpl(`${secrets.url}/templates/${templateId}/edit`, { headers: { cookie } });
       setCookie(edit);
       if (!edit.ok) throw new Error(`IIPP edit page failed ${edit.status}`);
       const csrf = ((await edit.text()).match(/name="csrf-token" content="([^"]+)"/) || [])[1];
       if (!csrf) throw new Error('IIPP edit page returned no CSRF token');
+      return csrf;
+    },
+    async uploadPdf(templateId, pdf, filename = 'iipp.pdf') {
+      const csrf = await this.getCsrf(templateId);
       const body = new FormData();
       body.append('files[]', new Blob([pdf], { type: 'application/pdf' }), filename);
       const response = await fetchImpl(`${secrets.url}/templates/${templateId}/documents`, {
@@ -204,6 +228,13 @@ export function createAdminSession(secrets, fetchImpl = fetch) {
 
 async function run() {
   const apply = process.argv.includes('--apply');
+  let migrationLock;
+  if (apply) {
+    requireProviderConditionalMutation(DOCUSEAL_TEMPLATE_MUTATION_CAPABILITIES);
+    migrationLock = createIippMigrationProcessLock();
+    migrationLock.acquire();
+  }
+  try {
   const secrets = loadDocusealSecrets();
   const client = createDocusealClient(secrets);
   const documents = JSON.parse(readFileSync(`${BUILD_DIR}/fields.json`, 'utf8'));
@@ -216,49 +247,23 @@ async function run() {
   const plan = planIippMigration(before, generated);
 
   const submissions = await client.listAll('/api/submissions', { what: 'submission inventory' });
-  const active = submissions.filter((submission) => !submission.archived_at &&
-    (submission.template?.id === before.id || submission.template_id === before.id));
-  for (const submission of active) {
-    const full = await client.request(`/api/submissions/${submission.id}`, {}, `IIPP submission ${submission.id}`);
-    if (Object.hasOwn(full, 'template_fields') || Object.hasOwn(full, 'template_schema')) {
-      throw new Error(`submission ${submission.id} contains a frozen template snapshot; refusing migration`);
-    }
-  }
+  await assertNoBlockingSubmissions({
+    submissions,
+    targetTemplateIds: new Set([before.id]),
+    readSubmission: (id) => client.request(`/api/submissions/${id}`, {}, `IIPP submission ${id}`),
+  });
 
   console.log(`IIPP template ${before.id}: ${plan.alreadyApplied ? 'already current' : plan.changes.join('; ')}`);
-  console.log(`active submissions checked: ${active.length}`);
+  console.log(`submission inventory safety-checked: ${submissions.length}`);
   if (!apply) {
     console.log('dry run only; re-run with --apply');
     return;
   }
-  if (plan.alreadyApplied) {
-    console.log('no migration needed');
-    return;
-  }
-
-  const admin = createAdminSession(secrets);
-  await admin.signIn();
-  const uploaded = await admin.uploadPdf(before.id, readFileSync(`${BUILD_DIR}/iipp.pdf`));
-  const attachmentUuid = uploaded.schema[0].attachment_uuid;
-  const fields = buildMigratedFields(before, generated, attachmentUuid);
-  const rollback = { schema: before.schema, submitters: before.submitters, fields: before.fields };
-  const rollbackHash = createHash('sha256').update(JSON.stringify(rollback)).digest('hex').slice(0, 12);
-  let saved = false;
-  try {
-    await admin.save(before.id, uploaded.csrf, uploaded.schema, before.submitters, fields);
-    saved = true;
-    const after = await client.request(`/api/templates/${before.id}`, {}, 'migrated IIPP template');
-    assertIippPostflight(before, after, generated, attachmentUuid);
-    console.log(`IIPP migrated in place; rollback fingerprint ${rollbackHash}`);
-  } catch (error) {
-    if (saved) {
-      await admin.save(before.id, uploaded.csrf, rollback.schema, rollback.submitters, rollback.fields);
-      const restored = await client.request(`/api/templates/${before.id}`, {}, 'rolled-back IIPP template');
-      if (!same(restored.schema, before.schema) || !same(restored.fields, before.fields)) {
-        throw new Error(`postflight failed (${error.message}); automatic rollback also failed`);
-      }
-    }
-    throw error;
+  // Deliberately unreachable until DocuSeal offers an atomic provider precondition.
+  // A local rollback fingerprint cannot make an unconditional upload/PUT safe.
+  requireProviderConditionalMutation(DOCUSEAL_TEMPLATE_MUTATION_CAPABILITIES);
+  } finally {
+    migrationLock?.release();
   }
 }
 

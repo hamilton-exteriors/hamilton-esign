@@ -2,7 +2,9 @@
 // measure exact boxes, then emit PDF + DocuSeal-normalised field coordinates.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { PDFDocument, PDFName, StandardFonts, rgb } from 'pdf-lib';
 import { BUILD_DIR } from './config.mjs';
+import { TEMPLATE_BY_SLUG, orderedSources } from './registry.mjs';
 
 const DIR = BUILD_DIR;
 // IMPORTED, never redeclared. This file previously carried its own copy of the
@@ -14,11 +16,15 @@ const DIR = BUILD_DIR;
 // Two constants for one fact is the bug; there is now one.
 import { PAGE } from './build-docs.mjs';
 import { validateGeneratedGeometry } from './field-geometry.mjs';
+import { measuredLayoutDigest, sha256 } from './build-manifest.mjs';
+import { deterministicPdfBytes, packetFooterDescriptors } from './pdf-determinism.mjs';
+import { locateStatutoryFooterMasks } from './statutory-assets.mjs';
 const manifest = JSON.parse(readFileSync(`${DIR}/manifest.json`, 'utf8'));
 
 // Injected: flow content into fixed pages, refine types, measure.
 const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
   const flow = document.querySelector('.flow');
+  let currentSource = flow.dataset.sourceSlug;
   const contentH = h - mt - mb;
   // Build pages by moving block children until each page is full.
   const blocks = Array.from(flow.children);
@@ -27,6 +33,7 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
   const newPage = () => {
     page = document.createElement('div');
     page.className = 'page';
+    page.dataset.sourceSlug = currentSource;
     document.body.appendChild(page);
     pages.push(page); used = 0;
   };
@@ -88,6 +95,12 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
   };
 
   for (const b of blocks) {
+    if (b.classList?.contains('hx-source-break')) {
+      currentSource = b.dataset.nextSource;
+      b.remove();
+      if (page.children.length) newPage();
+      continue;
+    }
     page.appendChild(b);
     if (!overflows()) continue;
 
@@ -116,11 +129,13 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
       while (p.scrollHeight > p.clientHeight && p.children.length > 1 && guard++ < 40) {
         const victim = p.lastElementChild;
         let next = pages[i + 1];
-        if (!next) {
+        if (!next || next.dataset.sourceSlug !== p.dataset.sourceSlug) {
+          const following = next;
           next = document.createElement('div');
           next.className = 'page';
-          document.body.appendChild(next);
-          pages.push(next);
+          next.dataset.sourceSlug = p.dataset.sourceSlug;
+          document.body.insertBefore(next, following || null);
+          pages.splice(i + 1, 0, next);
         }
         next.insertBefore(victim, next.firstChild);
         moved = true;
@@ -133,11 +148,13 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
       // single line under it.
       const pushForward = (el) => {
         let next = pages[i + 1];
-        if (!next) {
+        if (!next || next.dataset.sourceSlug !== p.dataset.sourceSlug) {
+          const following = next;
           next = document.createElement('div');
           next.className = 'page';
-          document.body.appendChild(next);
-          pages.push(next);
+          next.dataset.sourceSlug = p.dataset.sourceSlug;
+          document.body.insertBefore(next, following || null);
+          pages.splice(i + 1, 0, next);
         }
         next.insertBefore(el, next.firstChild);
         moved = true;
@@ -348,6 +365,7 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
         type: el.dataset.type,
         ...(el.dataset.presentation ? { presentation: el.dataset.presentation } : {}),
         owner: el.dataset.owner || 'worker',
+        sourceSlug: el.dataset.sourceSlug || '',
         page: pi,
         x: +((r.left - pr.left) / w).toFixed(5),
         y: +((r.top - pr.top) / h).toFixed(5),
@@ -381,8 +399,123 @@ const SCRIPT = ({ w, h, mt, mb, ml, mr }) => {
     footer.number !== `Page ${footer.page + 1} of ${pages.length}` ||
     Math.abs(footer.left - ml) > 1 || Math.abs(footer.right - mr) > 1 ||
     footer.top < h - mb || footer.bottom < 0);
-  return { pageCount: pages.length, fields: out, overflow, footers, footerProblems };
+  return { pageCount: pages.length, pageSources: pages.map((page) => page.dataset.sourceSlug), fields: out, overflow, footers, footerProblems };
 };
+
+async function composeOrderedPdf(manifestEntry, measured, basePdfPath, outputPath) {
+  const entry = TEMPLATE_BY_SLUG.get(manifestEntry.slug);
+  if (!entry) throw new Error(`${manifestEntry.slug}: registry entry is missing during PDF composition`);
+  const base = await PDFDocument.load(readFileSync(basePdfPath), { updateMetadata: false });
+  const output = await PDFDocument.create({ updateMetadata: false });
+  const pageMap = new Map();
+  const generatedOutputPages = new Set();
+  const sources = manifestEntry.sources.map((source) => ({ ...source }));
+  for (const definition of orderedSources(entry)) {
+    const source = sources.find((candidate) => candidate.slug === definition.slug);
+    if (!source) throw new Error(`${entry.slug}: manifest source ${definition.slug} is missing`);
+    source.outputStartPage = output.getPageCount();
+    if (definition.kind === 'markdown') {
+      const indices = measured.pageSources
+        .map((slug, index) => slug === definition.slug ? index : -1)
+        .filter((index) => index >= 0);
+      if (!indices.length) throw new Error(`${entry.slug}: generated source ${definition.slug} has no PDF pages`);
+      const copied = await output.copyPages(base, indices);
+      copied.forEach((page, index) => {
+        pageMap.set(indices[index], output.getPageCount());
+        generatedOutputPages.add(output.getPageCount());
+        output.addPage(page);
+      });
+      source.pageCount = indices.length;
+    } else {
+      const bytes = readFileSync(`${DIR}/${source.filename}`);
+      const statutory = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+      // Statutory inserts are read-only evidence, never signer forms. Remove the
+      // complete interactive layer before copying instead of invoking appearance
+      // generation: several agency PDFs contain malformed legacy widget metadata
+      // that pdf-lib cannot flatten safely.
+      statutory.catalog.delete(PDFName.of('AcroForm'));
+      for (const page of statutory.getPages()) page.node.delete(PDFName.of('Annots'));
+      if (statutory.catalog.get(PDFName.of('AcroForm')) ||
+        statutory.getPages().some((page) => page.node.get(PDFName.of('Annots')))) {
+        throw new Error(`${entry.slug}: could not remove statutory widgets from ${definition.slug}`);
+      }
+      const indices = statutory.getPageIndices();
+      if (indices.length !== source.pageCount) {
+        throw new Error(`${entry.slug}: statutory source ${definition.slug} page count changed during composition`);
+      }
+      const footerMasks = await locateStatutoryFooterMasks(bytes);
+      if (footerMasks.length !== indices.length) {
+        throw new Error(`${entry.slug}: statutory footer scan changed page count for ${definition.slug}`);
+      }
+      const copied = await output.copyPages(statutory, indices);
+      copied.forEach((page, sourcePageIndex) => {
+        page.node.delete(PDFName.of('Annots'));
+        const { width, height } = page.getSize();
+        for (const mask of footerMasks[sourcePageIndex]) {
+          const x = Math.max(0, mask.x);
+          const y = Math.max(0, mask.y);
+          const maskWidth = Math.min(mask.width, width - x);
+          const maskHeight = Math.min(mask.height, height - y);
+          if (maskWidth > 0 && maskHeight > 0) {
+            page.drawRectangle({ x, y, width: maskWidth, height: maskHeight, color: rgb(1, 1, 1) });
+          }
+        }
+        output.addPage(page);
+      });
+    }
+  }
+  const fields = measured.fields.map((field) => {
+    const page = pageMap.get(field.page);
+    if (!Number.isInteger(page)) throw new Error(`${entry.slug}: field ${field.id} lost its source page during composition`);
+    return { ...field, page };
+  });
+  const footerFont = await output.embedFont(StandardFonts.Helvetica);
+  const totalPages = output.getPageCount();
+  const finalFooters = packetFooterDescriptors(totalPages);
+  output.getPages().forEach((pdfPage, index) => {
+    const { width } = pdfPage.getSize();
+    const clearHeight = generatedOutputPages.has(index) ? 50 : 14;
+    // Generated pages reserve a full footer zone. Statutory artwork may run close
+    // to the edge, so its source labels are cleared with the precise masks above;
+    // this narrow white strip only gives the replacement footer a consistent,
+    // legible background without covering nearby agency content.
+    pdfPage.drawRectangle({ x: 0, y: 0, width, height: clearHeight, color: rgb(1, 1, 1) });
+    const { identity, number } = finalFooters[index];
+    pdfPage.drawText(identity, { x: 28, y: 8, size: 6, font: footerFont, color: rgb(0.2, 0.2, 0.2) });
+    pdfPage.drawText(number, {
+      x: width - 28 - footerFont.widthOfTextAtSize(number, 6), y: 8,
+      size: 6, font: footerFont, color: rgb(0.2, 0.2, 0.2),
+    });
+  });
+  output.setTitle(manifestEntry.title);
+  output.setAuthor('ABR Quality Resources Inc dba Hamilton Exteriors');
+  output.setCreator('Hamilton e-Sign deterministic document pipeline');
+  output.setProducer('Hamilton e-Sign / pdf-lib');
+  const releaseDate = new Date('2026-07-30T00:00:00.000Z');
+  output.setCreationDate(releaseDate);
+  output.setModificationDate(releaseDate);
+  output.catalog.delete(PDFName.of('AcroForm'));
+  const bytes = await output.save({
+    useObjectStreams: false,
+    addDefaultPage: false,
+    objectsPerTick: Infinity,
+    updateFieldAppearances: false,
+  });
+  writeFileSync(outputPath, bytes);
+  const verified = await PDFDocument.load(bytes, { updateMetadata: false });
+  const hasWidgetAnnotations = verified.getPages().some((page) => {
+    const annotations = page.node.Annots();
+    return annotations?.asArray().some((reference) =>
+      verified.context.lookup(reference)?.get(PDFName.of('Subtype'))?.toString() === '/Widget');
+  });
+  if (verified.catalog.get(PDFName.of('AcroForm')) || hasWidgetAnnotations) {
+    throw new Error(`${entry.slug}: composed PDF retains interactive form widgets`);
+  }
+  if (verified.getPageCount() !== output.getPageCount()) {
+    throw new Error(`${entry.slug}: serialized PDF page count changed during composition`);
+  }
+  return { fields, sources, pageCount: verified.getPageCount(), footers: finalFooters };
+}
 
 const browser = await chromium.launch();
 const results = [];
@@ -395,29 +528,56 @@ for (const m of manifest) {
   // the print layout is the same width the DOM was measured at. Without it
   // Chromium lays out for its own default sheet and scales the result to fit,
   // which silently divorces the PDF from the coordinates.
+  const basePdfPath = `${DIR}/${m.slug}.generated.pdf`;
   await page.pdf({
-    path: `${DIR}/${m.slug}.pdf`,
+    path: basePdfPath,
     width: `${PAGE.w}px`, height: `${PAGE.h}px`,
     preferCSSPageSize: true,
     printBackground: true, margin: { top: 0, bottom: 0, left: 0, right: 0 },
   });
   await page.close();
-  // Verify the PDF paginated to exactly the pages we measured against.
-  const pdfPages = (readFileSync(`${DIR}/${m.slug}.pdf`).toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
-  const geometryProblems = validateGeneratedGeometry({ pageCount: res.pageCount, fields: res.fields });
-  const ok = pdfPages === res.pageCount && res.overflow.length === 0 &&
-    res.footerProblems.length === 0 && geometryProblems.length === 0 &&
-    res.fields.length === m.fields.length;
+  // Chromium embeds wall-clock metadata in every print. Canonicalize the retained
+  // intermediate before page counting or composition so the complete build tree,
+  // not only the final packet, is reproducible.
+  writeFileSync(basePdfPath, await deterministicPdfBytes(readFileSync(basePdfPath), { title: m.title }));
+  // Verify the generated PDF before composing authoritative statutory PDFs into
+  // their ordered source positions, then remap every signable field page.
+  const basePdfPages = (readFileSync(basePdfPath).toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+  const baseGeometryProblems = validateGeneratedGeometry({ pageCount: res.pageCount, fields: res.fields });
+  const outputPath = `${DIR}/${m.slug}.pdf`;
+  const composed = await composeOrderedPdf(m, res, basePdfPath, outputPath);
+  const geometryProblems = validateGeneratedGeometry({ pageCount: composed.pageCount, fields: composed.fields });
+  const pdfPages = composed.pageCount;
+  const ok = basePdfPages === res.pageCount && res.overflow.length === 0 &&
+    res.footerProblems.length === 0 && baseGeometryProblems.length === 0 &&
+    geometryProblems.length === 0 && composed.fields.length === m.fields.length;
   const details = [];
-  if (pdfPages !== res.pageCount) details.push(`PDF=${pdfPages} vs ${res.pageCount}`);
+  if (basePdfPages !== res.pageCount) details.push(`generated PDF=${basePdfPages} vs ${res.pageCount}`);
   if (res.overflow.length) details.push(`overflow:${JSON.stringify(res.overflow)}`);
   if (res.footerProblems.length) details.push(`footer:${JSON.stringify(res.footerProblems)}`);
-  if (geometryProblems.length) details.push(`geometry:${JSON.stringify(geometryProblems)}`);
-  if (res.fields.length !== m.fields.length) details.push(`fields=${res.fields.length} vs ${m.fields.length}`);
+  if (baseGeometryProblems.length || geometryProblems.length) {
+    details.push(`geometry:${JSON.stringify([...baseGeometryProblems, ...geometryProblems])}`);
+  }
+  if (composed.fields.length !== m.fields.length) details.push(`fields=${composed.fields.length} vs ${m.fields.length}`);
   const flag = ok ? 'ok' : details.join(' ');
-  console.log(`${m.slug.padEnd(34)} pages=${String(res.pageCount).padStart(2)} fields=${String(res.fields.length).padStart(3)}  ${flag}`);
+  console.log(`${m.slug.padEnd(34)} pages=${String(pdfPages).padStart(3)} fields=${String(composed.fields.length).padStart(3)}  ${flag}`);
   if (!ok) failures.push(`${m.slug}: ${flag}`);
-  results.push({ slug: m.slug, pageCount: res.pageCount, pdfPages, footers: res.footers, fields: res.fields });
+  const pdfSha256 = sha256(readFileSync(outputPath));
+  const measuredDocument = {
+    slug: m.slug,
+    title: m.title,
+    schemaVersion: m.schemaVersion,
+    templateVersion: m.templateVersion,
+    composite: m.composite,
+    manifestSha256: m.manifestSha256,
+    sources: composed.sources,
+    pdfSha256,
+    pageCount: composed.pageCount,
+    pdfPages,
+    footers: composed.footers,
+    fields: composed.fields,
+  };
+  results.push({ ...measuredDocument, layoutSha256: measuredLayoutDigest(measuredDocument) });
 }
 await browser.close();
 if (failures.length) {

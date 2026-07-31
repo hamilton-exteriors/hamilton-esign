@@ -43,12 +43,79 @@ node pipeline/build-docs.mjs <slug…>   # md → print HTML + reflow HTML; emit
 node pipeline/measure.mjs              # paginate, refine types, measure coords, emit PDF + fields.json
 node pipeline/build-templates.mjs      # create templates; stages brand/reflow/ + index.json
 node pipeline/verify-templates.mjs     # last-mile check against DocuSeal's own raster
-node pipeline/migrate-generated-templates.mjs          # dry-run guarded in-place refresh
-node pipeline/migrate-generated-templates.mjs --apply  # preserve template/field UUIDs
+node pipeline/migrate-generated-templates.mjs          # local dry-run analysis only
+# --apply is intentionally disabled until DocuSeal exposes provider-side CAS
 ```
 
 `build-docs` takes slugs as arguments and everything downstream reads only what
 it produced, so a rebuild can be scoped to one document.
+
+### Unreleased W-2 combined-packet code state (2026-07-30)
+
+This worktree changes repository behavior only. It has not created templates, called
+production APIs, delivered documents, or changed a deployment.
+
+- New W-2 intake uses `hourlyGuaranteeRate`, `pieceRatePerSquare`,
+  `comparisonMethod: greater_of`, and `workweek: sunday_saturday`.
+- New records reject the retired additive `baseHourlyRate` and
+  `productionBonusRate` fields. Onboarding state v3 migrates old v1/v2 W-2 records
+  into explicitly labeled `legacyCompensation` metadata for read compatibility;
+  it does not reinterpret old terms as the new piece-rate agreement.
+- The initial W-2 signing document is one versioned composite per language:
+  `w2-initial-packet-v2` and `w2-initial-packet-es-v2`. Their ordered sources are
+  agreement, §2810.5 wage notice, eight current statutory PDFs, the four company
+  safety programs, and finally the policy acknowledgment whose initials attest receipt
+  of those preceding materials. Normal builds load immutable, SHA-locked source PDFs
+  from the tracked offline cache; the explicit refresh command alone checks allowlisted
+  California agency hosts. The cache retains the exact agency source bytes for digest
+  verification and mobile text extraction. The final packet does not: composition
+  removes annotations/form widgets, masks superseded source footer labels, and stamps
+  one packet footer. Company program content is static in the composite, with no
+  per-hire program widgets. The safety training roster remains a separate post-training
+  document.
+- Build manifest schema v2 records ordered source filenames, authoritative URLs,
+  source page counts, and cached-source SHA-256 digests. Measurement transforms those
+  sources into the composed packet, records a separate final-PDF digest, strips source
+  form widgets/annotations, remaps later field pages, masks stale source footers, and
+  adds exactly one `Page X of N` footer across the 82-page EN and 87-page ES composites.
+  Template creation fails if registry order, cached source bytes, composed PDF bytes,
+  field totals, or Worker/Hamilton ownership drift.
+- Current generated geometry is 82 pages / 62 fields (EN, Worker 41 / Hamilton 21)
+  and 87 pages / 61 fields (ES, Worker 41 / Hamilton 20). Each ordered source
+  begins on a distinct PDF page, and every field retains its source slug and a
+  globally unique anchor id before live UUID stamping. Spanish DE-2515's folded
+  four-panel brochure text follows the agency artwork's semantic reader sequence
+  (cover, definitions, pregnancy/care, application, next steps, calculation,
+  rights/contact, administrative back), not generic physical left-to-right order.
+- Execution-plan schema v2 uses one `initial-packet` document. Validation still
+  reads immutable schema-v1 three-document plans. Local runtime also recognizes
+  the old acknowledgment/wage-notice keys only for already-existing state.
+- Generated-template creation readback now verifies attachment/document mapping plus every
+  field's UUID, name, description, required flag, type, submitter ownership, and geometry
+  against the measured source before reflow binding. Expected semantic drift fails closed;
+  only an absent optional description is canonicalized.
+- Generated-template migration is composite-only and dry-run by default. Spaced or
+  equals-form `--slug` arguments are validated, process locks and journal creation are
+  atomically exclusive, and the transaction engine has interruption/resume and
+  compare-and-swap rollback tests. Lock metadata includes workflow, host, PID, random
+  ownership token, acquisition/process-start times, and process-start identity when the
+  platform exposes it. A stale lock is reclaimed atomically only when it belongs to the
+  same workflow and host and its original owner is demonstrably dead; live, foreign,
+  malformed, non-stale, and uncertain locks remain blocking, including PID-reuse cases.
+  DocuSeal exposes no provider-side ETag, version precondition, or atomic conditional
+  mutation for template PUT/upload, so both migration CLIs deliberately reject `--apply`
+  before secrets or network access. Unsafe in-place migration remains disabled rather
+  than relying on local state to overwrite possible concurrent remote edits.
+- Spanish safety-program source coverage now includes `iipp-es.md` and
+  `fall-protection-program-es.md`; the Code of Safe Practices remains the shared
+  bilingual fourth program.
+- Safe local validation: 149/149 repository Node tests passed; Markdown → HTML →
+  reflow → Letter PDF measurement passed twice with 82 byte-identical retained
+  artifacts. Page totals remained 82 EN / 87 ES. First/last composite footers, Spanish
+  DWC pages 13-18, and the real cached Spanish DE-2515 reader order have literal
+  regressions and were visually inspected locally. `build-templates` dry-run preflight
+  passed without credentials or network access. Production apply, live verification,
+  commit, push, and deployment were intentionally not run.
 
 ---
 

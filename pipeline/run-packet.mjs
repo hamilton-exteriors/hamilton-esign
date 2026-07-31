@@ -33,19 +33,23 @@ const client = createDocusealClient();
 // colons survive every delivery path and match the owner's voice.
 const copy = {
   en: {
-    intro: (n) => `You're hired, welcome aboard. There are ${n} documents to sign, about 15 minutes total. ` +
-      `I'll send them one at a time so you're never looking at more than one. ` +
+    intro: (n) => `You're hired, welcome aboard. ${n === 1 ? 'There is 1 packet' : `There are ${n} documents`} to sign, about 15 minutes total. ` +
+      `I'll send ${n === 1 ? 'it' : 'them'} one at a time so you're never looking at more than one. ` +
       `Questions on any of it, call me at (650) 977-3241.`,
     doc: (i, n, title, link) => `${i} of ${n}: ${title}\n${link}`,
-    done: (n) => `That's all ${n} new-hire documents signed. I'll countersign and your copies come back here.`,
+    done: (n) => n === 1
+      ? `That's the full new-hire packet signed. I'll countersign and your copy comes back here.`
+      : `That's all ${n} new-hire documents signed. I'll countersign and your copies come back here.`,
     training: (title, link) => `Training is complete. Sign the ${title} attendance record here:\n${link}`,
   },
   es: {
-    intro: (n) => `Quedas contratado, bienvenido. Son ${n} documentos para firmar, unos 15 minutos en total. ` +
-      `Te los mando de uno en uno para que nunca veas más de uno a la vez. ` +
+    intro: (n) => `Quedas contratado, bienvenido. ${n === 1 ? 'Es 1 paquete' : `Son ${n} documentos`} para firmar, unos 15 minutos en total. ` +
+      `Te ${n === 1 ? 'lo mando' : 'los mando'} de uno en uno para que nunca veas más de uno a la vez. ` +
       `Cualquier duda, llámame al (650) 977-3241.`,
     doc: (i, n, title, link) => `${i} de ${n}: ${title}\n${link}`,
-    done: (n) => `Ya están firmados los ${n} documentos de contratación. Yo firmo después y tus copias regresan aquí.`,
+    done: (n) => n === 1
+      ? `Ya está firmado todo el paquete de contratación. Yo firmo después y tu copia regresa aquí.`
+      : `Ya están firmados los ${n} documentos de contratación. Yo firmo después y tus copias regresan aquí.`,
     training: (title, link) => `La capacitación terminó. Firma el registro ${title} aquí:\n${link}`,
   },
 };

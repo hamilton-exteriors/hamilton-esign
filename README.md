@@ -31,13 +31,25 @@ Deployed on Railway (project `backoffice`, service `docuseal`).
 ## Document pipeline (`pipeline/`)
 
 Markdown source of truth lives in
-`~/.claude/skills/onboard-worker/references/documents/`. Nothing is authored in
-DocuSeal's builder — edit the markdown and re-run.
+`~/.claude/skills/onboard-worker/references/documents/`. Immutable statutory PDF
+assets and their SHA-256/page-count lock live in `statutory/`; normal builds are
+fully offline. The W-2 initial packet orders the agreement and wage notice first,
+then eight statutory PDFs and all four company safety programs, and only then the
+policy acknowledgment that attests receipt of those materials:
+
+1. Injury and Illness Prevention Program (IIPP)
+2. Heat Illness Prevention Plan
+3. Fall Protection Program
+4. Code of Safe Practices
+
+Those program pages are read-only in each hire packet; the safety training roster
+remains its own post-training signing event. Nothing is authored in DocuSeal's builder.
 
     bun install
-    node pipeline/build-docs.mjs        # md -> print HTML, blanks -> measurable spans
-    node pipeline/measure.mjs           # paginate, type + own each field, emit PDF + coords
-    node pipeline/build-templates.mjs   # create templates; refuses active-name collisions
+    node pipeline/build-docs.mjs        # ordered sources -> print + reflow HTML
+    node pipeline/measure.mjs           # compose PDFs, remap fields, validate digests
+    node pipeline/build-templates.mjs   # dry-run local preflight; no credentials/network
+    node pipeline/build-templates.mjs --apply  # explicit production creation only
     node pipeline/stamp-reflow.mjs      # publish generated reflow + verify/stamp live UUIDs
     node pipeline/file-to-drive.mjs sweep   # file completed submissions into Drive
 
@@ -150,22 +162,25 @@ Mercury recipient, vendor bill, or payment.
 work must start through `onboarding.mjs`. If a WhatsApp outcome is ambiguous,
 inspect the conversation before explicitly using `--retry-ambiguous`.
 
-## California new-hire pamphlets — send these BEFORE the acknowledgment
+## California new-hire statutory PDFs
 
-Section A of the policy acknowledgment has the worker initial that he received
-eight specific state notices. The e-sign flow never sent them, so every one of
-those initials attested to something that had not happened. Same defect class as
-an acknowledgment referencing an IIPP that did not exist.
+The versioned EN/ES composite initial packet embeds eight statutory PDFs and all four
+company safety programs before the policy acknowledgment's receipt attestations.
+Normal builds use the immutable source files in `statutory/` and verify those cached
+source bytes against `statutory/lock.json`; they do not depend on live network content
+and fail closed on any source digest or page-count drift. The composed packet pages are
+not byte-for-byte copies of those cached PDFs: composition removes source annotations
+and form widgets, masks superseded source footer labels, and stamps the packet's single
+`Page X of N` footer. The build manifest records cached-source digests separately from
+the final composed-PDF digest.
 
-    node pipeline/send-pamphlets.mjs verify <en|es>  # check all 8 links
+`pipeline/refresh-statutory-assets.mjs` checks the allowlisted issuing-agency URLs and
+expected hashes. It is dry-run by default; `--apply` is required to replace the checked
+cache after deliberate review. Sources are DIR/DWC (Time of Hire and DWC 9783), EDD
+(DE 2320, DE 2515, and DE 2511), DLSE (paid sick leave and victims' rights), and CRD
+(sexual harassment). DWC 9783 is officially published only in English, so the Spanish
+composite labels that English-only source truthfully rather than implying a translation.
 
-Delivery is sequenced inside `pipeline/onboarding.mjs`; the direct `send` command
-is disabled so it cannot bypass the approved copy hash.
-
-Every URL is fetched and confirmed `200 application/pdf` from the issuing agency
-before anything is sent, and `sendPamphlets` aborts the whole batch if any link
-is dead — a 404 here would recreate the false record the module exists to
-prevent. Sources: DIR/DWC (Time of Hire, DWC 9783), EDD (DE 2320/2515/2511),
-DLSE (paid sick leave, domestic-violence notice), CRD (sexual harassment).
-DWC 9783 is published in English only and is sent as-is to Spanish speakers,
-since the predesignation form must be offered either way.
+Direct standalone pamphlet delivery remains disabled. New W-2 execution uses the
+immutable canonical Platform plan and the composite template; the separate safety
+training roster is sent only after actual training evidence exists.

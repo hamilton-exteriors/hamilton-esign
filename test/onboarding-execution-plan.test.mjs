@@ -11,10 +11,16 @@ const A = 'a'.repeat(64);
 const B = 'b'.repeat(64);
 const C = 'c'.repeat(64);
 
-function doc(key, name, id, filingDestination) {
+function doc(key, name, id, filingDestination, registry = null) {
   return {
     key,
-    template: { id, name, documentSha256: A, snapshotSha256: B },
+    template: {
+      id,
+      name,
+      ...(registry ? { registrySlug: registry.slug, registryVersion: registry.version } : {}),
+      documentSha256: A,
+      snapshotSha256: B,
+    },
     workerVisiblePrefills: { 'Worker Name': 'José Example', Rate: 22.5, Country: 'Philippines' },
     workerReadonlyFields: ['Worker Name'],
     hamiltonPrefills: { Employer: 'Hamilton Exteriors' },
@@ -56,29 +62,54 @@ function overseasPlan() {
 
 function w2InitialPlan() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     classification: 'w2_local',
     stage: 'initial',
     language: 'en',
     recipient: { name: 'Example Worker', phone: '+14155552671', email: null },
     roleRelease: null,
     documents: [
-      doc('agreement', 'Employment Agreement', 1, 'Personnel'),
-      doc('wage-notice', 'Wage Notice - Labor Code 2810.5', 2, 'Personnel'),
-      doc('acknowledgment', 'New Hire Policy Acknowledgment', 3, 'Personnel'),
+      doc(
+        'initial-packet',
+        'W-2 Initial Employment Packet v2',
+        1,
+        'Personnel',
+        { slug: 'w2-initial-packet-v2', version: 2 },
+      ),
     ],
     outboundWhatsApp: [{
-      key: 'agreement-link', kind: 'document-link', documentKey: 'agreement',
+      key: 'initial-packet-link', kind: 'document-link', documentKey: 'initial-packet',
       textTemplate: 'Sign your initial packet: {{signing_url}}', artifacts: [],
     }],
     trainingEvidenceRequired: true,
   };
 }
 
+function legacyW2InitialPlan() {
+  const plan = w2InitialPlan();
+  plan.schemaVersion = 1;
+  plan.documents = [
+    doc('agreement', 'Employment Agreement', 1, 'Personnel'),
+    doc('wage-notice', 'Wage Notice - Labor Code 2810.5', 2, 'Personnel'),
+    doc('acknowledgment', 'New Hire Policy Acknowledgment', 3, 'Personnel'),
+  ];
+  plan.outboundWhatsApp = [{
+    key: 'agreement-link', kind: 'document-link', documentKey: 'agreement',
+    textTemplate: 'Sign the legacy packet: {{signing_url}}', artifacts: [],
+  }];
+  return plan;
+}
+
 function w2TrainingPlan() {
   const plan = w2InitialPlan();
   plan.stage = 'training';
-  plan.documents = [doc('safety-roster', 'Safety Training Roster', 4, 'SafetyTrainingRosters')];
+  plan.documents = [doc(
+    'safety-roster',
+    'Safety Training Roster',
+    4,
+    'SafetyTrainingRosters',
+    { slug: 'safety-training-roster', version: 1 },
+  )];
   plan.outboundWhatsApp = [{
     key: 'safety-link', kind: 'document-link', documentKey: 'safety-roster',
     textTemplate: 'Acknowledge completed training: {{signing_url}}', artifacts: [],
@@ -115,6 +146,7 @@ test('canonical JSON sorts object keys, preserves ordered messages, and hashes U
 
 test('classification and stage enforce deferred W-2 training and exact document sets', () => {
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(w2InitialPlan()));
+  assert.doesNotThrow(() => validateOnboardingExecutionPlan(legacyW2InitialPlan()));
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(w2TrainingPlan()));
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(overseasPlan()));
 
@@ -131,15 +163,53 @@ test('classification and stage enforce deferred W-2 training and exact document 
     /stage is unsupported for overseas_contractor/,
   );
   assert.throws(
-    () => validateOnboardingExecutionPlan(mutate(overseasPlan(), (copy) => { copy.documents = w2InitialPlan().documents; })),
+    () => validateOnboardingExecutionPlan(mutate(overseasPlan(), (copy) => { copy.documents[0].key = 'initial-packet'; })),
     /ordered overseas_contractor initial document set/,
+  );
+});
+
+test('schema v2 binds classification, stage, language, and document key to the exact registry template', () => {
+  const spanish = mutate(w2InitialPlan(), (copy) => {
+    copy.language = 'es';
+    copy.documents[0].template.name = 'Paquete Inicial de Empleo W-2 v2';
+    copy.documents[0].template.registrySlug = 'w2-initial-packet-es-v2';
+  });
+  assert.doesNotThrow(() => validateOnboardingExecutionPlan(spanish));
+
+  const failures = [
+    [mutate(w2InitialPlan(), (copy) => { copy.language = 'es'; }), /registrySlug must equal w2-initial-packet-es-v2/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.name = 'Paquete Inicial de Empleo W-2 v2'; }), /must equal registry title/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].key = 'safety-roster'; }), /ordered w2_local initial document set/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registrySlug = 'safety-training-roster'; }), /registrySlug must equal w2-initial-packet-v2/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registryVersion = 1; }), /registryVersion must equal 2/],
+    [mutate(w2InitialPlan(), (copy) => { delete copy.documents[0].template.registryVersion; }), /missing keys: registryVersion/],
+  ];
+  for (const [input, expected] of failures) assert.throws(() => validateOnboardingExecutionPlan(input), expected);
+});
+
+test('schema v1 compatibility is explicit and does not weaken schema v2', () => {
+  const legacy = legacyW2InitialPlan();
+  assert.doesNotThrow(() => validateOnboardingExecutionPlan(legacy));
+  assert.throws(
+    () => validateOnboardingExecutionPlan(mutate(legacy, (copy) => {
+      copy.documents[0].template.registrySlug = 'employment-agreement';
+      copy.documents[0].template.registryVersion = 1;
+    })),
+    /unknown keys: registrySlug, registryVersion/,
+  );
+  assert.throws(
+    () => validateOnboardingExecutionPlan(mutate(w2InitialPlan(), (copy) => {
+      delete copy.documents[0].template.registrySlug;
+      delete copy.documents[0].template.registryVersion;
+    })),
+    /missing keys: registrySlug, registryVersion/,
   );
 });
 
 test('per-document filing destinations are classification and stage specific', () => {
   assert.throws(
-    () => validateOnboardingExecutionPlan(mutate(w2InitialPlan(), (copy) => { copy.documents[1].filingDestination = 'SafetyTrainingRosters'; })),
-    /must equal Personnel for wage-notice/,
+    () => validateOnboardingExecutionPlan(mutate(w2InitialPlan(), (copy) => { copy.documents[0].filingDestination = 'SafetyTrainingRosters'; })),
+    /must equal Personnel for initial-packet/,
   );
   assert.throws(
     () => validateOnboardingExecutionPlan(mutate(w2TrainingPlan(), (copy) => { copy.documents[0].filingDestination = 'Personnel'; })),
@@ -194,6 +264,22 @@ test('recipient identity enforces exact keys, E.164 classification, and optional
     [mutate(overseasPlan(), (copy) => { copy.recipient.name = 'https://docuseal.example/s/private-slug'; }), /private signing URL/],
   ];
   for (const [input, expected] of failures) assert.throws(() => validateOnboardingExecutionPlan(input), expected);
+});
+
+test('schema v2 requires one ordered document-link message for every planned document', () => {
+  const duplicateLink = structuredClone(w2InitialPlan().outboundWhatsApp[0]);
+  duplicateLink.key = 'duplicate-initial-packet-link';
+  const failures = [
+    [mutate(w2InitialPlan(), (copy) => { copy.outboundWhatsApp = [{ key: 'intro', kind: 'intro', textTemplate: 'Welcome.', artifacts: [] }]; }), /map exactly once in document order: initial-packet/],
+    [mutate(w2InitialPlan(), (copy) => { copy.outboundWhatsApp.push(duplicateLink); }), /map exactly once in document order: initial-packet/],
+    [mutate(w2InitialPlan(), (copy) => { copy.outboundWhatsApp.unshift(duplicateLink); }), /map exactly once in document order: initial-packet/],
+    [mutate(w2InitialPlan(), (copy) => { copy.outboundWhatsApp[0].documentKey = 'safety-roster'; }), /does not map to a document/],
+    [mutate(w2InitialPlan(), (copy) => { copy.outboundWhatsApp[0].kind = 'intro'; delete copy.outboundWhatsApp[0].documentKey; copy.outboundWhatsApp[0].textTemplate = 'Welcome.'; }), /map exactly once in document order: initial-packet/],
+  ];
+  for (const [input, expected] of failures) assert.throws(() => validateOnboardingExecutionPlan(input), expected);
+
+  // Schema v1 remains readable even though historical three-document plans carried one shared link.
+  assert.doesNotThrow(() => validateOnboardingExecutionPlan(legacyW2InitialPlan()));
 });
 
 test('outbound kinds enforce document mapping and literal signing placeholder rules', () => {

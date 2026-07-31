@@ -1,8 +1,10 @@
 // Hamilton doc pipeline: markdown -> print HTML (field-marked) -> PDF + field coords
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { marked } from 'marked';
-import { BUILD_DIR, DOCS_DIR, REPO_ROOT } from './config.mjs';
-import { DEFAULT_DOCUMENT_SLUGS } from './registry.mjs';
+import { BUILD_DIR, DOCS_DIR, REPO_ROOT, STATUTORY_DIR, STATUTORY_LOCK_PATH } from './config.mjs';
+import { DEFAULT_DOCUMENT_SLUGS, TEMPLATE_BY_SLUG, orderedSources } from './registry.mjs';
+import { sourceManifest } from './build-manifest.mjs';
+import { loadPinnedStatutoryPdf, statutoryPdfToReflow } from './statutory-assets.mjs';
 
 const SRC = DOCS_DIR;
 const OUT = BUILD_DIR;
@@ -221,7 +223,7 @@ function sectionLabel(heading) {
 }
 
 /** Replace ____ runs in rendered HTML with measurable spans. */
-function markFields(html, defaultOwner = 'worker') {
+function markFields(html, defaultOwner = 'worker', sourceSlug = '') {
   const fields = [];
   let owner = defaultOwner;
   let section = '';
@@ -268,12 +270,12 @@ function markFields(html, defaultOwner = 'worker') {
       if (type === 'signature') seenSignature = true;
       if (!label || label.length < 2) label = `Field ${fieldSeq}`;
       const id = `f${fieldSeq}`;
-      fields.push({ id, name: label, type, owner: fieldOwner, section });
+      fields.push({ id, name: label, type, owner: fieldOwner, section, sourceSlug });
       const cls = type === 'signature' ? 'ds ds-sig'
         : type === 'initials' ? 'ds ds-ini'
         : type === 'date' ? 'ds ds-date'
         : type === 'phone' ? 'ds ds-phone' : 'ds';
-      return `<span class="${cls}" id="${id}" data-name="${label.replace(/"/g, '')}" data-type="${type}" data-owner="${fieldOwner}" data-section="${section.replace(/"/g, '')}"></span>`;
+      return `<span class="${cls}" id="${id}" data-name="${label.replace(/"/g, '')}" data-type="${type}" data-owner="${fieldOwner}" data-section="${section.replace(/"/g, '')}" data-source-slug="${sourceSlug}"></span>`;
     });
     // Checkbox pass. Unlike a blank, the label FOLLOWS the glyph ("☐ Roofer"),
     // so take the text after it, up to a bold marker or end of cell.
@@ -313,9 +315,10 @@ function markFields(html, defaultOwner = 'worker') {
       const id = `f${fieldSeq}`;
       // Employer-owned: which rate applies, which sick-leave method and which
       // language was provided are all Hamilton's statements, not the worker's.
-      fields.push({ id, name: label, type: 'checkbox', owner: 'employer', section });
+      fields.push({ id, name: label, type: 'checkbox', owner: 'employer', section, sourceSlug });
       return `<span class="ds ds-box" id="${id}" data-name="${label.replace(/"/g, '')}" ` +
-             `data-type="checkbox" data-owner="employer" data-section="${section.replace(/"/g, '')}"></span>`;
+             `data-type="checkbox" data-owner="employer" data-section="${section.replace(/"/g, '')}" ` +
+             `data-source-slug="${sourceSlug}"></span>`;
     });
     return `>${withBoxes}`;
   });
@@ -391,6 +394,9 @@ th{text-align:left;font-weight:600;font-size:.6875rem;letter-spacing:.1em;text-t
 td{padding:.5625rem .375rem;border-bottom:1px solid #e6e6e6;vertical-align:top}
 .legal{font-size:.875rem;line-height:1.5;color:#4a4a4a}
 .doc-meta{font-size:.75rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#5a5a5a;margin:0 0 .875rem}
+.hx-statutory-page{margin:1.5rem 0;padding-top:.75rem;border-top:2px solid #1B3C2D}
+.hx-statutory-page h3{position:sticky;top:0;background:#fff;padding:.375rem 0;color:#1B3C2D}
+.hx-statutory-page p{margin:0 0 .375rem}
 /* The real signer fields are absolutely positioned inside these anchors. The
    anchor itself must reserve the complete target in flow or a 44px child covers
    nearby legal text without moving it out of the way. */
@@ -522,25 +528,58 @@ function reflow(bodyHtml) {
 }
 
 /** Split flowed content into fixed-size .page divs is done in-browser; here we wrap once. */
-function wrap(title, bodyHtml) {
+function wrap(title, bodyHtml, firstSourceSlug) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
-<style>${CSS}</style></head><body><div class="flow">${letterhead()}${bodyHtml}</div></body></html>`;
+<style>${CSS}</style></head><body><div class="flow" data-source-slug="${firstSourceSlug}">${letterhead()}${bodyHtml}</div></body></html>`;
 }
 
 // Company safety programs are signed once by Hamilton, not by a worker.
-const COMPANY_DOCS = new Set(['iipp', 'heat-illness-prevention-plan',
-  'heat-illness-prevention-plan-es', 'fall-protection-program', 'code-of-safe-practices']);
+const COMPANY_DOCS = new Set(['iipp', 'iipp-es', 'heat-illness-prevention-plan',
+  'heat-illness-prevention-plan-es', 'fall-protection-program', 'fall-protection-program-es', 'code-of-safe-practices']);
 
-export function buildOne(slug) {
+export async function buildOne(slug) {
   fieldSeq = 0;
-  const md = readFileSync(`${SRC}/${slug}.md`, 'utf8');
-  const rawHtml = marked.parse(md, { mangle: false, headerIds: false });
-  const markedDocument = markFields(rawHtml, COMPANY_DOCS.has(slug) ? 'employer' : 'worker');
-  const html = scopeDocumentLanguages(markedDocument.html, slug);
-  const doc = wrap(slug, html);
-  writeFileSync(`${OUT}/${slug}.html`, doc);
-  writeFileSync(`${OUT}/${slug}.reflow.html`, reflow(html));
-  return { slug, fields: markedDocument.fields };
+  const entry = TEMPLATE_BY_SLUG.get(slug);
+  if (!entry) throw new Error(`no registered template for ${slug}`);
+  const fields = [];
+  const printParts = [];
+  const reflowParts = [];
+  const statutoryArtifacts = new Map();
+  for (const source of orderedSources(entry)) {
+    if (source.kind === 'pdf') {
+      const artifact = loadPinnedStatutoryPdf(source, STATUTORY_DIR, STATUTORY_LOCK_PATH);
+      mkdirSync(`${OUT}/statutory`, { recursive: true });
+      writeFileSync(`${OUT}/statutory/${source.slug}.pdf`, artifact.bytes);
+      const extracted = await statutoryPdfToReflow(source, artifact.bytes);
+      if (extracted.pageCount !== artifact.pageCount) {
+        throw new Error(`${source.slug}: extracted page count differs from immutable statutory lock`);
+      }
+      statutoryArtifacts.set(source.slug, { ...artifact, pageCount: extracted.pageCount });
+      reflowParts.push(extracted.html);
+      continue;
+    }
+    const md = readFileSync(`${SRC}/${source.slug}.md`, 'utf8');
+    const rawHtml = marked.parse(md, { mangle: false, headerIds: false });
+    const readOnlyProgram = orderedSources(entry).length > 1 && COMPANY_DOCS.has(source.slug);
+    const markedDocument = readOnlyProgram
+      ? { html: rawHtml, fields: [] }
+      : markFields(
+        rawHtml,
+        COMPANY_DOCS.has(source.slug) ? 'employer' : 'worker',
+        source.slug,
+      );
+    fields.push(...markedDocument.fields);
+    const html = scopeDocumentLanguages(markedDocument.html, source.slug);
+    printParts.push({ slug: source.slug, html });
+    reflowParts.push(html);
+  }
+  const printHtml = printParts.map((part, index) =>
+    `${index ? `<hr class="hx-source-break" data-next-source="${part.slug}">\n` : ''}${part.html}`,
+  ).join('\n');
+  const reflowHtml = reflowParts.join('\n<hr class="hx-source-break">\n');
+  writeFileSync(`${OUT}/${slug}.html`, wrap(entry.title, printHtml, printParts[0].slug));
+  writeFileSync(`${OUT}/${slug}.reflow.html`, reflow(reflowHtml));
+  return { ...sourceManifest(entry, SRC, statutoryArtifacts), fields };
 }
 
 // measure.mjs imports PAGE from this file. Without an entry-point guard that
@@ -551,7 +590,8 @@ const IS_MAIN = !!process.argv[1] &&
 const DOCS = process.argv.slice(2).length ? process.argv.slice(2) : DEFAULT_DOCUMENT_SLUGS;
 
 if (IS_MAIN) {
-const manifest = DOCS.map(buildOne);
+const manifest = [];
+for (const slug of DOCS) manifest.push(await buildOne(slug));
 writeFileSync(`${OUT}/manifest.json`, JSON.stringify(manifest, null, 2));
 for (const m of manifest) {
   const byType = m.fields.reduce((a, f) => (a[f.type] = (a[f.type] || 0) + 1, a), {});

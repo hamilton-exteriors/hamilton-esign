@@ -1,18 +1,25 @@
 // Create DocuSeal templates from the measured PDFs + field coordinates.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { BUILD_DIR, loadDocusealSecrets } from './config.mjs';
+import { PDFDocument } from 'pdf-lib';
+import { BUILD_DIR, DOCS_DIR, loadDocusealSecrets } from './config.mjs';
+import { validateMeasuredBuild } from './build-manifest.mjs';
 import { createDocusealClient } from './docuseal-api.mjs';
 import { TEMPLATE_BY_SLUG } from './registry.mjs';
+import { stampReflowAnchors } from './reflow-anchor.mjs';
+import {
+  verifyCreatedTemplateReadback,
+  withCreatedTemplateCleanup,
+} from './template-mutation-safety.mjs';
 
 const DIR = BUILD_DIR;
-const SEC = loadDocusealSecrets();
-const client = createDocusealClient(SEC);
-const URL_ = SEC.url;
+let SEC;
+let client;
+let URL_;
 
 // Per-hire docs are signed by the worker; company programs are signed once by the employer.
-const COMPANY = new Set(['iipp', 'heat-illness-prevention-plan', 'heat-illness-prevention-plan-es',
-  'fall-protection-program', 'code-of-safe-practices']);
+const COMPANY = new Set(['iipp', 'iipp-es', 'heat-illness-prevention-plan', 'heat-illness-prevention-plan-es',
+  'fall-protection-program', 'fall-protection-program-es', 'code-of-safe-practices']);
 // The title is the signer's page heading and browser tab, so it must match the
 // heading printed on the document itself — a worker should not be told he is
 // opening one thing and then shown another. Accents are part of the name;
@@ -130,14 +137,35 @@ async function savePreferences(id, csrf, es, twoParty) {
 }
 
 // --- main --------------------------------------------------------------------
-const docs = JSON.parse(readFileSync(`${DIR}/fields.json`, 'utf8'));
+const args = process.argv.slice(2);
+const apply = args.includes('--apply');
+if (args.some((arg) => arg !== '--apply')) throw new Error('usage: node pipeline/build-templates.mjs [--apply]');
+const generated = JSON.parse(readFileSync(`${DIR}/fields.json`, 'utf8'));
+const docs = generated.filter((document) => TEMPLATE_BY_SLUG.get(document.slug)?.version === 2);
+if (docs.length !== 2 || !docs.some((document) => document.slug === 'w2-initial-packet-v2') ||
+  !docs.some((document) => document.slug === 'w2-initial-packet-es-v2')) {
+  throw new Error('build-templates requires exactly the two versioned W-2 composite artifacts');
+}
+for (const document of docs) {
+  const entry = TEMPLATE_BY_SLUG.get(document.slug);
+  const pdfBytes = readFileSync(`${DIR}/${document.slug}.pdf`);
+  validateMeasuredBuild(document, entry, DOCS_DIR, DIR, pdfBytes);
+  const pdf = await PDFDocument.load(pdfBytes, { updateMetadata: false });
+  if (pdf.getPageCount() !== document.pageCount) {
+    throw new Error(`${document.slug}: parsed PDF page count does not match measured output`);
+  }
+}
+if (!apply) {
+  for (const document of docs) console.log(`ready ${document.slug} ${document.layoutSha256}`);
+  console.log('dry run only; rerun with --apply for explicit transactional creation');
+  process.exit(0);
+}
+SEC = loadDocusealSecrets();
+client = createDocusealClient(SEC);
+URL_ = SEC.url;
 const inventory = await client.listAll('/api/templates', { what: 'template inventory' });
 for (const document of docs) {
   const entry = TEMPLATE_BY_SLUG.get(document.slug);
-  if (!entry) throw new Error(`no registered template for ${document.slug}`);
-  if (document.fields.length !== entry.fields) {
-    throw new Error(`${document.slug} expected ${entry.fields} fields, build has ${document.fields.length}`);
-  }
   const collisions = inventory.filter((template) => template.name === entry.title && !template.archived_at);
   if (collisions.length) {
     throw new Error(`refusing to create duplicate active template "${entry.title}"; found ${collisions.length}`);
@@ -146,9 +174,11 @@ for (const document of docs) {
 await signIn();
 console.log('signed in\n');
 const built = [];
+await withCreatedTemplateCleanup(async (trackCreated) => {
 for (const d of docs) {
   const name = TITLES[d.slug] || d.slug;
   const id = await createTemplate(name);
+  trackCreated(id);
   const { schema, csrf } = await uploadPdf(id, d.slug);
   const au = schema[0].attachment_uuid;
 
@@ -208,26 +238,22 @@ for (const d of docs) {
       areas: [{ x: f.x, y: f.y, w: f.w, h: f.h, attachment_uuid: au, page: f.page }] };
   });
   const st = await saveTemplate(id, schema, csrf, submitters, fields);
-  const es = /-es$/.test(d.slug);
+  const es = /(?:^|-)es(?:-|$)/.test(d.slug);
   const twoParty = submitters.length > 1;
   const pst = await savePreferences(id, csrf, es, twoParty);
   const saved = await client.request(`/api/templates/${id}`, {}, `saved template ${id}`);
-  if (saved.name !== name || (saved.fields || []).length !== fields.length) {
-    throw new Error(`saved template ${id} failed read-back verification`);
-  }
-  const savedRoles = (saved.submitters || []).map((submitter) => submitter.name).sort();
-  const expectedRoles = submitters.map((submitter) => submitter.name).sort();
-  if (JSON.stringify(savedRoles) !== JSON.stringify(expectedRoles)) {
-    throw new Error(`saved template ${id} roles are ${savedRoles.join(', ')}, expected ${expectedRoles.join(', ')}`);
-  }
+  const uuidById = verifyCreatedTemplateReadback({
+    saved,
+    expectedId: id,
+    expectedName: name,
+    expectedSchema: schema,
+    expectedSubmitters: submitters,
+    expectedFields: fields,
+    measuredFields: d.fields,
+    ownerUuidByOwner: Object.fromEntries(Object.entries(subs).map(([owner, submitter]) => [owner, submitter.uuid])),
+  });
   const split = owners.map(o => `${o}:${d.fields.filter(f => f.owner === o).length}`).join(' ');
   console.log(`${String(id).padStart(3)}  ${name.padEnd(44)} ${String(fields.length).padStart(3)}f  [${split}]  save=${st} prefs=${pst}`);
-  // Map each field marker in the source HTML to the uuid just minted for it.
-  // `fields` is a 1:1 map over `d.fields`, so index i is the same field in both,
-  // and d.fields[i].id is the span id build-docs wrote ("f7"). Keying on that id
-  // rather than on document order means a reordered document cannot quietly
-  // attach a field to the wrong blank on a signed record.
-  const uuidById = Object.fromEntries(d.fields.map((f, i) => [f.id, fields[i].uuid]));
   built.push({ id, slug: d.slug, name, roles: submitters.map(s => s.name), fields: fields.length, uuidById });
 }
 console.log('\nbuilt ' + built.length + ' templates');
@@ -244,17 +270,13 @@ const index = {};
 for (const b of built) {
   const src = `${DIR}/${b.slug}.reflow.html`;
   if (!existsSync(src)) { console.log(`  no reading view for ${b.slug}, skipped`); continue; }
-  // Stamp the uuids in, so Vue can teleport the real field into the right blank.
-  let html = readFileSync(src, 'utf8');
-  let stamped = 0;
-  for (const [fid, uuid] of Object.entries(b.uuidById || {})) {
-    const before = html;
-    html = html.replace(`id="${fid}"`, `id="${fid}" data-hx-uuid="${uuid}"`);
-    if (html !== before) stamped++;
-  }
+  const mapping = new Map(Object.entries(b.uuidById || {}));
+  const generated = docs.find((document) => document.slug === b.slug);
+  const stampedView = stampReflowAnchors(readFileSync(src, 'utf8'), generated.fields, mapping);
+  const html = stampedView.html;
   const markers = (html.match(/class="ds[^"]*"/g) || []).length;
-  if (stamped !== markers) {
-    throw new Error(`${b.slug}: stamped ${stamped} field anchor(s) but the reading ` +
+  if (stampedView.stamped !== markers) {
+    throw new Error(`${b.slug}: stamped ${stampedView.stamped} field anchor(s) but the reading ` +
       `view has ${markers} marker(s). A blank with no uuid silently becomes unfillable ` +
       'in the reflowed view, so this is a hard stop rather than a warning.');
   }
@@ -263,3 +285,10 @@ for (const b of built) {
 }
 writeFileSync(new URL('index.json', REFLOW_DIR), JSON.stringify(index, null, 2) + '\n');
 console.log(`staged ${Object.keys(index).length} reading view(s) into brand/reflow/`);
+}, {
+  cleanupTemplate: (id) => client.request(
+    `/api/templates/${id}`,
+    { method: 'DELETE' },
+    `archive partial template ${id}`,
+  ),
+});

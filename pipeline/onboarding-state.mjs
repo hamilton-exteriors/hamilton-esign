@@ -15,7 +15,7 @@ import { ONBOARDING_STATE_DIR } from './config.mjs';
 import { resolveType, validate as validateWorkerType } from './worker-types.mjs';
 import { resolveOverseasRole } from './role-catalog.mjs';
 
-export const ONBOARDING_VERSION = 2;
+export const ONBOARDING_VERSION = 3;
 
 export const PHASES = [
   'intake_validated',
@@ -57,8 +57,11 @@ export const GATES = {
 };
 
 const W2_ROLES = new Set(['Roofer', 'Foreman']);
-const W2_BASE_HOURLY_RATE = 16.90;
-const W2_PRODUCTION_BONUS_BY_ROLE = { Roofer: 14.90, Foreman: 29.90 };
+const W2_HOURLY_GUARANTEE_RATE = 16.90;
+const W2_PIECE_RATE_BY_ROLE = { Roofer: 37.50, Foreman: 52.50 };
+const W2_COMPARISON_METHOD = 'greater_of';
+const W2_WORKWEEK = 'sunday_saturday';
+const LEGACY_W2_TERM_KEYS = ['baseHourlyRate', 'productionBonusRate'];
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const E164 = /^\+[1-9]\d{7,14}$/;
 const FORBIDDEN_KEY = /(?:^|_)(?:link|url|slug|token|secret|password|cookie|api_?key)(?:$|_)|(?:Link|Url|URL|Slug|Token|Secret|Password|Cookie|ApiKey)/;
@@ -98,15 +101,23 @@ export function validateIntake(type, raw) {
     if (!['en', 'es'].includes(intake.language)) problems.push('W-2 language must be en or es');
     if (intake.phone && !intake.phone.startsWith('+1')) problems.push('w2_local phone must start with +1');
     if (!W2_ROLES.has(intake.role)) problems.push('W-2 role must be Roofer or Foreman');
-    intake.baseHourlyRate = positiveMoney(intake.baseHourlyRate, 'baseHourlyRate', problems);
-    intake.productionBonusRate = positiveMoney(intake.productionBonusRate, 'productionBonusRate', problems);
-    if (intake.baseHourlyRate !== W2_BASE_HOURLY_RATE) {
-      problems.push(`baseHourlyRate must match the current signed packet rate of ${W2_BASE_HOURLY_RATE.toFixed(2)}`);
+    for (const key of LEGACY_W2_TERM_KEYS) {
+      if (Object.hasOwn(raw, key)) problems.push(`${key} is a retired bonus-model field and is not accepted for new W-2 records`);
+      delete intake[key];
     }
-    const packetBonus = W2_PRODUCTION_BONUS_BY_ROLE[intake.role];
-    if (packetBonus !== undefined && intake.productionBonusRate !== packetBonus) {
-      problems.push(`productionBonusRate must match the current ${intake.role} packet rate of ${packetBonus.toFixed(2)}`);
+    intake.hourlyGuaranteeRate = positiveMoney(intake.hourlyGuaranteeRate, 'hourlyGuaranteeRate', problems);
+    intake.pieceRatePerSquare = positiveMoney(intake.pieceRatePerSquare, 'pieceRatePerSquare', problems);
+    if (intake.hourlyGuaranteeRate !== W2_HOURLY_GUARANTEE_RATE) {
+      problems.push(`hourlyGuaranteeRate must match the current signed packet rate of ${W2_HOURLY_GUARANTEE_RATE.toFixed(2)}`);
     }
+    const packetPieceRate = W2_PIECE_RATE_BY_ROLE[intake.role];
+    if (packetPieceRate !== undefined && intake.pieceRatePerSquare !== packetPieceRate) {
+      problems.push(`pieceRatePerSquare must match the current ${intake.role} packet rate of ${packetPieceRate.toFixed(2)}`);
+    }
+    if (intake.comparisonMethod !== W2_COMPARISON_METHOD) {
+      problems.push(`comparisonMethod must be ${W2_COMPARISON_METHOD}`);
+    }
+    if (intake.workweek !== W2_WORKWEEK) problems.push(`workweek must be ${W2_WORKWEEK}`);
     if (intake.sickLeaveMethod !== 'accrual') problems.push('sickLeaveMethod must be accrual');
     if (intake.payday !== 'Friday') problems.push('payday must be Friday');
   } else {
@@ -240,9 +251,10 @@ export function rebindOverseasRole(record, role, version, {
 
 export function migrateRecord(record, now = new Date().toISOString()) {
   if (record?.version === ONBOARDING_VERSION) return record;
-  if (record?.version !== 1) throw new Error('unsupported onboarding record version');
+  if (![1, 2].includes(record?.version)) throw new Error('unsupported onboarding record version');
   const migrated = structuredClone(record);
-  if (migrated.type === 'overseas_contractor') {
+  const fromVersion = migrated.version;
+  if (migrated.type === 'overseas_contractor' && migrated.version === 1) {
     if (migrated.intake?.role !== 'Roofing Project Coordinator' ||
       !['roofing-project-coordinator-v1', '1.0'].includes(migrated.intake?.roleExpectationsVersion)) {
       throw new Error('legacy overseas onboarding role cannot be migrated automatically; select an explicit catalog role and version');
@@ -259,6 +271,16 @@ export function migrateRecord(record, now = new Date().toISOString()) {
       sha256: resolved.sha256,
     };
   }
+  if (migrated.type === 'w2_local' && LEGACY_W2_TERM_KEYS.some((key) => Object.hasOwn(migrated.intake || {}, key))) {
+    migrated.legacyCompensation = {
+      model: 'hourly_plus_production_bonus',
+      baseHourlyRate: migrated.intake.baseHourlyRate,
+      productionBonusRate: migrated.intake.productionBonusRate,
+    };
+    delete migrated.intake.baseHourlyRate;
+    delete migrated.intake.productionBonusRate;
+    migrated.intake.compensationTermsVersion = 'legacy-v1';
+  }
   migrated.gates ||= {};
   for (const gate of GATES[migrated.type] || []) migrated.gates[gate] ||= { status: 'pending' };
   migrated.version = ONBOARDING_VERSION;
@@ -268,7 +290,7 @@ export function migrateRecord(record, now = new Date().toISOString()) {
     at: now,
     actor: 'system',
     action: 'record-migrated',
-    details: { fromVersion: 1, toVersion: ONBOARDING_VERSION },
+    details: { fromVersion, toVersion: ONBOARDING_VERSION },
   });
   return assertRecord(migrated);
 }
@@ -277,6 +299,26 @@ export function assertRecord(record) {
   if (record?.version !== ONBOARDING_VERSION) throw new Error('unsupported onboarding record version');
   if (!record.onboardingId) throw new Error('onboardingId is required');
   resolveType(record.type);
+  if (record.type === 'w2_local') {
+    const legacy = record.intake?.compensationTermsVersion === 'legacy-v1';
+    if (legacy) {
+      if (record.legacyCompensation?.model !== 'hourly_plus_production_bonus' ||
+        !Number.isFinite(Number(record.legacyCompensation.baseHourlyRate)) ||
+        !Number.isFinite(Number(record.legacyCompensation.productionBonusRate))) {
+        throw new Error('legacy W-2 compensation metadata is required');
+      }
+    } else {
+      const checked = validateIntake('w2_local', record.intake);
+      if (!checked.ok) throw new Error(`invalid current W-2 intake: ${checked.problems.join('; ')}`);
+      const required = ['hourlyGuaranteeRate', 'pieceRatePerSquare', 'comparisonMethod', 'workweek'];
+      for (const key of required) {
+        if (record.intake?.[key] === undefined) throw new Error(`W-2 intake ${key} is required`);
+      }
+      if (LEGACY_W2_TERM_KEYS.some((key) => Object.hasOwn(record.intake, key))) {
+        throw new Error('retired W-2 bonus fields are not allowed in current records');
+      }
+    }
+  }
   if (record.type === 'overseas_contractor') {
     const binding = record.roleBinding;
     for (const key of ['roleKey', 'displayName', 'version', 'artifact', 'sha256']) {

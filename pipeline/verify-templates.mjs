@@ -2,7 +2,7 @@
 // source PDF plus field ownership metadata. Zero or partial work is failure.
 import { createCanvas, DOMMatrix, ImageData, Path2D } from '@napi-rs/canvas';
 import { createDocusealClient } from './docuseal-api.mjs';
-import { TEMPLATE_REGISTRY, requireUniqueActiveTemplate } from './registry.mjs';
+import { CURRENT_TEMPLATE_REGISTRY, TEMPLATE_REGISTRY, requireUniqueActiveTemplate } from './registry.mjs';
 import { PAGE } from './build-docs.mjs';
 
 globalThis.DOMMatrix ||= DOMMatrix;
@@ -67,7 +67,7 @@ const unexpected = active.filter((template) => !expectedTitles.has(template.name
 if (unexpected.length) throw new Error(`unexpected active templates: ${unexpected.map((template) => template.name).join('; ')}`);
 
 const failures = [];
-for (const entry of TEMPLATE_REGISTRY) {
+for (const entry of CURRENT_TEMPLATE_REGISTRY) {
   try {
     const template = requireUniqueActiveTemplate(active, entry.title);
     const full = await client.request(`/api/templates/${template.id}`, {}, `template ${template.id}`);
@@ -118,4 +118,4 @@ if (failures.length) {
   console.error(`\n${failures.length} template verification failure(s)`);
   process.exit(1);
 }
-console.log(`\nverified all ${TEMPLATE_REGISTRY.length} expected templates`);
+console.log(`\nverified all ${CURRENT_TEMPLATE_REGISTRY.length} current templates`);

@@ -8,6 +8,8 @@ export const BUILD_DIR = resolve(process.env.HAMILTON_BUILD_DIR || join(REPO_ROO
 export const DOCS_DIR = resolve(process.env.HAMILTON_DOCS_DIR ||
   join(homedir(), '.claude', 'skills', 'onboard-worker', 'references', 'documents'));
 export const REFERENCES_DIR = resolve(DOCS_DIR, '..');
+export const STATUTORY_DIR = resolve(process.env.HAMILTON_STATUTORY_DIR || join(REPO_ROOT, 'statutory'));
+export const STATUTORY_LOCK_PATH = resolve(process.env.HAMILTON_STATUTORY_LOCK_PATH || join(STATUTORY_DIR, 'lock.json'));
 export const OVERSEAS_ROLE_CATALOG_PATH = resolve(process.env.HAMILTON_OVERSEAS_ROLE_CATALOG_PATH ||
   join(REFERENCES_DIR, 'overseas-role-catalog.json'));
 export const OVERSEAS_ROLE_ROOT = resolve(process.env.HAMILTON_OVERSEAS_ROLE_ROOT ||
