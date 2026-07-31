@@ -55,15 +55,29 @@ with zero provider access; only a demonstrably dead owner or verified PID-reuse 
 can be reclaimed. Windows ownership uses a bounded, strictly validated PowerShell
 `Get-Process` start-time identity and fails closed when it cannot prove that identity. One
 exclusive append-only transaction journal, bound to that lock's owner token, covers both
-creates, both exact readbacks, the two UUID-stamped reflow files, and the merged index. It
-records each POST immediately before mutation plus preimages and durable target bytes
-and digests for every local artifact. The journal is removed only after all three target
-files pass readback. A missing Location header or crash at any boundary is reconciled;
-every tracked or possible partial template is archived and every local artifact is rolled
+creates, both exact readbacks, the two UUID-stamped reflow files, the merged index, and the
+provider attestation manifest. It records each POST immediately before mutation plus
+preimages and durable target bytes and digests for every local artifact. The journal is
+removed only after all four target files pass readback. A missing Location header or
+crash at any boundary is reconciled; every tracked or possible partial template is
+archived and every local artifact is rolled
 back before another create can begin. If cleanup fails and the owner releases its lock,
 the next fresh exclusive owner atomically records adoption from the prior token before
 retrying; adoption is impossible while the prior lock remains live. Nothing is authored
 in DocuSeal's builder.
+
+Provider byte trust is fail-closed. Measurement records each approved source's raw SHA-256
+plus a versioned diagnostic fingerprint covering ordered page geometry, NFC text with
+positions, semantic annotations, operators, and fixed-scale rendered pixels using pinned
+PDF.js assets with system fonts disabled. Creation readback and live verification require
+every provider raw SHA-256 to equal the approved local raw SHA-256 exactly; no semantic or
+visual exception path exists. Diagnostics must also match, including `operatorSha256`.
+Post-create `brand/reflow/provider-attestations.json` pins and exposes the exact tuple
+`templateId, order, uuid, filename, localRawSha256, providerRawSha256` with layout and
+UUID-stamped reflow digests. Execution-plan schema v3 binds the attestation entry digest
+into copy approval and start. This binding is not a provider atomicity claim: Platform is
+responsible for rereading provider bytes after submission creation and comparing this exact
+tuple before releasing a signing route. Schema v1/v2 remain legacy-read only.
 
     bun install
     node pipeline/build-docs.mjs        # ordered sources -> print + reflow HTML
@@ -238,7 +252,9 @@ Safe v3 cutover order:
    `brand/reflow/` and merged both v3 name mappings into `brand/reflow/index.json` without removing v2. Commit
    `pipeline/packet-topology.mjs`, the complete v3 code, both stamped reflow files, and
    the merged index; push that exact commit and deploy that exact commit. Verify the live
-   deployment revision before any disposable or real signing E2E.
+   deployment revision before any disposable or real signing E2E. Commit the provider
+   attestation manifest in that same exact revision; without it, v3 verification and
+   schema-v3 execution-plan binding fail closed.
 5. Run `verify-templates.mjs --scope w2-cutover` so both retained v2 templates, both v3
    templates, and both rosters are proved together. Then prove Platform resolves the
    exact v3 registry slugs/version with a synthetic no-send plan.

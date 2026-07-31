@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createCanvas } from '@napi-rs/canvas';
 import {
   PDFJS_NODE_ASSETS,
@@ -13,6 +13,7 @@ import {
   validateFirstPageBodyInk,
   validateProviderDocumentTopology,
 } from '../pipeline/template-verifier.mjs';
+import { buildProviderAttestation } from '../pipeline/provider-attestation.mjs';
 
 test('first-page verifier ignores a wide footer and rejects overflow, narrow, or shifted body ink', () => {
   const width = 816;
@@ -45,6 +46,13 @@ test('pdfjs verifier assets point at installed fonts and wasm decoders', () => {
   assert.ok(existsSync(PDFJS_NODE_ASSETS.wasmUrl));
   assert.equal(PDFJS_NODE_ASSETS.useSystemFonts, false);
   assert.equal(PDFJS_NODE_ASSETS.isImageDecoderSupported, false);
+});
+
+test('provider raw digest is captured before PDF.js can take ownership of response bytes', () => {
+  const source = readFileSync(new URL('../pipeline/verify-templates.mjs', import.meta.url), 'utf8');
+  const inspect = source.slice(source.indexOf('async function inspectPdf'), source.indexOf('const inventory ='));
+  assert.ok(inspect.indexOf('const rawSha256 = sha256(bytes)') < inspect.indexOf('getDocument({ data: bytes'));
+  assert.match(inspect, /return \{ sha256: rawSha256, fingerprint, pages \}/);
 });
 
 test('verifier scope targets the explicit four-template W-2 release', () => {
@@ -84,13 +92,22 @@ test('verifier scope targets the explicit four-template W-2 release', () => {
 });
 
 test('v3 verifier requires 15 ordered measured provider documents and local field pages', () => {
-  const sources = Array.from({ length: 15 }, (_, index) => ({
-    order: index,
-    slug: `source-${index + 1}`,
-    attachmentFilename: `source-${index + 1}.pdf`,
-    attachmentSha256: String(index % 10).repeat(64),
-    pageCount: index === 14 ? 12 : 5,
-  }));
+  const fingerprint = (pageCount, digit) => ({
+    algorithm: 'hamilton-pdf-semantic-visual-v1', scale: 2, pageCount,
+    semanticSha256: digit.repeat(64), visualSha256: digit.repeat(64), operatorSha256: digit.repeat(64),
+    pages: Array.from({ length: pageCount }, () => ({})),
+  });
+  const sources = Array.from({ length: 15 }, (_, index) => {
+    const pageCount = index === 14 ? 12 : 5;
+    return {
+      order: index,
+      slug: `source-${index + 1}`,
+      attachmentFilename: `source-${index + 1}.pdf`,
+      attachmentSha256: String(index % 10).repeat(64),
+      attachmentFingerprint: fingerprint(pageCount, String((index % 9) + 1)),
+      pageCount,
+    };
+  });
   const schema = sources.map((source, index) => ({
     name: source.attachmentFilename.replace(/\.pdf$/, ''),
     attachment_uuid: `doc-${index + 1}`,
@@ -101,15 +118,21 @@ test('v3 verifier requires 15 ordered measured provider documents and local fiel
   }));
   const inspections = sources.map((source) => ({
     sha256: source.attachmentSha256,
+    fingerprint: source.attachmentFingerprint,
     pages: Array.from({ length: source.pageCount }, () => ({ full: { ink: 1 } })),
   }));
-  const entry = { slug: 'packet-v3', providerDocuments: 15, pageCount: 82, orderedSourceAttachments: true };
+  const entry = {
+    slug: 'packet-v3', title: 'Packet v3', version: 3,
+    providerDocuments: 15, pageCount: 82, orderedSourceAttachments: true,
+  };
   const expectedField = {
     id: 'anchor-1', sourceSlug: 'source-15', attachmentOrder: 14, sourcePage: 11,
     owner: 'worker', type: 'signature', x: 0.1, y: 0.2, w: 0.3, h: 0.04,
   };
-  const measured = { slug: entry.slug, sources, fields: [expectedField] };
+  const measured = { slug: entry.slug, layoutSha256: 'a'.repeat(64), sources, fields: [expectedField] };
   const template = {
+    id: 380,
+    name: entry.title,
     schema,
     documents,
     submitters: [{ uuid: 'worker-role', name: 'Worker' }],
@@ -118,14 +141,68 @@ test('v3 verifier requires 15 ordered measured provider documents and local fiel
       areas: [{ attachment_uuid: 'doc-15', page: 11, x: 0.1, y: 0.2, w: 0.3, h: 0.04 }],
     }],
   };
+  const attestationInput = {
+    slug: entry.slug,
+    registryVersion: entry.version,
+    templateId: template.id,
+    templateName: template.name,
+    layoutSha256: measured.layoutSha256,
+    reflowSha256: 'b'.repeat(64),
+    documents: documents.map((document, index) => ({
+      uuid: document.uuid,
+      filename: document.filename,
+      localRawSha256: sources[index].attachmentSha256,
+      providerRawSha256: inspections[index].sha256,
+      fingerprint: inspections[index].fingerprint,
+    })),
+  };
+  const attestation = buildProviderAttestation([
+    attestationInput,
+    { ...attestationInput, slug: 'packet-es-v3', templateId: 381, templateName: 'Packet ES v3' },
+  ]);
+  const attestationEntry = attestation.entries[0];
+  const mismatchedAttestationInput = structuredClone(attestationInput);
+  mismatchedAttestationInput.documents[0].providerRawSha256 = 'c'.repeat(64);
+  assert.throws(() => buildProviderAttestation([
+    mismatchedAttestationInput,
+    { ...mismatchedAttestationInput, slug: 'packet-es-v3', templateId: 381, templateName: 'Packet ES v3' },
+  ]), /byte-identical to the approved local source/);
   const uuidByFieldId = new Map([['anchor-1', 'field-1']]);
   const validate = (candidate = template) => validateProviderDocumentTopology({
-    entry, template: candidate, measured, inspections, uuidByFieldId,
+    entry, template: candidate, measured, inspections, uuidByFieldId, attestation, attestationEntry,
   });
   assert.deepEqual(
     validate(),
     { totalPages: 82, attachmentUuids: schema.map((document) => document.attachment_uuid) },
   );
+  const rawDrift = structuredClone(inspections);
+  rawDrift[0].sha256 = 'c'.repeat(64);
+  assert.throws(() => validateProviderDocumentTopology({
+    entry, template, measured, inspections: rawDrift, uuidByFieldId, attestation, attestationEntry,
+  }), /raw bytes\/identity differ from the approved local source/);
+  assert.throws(() => validateProviderDocumentTopology({
+    entry, template, measured, inspections, uuidByFieldId,
+  }), /provider attestation structure is invalid/);
+  // Each mutation preserves the synthetic semantic/visual fingerprint. Exact raw identity
+  // must still reject serialization, catalog/action, page-box, and annotation-hierarchy drift.
+  for (const [mutationClass, rawSha256] of [
+    ['raw serialization', 'c'.repeat(64)],
+    ['catalog/action tree', 'd'.repeat(64)],
+    ['page box', 'e'.repeat(64)],
+    ['annotation hierarchy', 'f'.repeat(64)],
+  ]) {
+    const changed = structuredClone(inspections);
+    changed[0].sha256 = rawSha256;
+    assert.throws(() => validateProviderDocumentTopology({
+      entry, template, measured, inspections: changed, uuidByFieldId, attestation, attestationEntry,
+    }), /raw bytes\/identity differ from the approved local source/, mutationClass);
+  }
+  const operatorDrift = structuredClone(inspections);
+  operatorDrift[0].fingerprint.operatorSha256 = 'c'.repeat(64);
+  assert.throws(() => validateProviderDocumentTopology({
+    entry, template, measured, inspections: operatorDrift, uuidByFieldId, attestation, attestationEntry,
+  }), /diagnostic fingerprint differs/);
+
   for (const [mutate, pattern] of [
     [(copy) => { copy.fields[0].areas[0].page = 10; }, /attachment\/local page\/geometry/],
     [(copy) => { copy.fields[0].areas[0].x = 0.11; }, /attachment\/local page\/geometry/],

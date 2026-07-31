@@ -526,14 +526,14 @@ if (IS_MAIN) {
       throw new Error(`${command} is automatic after Platform cutover; use status or reconcile instead`);
     } else if (platformCutoverEnabled() && ['plan', 'approve-copy', 'record-gate', 'rebind-role', 'start', 'status', 'reconcile', 'resolve-effect'].includes(command)) {
       const api = platformClient();
-      const [id, first, second, third, fourth] = args;
+      const [id, first, second, third, fourth, fifth, sixth] = args;
       if (!id) throw new Error(`${command} requires onboarding ID`);
       let output;
       if (command === 'plan') output = await api.plan(id, first || 'initial');
       else if (command === 'status') output = await api.status(id);
       else if (command === 'start') {
-        if (!first || !second || !third) throw new Error('start requires ID, plan ID, stage, and digest');
-        output = await api.start(id, first, second, third);
+        if (!first || !second || !third || !fourth) throw new Error('start requires ID, plan ID, stage, plan digest, and provider binding digest');
+        output = await api.start(id, first, second, third, fourth);
       } else if (command === 'reconcile') output = await api.reconcile(id);
       else if (command === 'resolve-effect') {
         if (!first || !['succeeded', 'definite_failed'].includes(second) || !third) {
@@ -543,8 +543,10 @@ if (IS_MAIN) {
         if (second === 'definite_failed' && fourth) throw new Error('definite-failed effect resolution does not accept success proof');
         output = await api.resolveEffect(id, first, second, third, fourth ? readJson(fourth, 'effect success proof') : undefined);
       } else if (command === 'approve-copy') {
-        if (!first || !second || !third || !fourth) throw new Error('approve-copy requires ID, plan ID, stage, copy hash, and approval reference');
-        output = await api.approveCopy(id, first, second, third, fourth);
+        if (!first || !second || !third || !fourth || !fifth || !sixth) {
+          throw new Error('approve-copy requires ID, plan ID, stage, copy hash, approval reference, plan digest, and provider binding digest');
+        }
+        output = await api.approveCopy(id, first, second, third, fourth, fifth, sixth);
       } else if (command === 'rebind-role') {
         if (!first || !second) throw new Error('rebind-role requires ID, role key, and release version');
         output = await api.rebindRole(id, first, second);

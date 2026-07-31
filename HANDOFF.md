@@ -50,11 +50,13 @@ node pipeline/migrate-generated-templates.mjs          # local dry-run analysis 
 `build-docs` takes slugs as arguments and everything downstream reads only what
 it produced, so a rebuild can be scoped to one document.
 
-### W-2 combined-packet code state (2026-07-30)
+### W-2 combined-packet code state (2026-07-31)
 
-This worktree is not committed, pushed, or deployed. The coordinator created flattened
-v2 templates 378/379 before the topology blocker was found. V3 has not been created.
-Subsequent live checks were read-only: no template was archived, rebuilt, or mutated.
+This worktree is not committed, pushed, or deployed. Flattened v2 templates 378/379 remain
+active and unchanged. The coordinator created ordered-source v3 templates 380/381. All
+subsequent work here was read-only against DocuSeal: no template was archived, rebuilt, or
+mutated. The generated UUID-stamped reflow files and provider attestation are preserved
+locally for the required commit/deploy gate.
 
 - New W-2 intake uses `hourlyGuaranteeRate`, `pieceRatePerSquare`,
   `comparisonMethod: greater_of`, and `workweek: sunday_saturday`.
@@ -73,8 +75,9 @@ Subsequent live checks were read-only: no template was archived, rebuilt, or mut
   attachment order and source-local page. Company program content is static, with no
   per-hire program widgets. The safety training roster remains a separate post-training
   document.
-- Build manifest schema v2 records canonical source filenames/URLs/digests plus each
-  measured attachment filename, page count, and digest. Measurement strips source form
+- Build manifest schema v3 records canonical source filenames/URLs/digests plus each
+  measured attachment filename, page count, raw digest, and versioned semantic/visual
+  fingerprint. Measurement strips source form
   widgets/annotations, masks stale source footers, stamps one global `Page X of N`
   sequence, emits the reference composite, then deterministically slices its exact page
   ranges into 15 upload artifacts. Template preflight fails if source order/bytes,
@@ -97,6 +100,23 @@ Subsequent live checks were read-only: no template was archived, rebuilt, or mut
   description, required flag, type, submitter ownership, attachment UUID, source-local
   page, and geometry before reflow binding. Fieldless statutory/safety attachments are
   valid; exact document coverage is checked independently from field coverage.
+- The initial v3 cutover failure was a verifier bug, not provider transformation. For all
+  30 source PDFs across templates 380/381, the provider response bytes are exactly equal
+  to the measured attachment bytes: raw and normalized SHA-256, object serialization,
+  metadata, page counts, media boxes, rotations, extracted text, annotations, rendered
+  pixels, and therefore content streams/operators are unchanged. `inspectPdf()` hashed its
+  `Uint8Array` only after passing it to PDF.js, which may transfer/detach that buffer. Raw
+  SHA-256 is now captured before parser ownership. The existing ordered multipart endpoint
+  already preserves uploaded bytes, so no alternate upload endpoint is needed.
+- Provider trust now requires exact raw-byte identity for every v3 source during creation
+  readback and every live verification. Semantic, visual, geometry, annotation, and operator
+  fingerprints are defense-in-depth diagnostics only, and `operatorSha256` is compared
+  explicitly; they never permit raw drift. `brand/reflow/provider-attestations.json` pins
+  and exposes the exact `templateId, order, uuid, filename, localRawSha256,
+  providerRawSha256` tuple plus layout/reflow binding. Execution-plan schema v3 binds the
+  attestation entry into Platform approval/start. That is not an atomicity guarantee:
+  Platform owns the post-submission provider-byte reread and exact tuple check before route
+  release. Schema v1/v2 are legacy-read only.
 - `--apply` acquires one atomic process-ownership lock before any journal inspection,
   recovery, or provider inventory request and holds it through recovery, both creates and
   readbacks, artifact staging, completion/rollback, and cleanup. It reuses the hardened
@@ -113,9 +133,10 @@ Subsequent live checks were read-only: no template was archived, rebuilt, or mut
   and ES operation, not one marker per template. The durable event stream names both
   target templates, records each pre-POST inventory boundary, every resolved template ID
   and successful exact readback, and the preimage plus target bytes/digest for both
-  UUID-stamped reflow files and the merged index. It is removed only after all three local
-  artifacts pass durable readback. Missing Location headers are reconciled against exact
-  names, pre-POST IDs, and creation time. A crash after either readback, during any reflow
+  UUID-stamped reflow files, the merged index, and the provider attestation manifest. It
+  is removed only after all four local artifacts pass durable readback. Missing Location
+  headers are reconciled against exact names, pre-POST IDs, and creation time. A crash
+  after either readback, during any reflow
   write, or after index staging cleans every tracked/candidate remote template and restores
   every artifact preimage. Failed or empty reconciliation retains the complete journal
   rather than risking an orphan. Fault-injection tests pin every transaction boundary.
@@ -157,24 +178,27 @@ Subsequent live checks were read-only: no template was archived, rebuilt, or mut
   prove Platform's exact v3 binding with a synthetic no-send plan; (6) only then complete
   an authorized disposable v3 E2E; (7) archive 378/379 only if submission inventory proves
   no active/sent dependency. Any v2 dependency keeps that template retained.
-- Safe local validation: 190/190 repository Node tests pass. EN and ES v3 each build
+- Safe local validation: 194/194 repository Node tests pass. EN and ES v3 each build
   15 ordered attachment PDFs plus the 82/87-page reference composite. Complete build-tree
-  hashes (manifest, fields, print/reflow HTML, both composites, and all 30 attachments)
-  are byte-identical across repeated builds. All 62 EN and 61 ES reflow anchors map, and
-  every field's source-local page recomputes exactly from its global range. Final
-  `build-templates` dry preflight passes with layout digests
-  `807edd24d43288e8c22f78417e97b3dee1fa3cc247c0dbe90e156ddba5c749db` (EN) and
-  `5c53b672990268fc4eef23abac36984c9b1bf010b8f7f4559e2cd110bde558a0` (ES).
-  Syntax checks for every pipeline/test module and `git diff --check` pass. V3 live
-  verification cannot run until v3 is created; the prior flattened v2 and retained
-  templates remain unchanged. No production creation, mutation, archival, outbound
-  delivery, commit, push, or deployment occurred during this v3 correction.
+  hashes across 94 artifacts, including fingerprint-bearing `fields.json`, print/reflow
+  HTML, both composites, and all 30 attachments, are byte-identical across independent
+  builds/processes. All 62 EN and 61 ES reflow anchors map, and every field's source-local
+  page recomputes exactly from its global range. Final `build-templates` dry preflight
+  passes with fingerprint-aware layout digests
+  `d2369b0b652392ac1db3f20e135490396bc76a7be519f4dcbb0372a77881adf0` (EN) and
+  `cf4fbb322d0fdf7078e4dad4bbe9a488831675546709b6f1a67a40a211bbf523` (ES).
+  The committed provider-attestation aggregate digest is
+  `e9039d51d8cb462f3cc05306dc62e905de8af06ac1cd21f535cd8324021688e8`.
+  Syntax checks for all 58 repository `.mjs` modules and `git diff --check` pass. Final
+  read-only `--scope w2-cutover` verification passes v3 380/381, rosters 358/359, and
+  retained v2 378/379 together. This agent made no production creation, mutation,
+  archival, outbound delivery, commit, push, or deployment.
 
 ---
 
 ## 3. Live state, verified at handoff
 
-**16 active templates, ids 351–364 and 378–379, read-only verified 2026-07-30.**
+**18 active templates, ids 351–364 and 378–381, read-only verified 2026-07-31.**
 Rebuilding renumbers them. **Resolve by name.** IDs 365–377 are not active dependencies.
 
 ```
@@ -186,10 +210,13 @@ Rebuilding renumbers them. **Resolve by name.** IDs 365–377 are not active dep
 356 New Hire Policy Acknowledgment   33f   363 Fall Protection Program        3f
 357 Acuse de Recibo de Políticas     33f   364 Code of Safe Practices         2f
 378 W-2 Initial Employment Packet v2 62f   379 Paquete Inicial W-2 v2         61f
+380 W-2 Initial Employment Packet v3 62f   381 Paquete Inicial W-2 v3         61f
 ```
 
-Templates 378/379 are the confirmed one-attachment topology and are retained only for
-safe cutover. They are not valid v3 release targets. No v3 production IDs exist yet.
+Templates 380/381 are the created 15-document v3 targets and pass committed
+provider-byte attestation plus full read-only cutover verification. Templates 378/379
+remain the confirmed one-attachment topology and are retained only for safe cutover;
+they are not valid v3 release targets and were not mutated or archived.
 
 **All 5 safety-program submissions were signed on 2026-07-29 and API-verified
 completed.** The links sent

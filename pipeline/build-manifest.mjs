@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BUILD_MANIFEST_SCHEMA_VERSION, orderedSources, sourceSlugs } from './registry.mjs';
 import { validateSourceAttachmentSet } from './packet-topology.mjs';
+import { validatePdfFingerprint } from './pdf-fingerprint.mjs';
 
 const SHA256 = /^[a-f0-9]{64}$/;
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -27,6 +28,7 @@ export function manifestDigest(value) {
       pageCount,
       attachmentFilename,
       attachmentSha256,
+      attachmentFingerprint,
       ...source
     }) => source.kind === 'pdf' ? { ...source, pageCount } : source),
   };
@@ -46,6 +48,14 @@ export function measuredLayoutDigest(value) {
       sha256: source.sha256,
       attachmentFilename: source.attachmentFilename,
       attachmentSha256: source.attachmentSha256,
+      attachmentFingerprint: source.attachmentFingerprint && {
+        algorithm: source.attachmentFingerprint.algorithm,
+        scale: source.attachmentFingerprint.scale,
+        pageCount: source.attachmentFingerprint.pageCount,
+        semanticSha256: source.attachmentFingerprint.semanticSha256,
+        visualSha256: source.attachmentFingerprint.visualSha256,
+        operatorSha256: source.attachmentFingerprint.operatorSha256,
+      },
     })),
     fields: value.fields.map((field) => ({
       id: field.id, sourceSlug: field.sourceSlug, owner: field.owner, type: field.type,
@@ -206,6 +216,12 @@ export function validateMeasuredBuild(document, entry, docsDir, buildDir, pdfByt
     throw new Error(`${document.slug}: build has ${document.pageCount} pages, expected ${entry.pageCount}`);
   }
   if (entry.orderedSourceAttachments) {
+    for (const source of document.sources) {
+      validatePdfFingerprint(source.attachmentFingerprint, `${document.slug}: ${source.slug} attachment fingerprint`);
+      if (source.attachmentFingerprint.pageCount !== source.pageCount) {
+        throw new Error(`${document.slug}: ${source.slug} fingerprint page count differs from source range`);
+      }
+    }
     validateSourceAttachmentSet(document, buildDir, entry.providerDocuments);
   }
   if (!SHA256.test(document.layoutSha256 || '') || document.layoutSha256 !== measuredLayoutDigest(document)) {

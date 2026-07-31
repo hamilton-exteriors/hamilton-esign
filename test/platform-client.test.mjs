@@ -67,9 +67,10 @@ test('Platform client binds staged plan approval and start to one immutable dige
     },
   });
   const digest = 'a'.repeat(64);
+  const binding = 'b'.repeat(64);
   await client.plan('ob-1', 'training');
-  await client.approveCopy('ob-1', 'plan-1', 'training', digest, 'approval:owner_review');
-  await client.start('ob-1', 'plan-1', 'training', digest);
+  await client.approveCopy('ob-1', 'plan-1', 'training', digest, 'approval:owner_review', digest, binding);
+  await client.start('ob-1', 'plan-1', 'training', digest, binding);
   await client.rebindRole('ob-1', 'estimator', '2.0');
   await client.resolveEffect('ob-1', `woe_${'b'.repeat(64)}`, 'succeeded', 'evidence:meta_lookup_123456', {
     kind: 'meta_message',
@@ -77,8 +78,13 @@ test('Platform client binds staged plan approval and start to one immutable dige
   });
   await client.resolveEffect('ob-1', `woe_${'c'.repeat(64)}`, 'definite_failed', 'evidence:provider_rejection_123456');
   assert.equal(requests[0].url, 'https://platform.internal/internal/onboarding/ob-1/plan?stage=training');
-  assert.deepEqual(JSON.parse(requests[1].options.body), { planId: 'plan-1', stage: 'training', copyHash: digest, approvalReference: 'approval:owner_review' });
-  assert.deepEqual(JSON.parse(requests[2].options.body), { planId: 'plan-1', stage: 'training', digest });
+  assert.deepEqual(JSON.parse(requests[1].options.body), {
+    planId: 'plan-1', stage: 'training', copyHash: digest, approvalReference: 'approval:owner_review',
+    planDigest: digest, providerBindingSha256: binding,
+  });
+  assert.deepEqual(JSON.parse(requests[2].options.body), {
+    planId: 'plan-1', stage: 'training', digest, providerBindingSha256: binding,
+  });
   assert.deepEqual(JSON.parse(requests[3].options.body), { roleKey: 'estimator', releaseVersion: '2.0' });
   assert.deepEqual(JSON.parse(requests[4].options.body), {
     idempotencyKey: `woe_${'b'.repeat(64)}`,
@@ -91,6 +97,14 @@ test('Platform client binds staged plan approval and start to one immutable dige
     outcome: 'definite_failed',
     evidenceReference: 'evidence:provider_rejection_123456',
   });
+  assert.throws(
+    () => client.start('ob-1', 'plan-1', 'training', digest, 'not-a-binding'),
+    /provider binding must be a lowercase SHA-256 digest/,
+  );
+  assert.throws(
+    () => client.approveCopy('ob-1', 'plan-1', 'training', digest, 'approval:owner_review', 'bad', binding),
+    /plan digest must be a lowercase SHA-256 digest/,
+  );
   assert.throws(
     () => client.resolveEffect('ob-1', `woe_${'d'.repeat(64)}`, 'succeeded', 'evidence:meta_lookup_123456', null),
     /malformed/,

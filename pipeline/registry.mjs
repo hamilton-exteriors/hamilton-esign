@@ -1,6 +1,6 @@
 import { statutorySources } from './statutory-assets.mjs';
 
-export const BUILD_MANIFEST_SCHEMA_VERSION = 2;
+export const BUILD_MANIFEST_SCHEMA_VERSION = 3;
 
 function w2PacketSources(language) {
   const es = language === 'es';

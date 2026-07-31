@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { TEMPLATE_BY_SLUG } from './registry.mjs';
+import { requireProviderAttestationEntry, validateProviderAttestation } from './provider-attestation.mjs';
 
-export const ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION = 2;
+export const ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION = 3;
+export const LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION = 2;
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const SAFE_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -12,6 +15,14 @@ const FILENAME = /^[A-Za-z0-9][A-Za-z0-9 _.()-]{0,127}\.[A-Za-z0-9]{1,10}$/;
 const E164 = /^\+[1-9]\d{7,14}$/;
 const EMAIL = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
 const SIGNING_URL_PLACEHOLDER = '{{signing_url}}';
+const PROVIDER_ATTESTATION_PATH = new URL('../brand/reflow/provider-attestations.json', import.meta.url);
+let providerAttestationCache;
+function committedProviderAttestation() {
+  providerAttestationCache ||= validateProviderAttestation(
+    JSON.parse(readFileSync(PROVIDER_ATTESTATION_PATH, 'utf8')),
+  );
+  return providerAttestationCache;
+}
 
 const CLASSIFICATION_RULES = {
   w2_local: {
@@ -156,12 +167,15 @@ function roleRelease(value, required, path) {
 }
 
 function template(value, path, schemaVersion) {
-  const legacy = schemaVersion === 1;
+  const legacyV1 = schemaVersion === 1;
+  const current = schemaVersion === ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION;
   exactKeys(
     value,
-    legacy
+    legacyV1
       ? ['id', 'name', 'documentSha256', 'snapshotSha256']
-      : ['id', 'name', 'registrySlug', 'registryVersion', 'documentSha256', 'snapshotSha256'],
+      : current
+        ? ['id', 'name', 'registrySlug', 'registryVersion', 'documentSha256', 'snapshotSha256', 'providerBindingSha256']
+        : ['id', 'name', 'registrySlug', 'registryVersion', 'documentSha256', 'snapshotSha256'],
     path,
   );
   if (!Number.isSafeInteger(value.id) || value.id <= 0) fail(`${path}.id`, 'must be a positive safe integer');
@@ -169,7 +183,7 @@ function template(value, path, schemaVersion) {
     id: value.id,
     name: safeString(value.name, `${path}.name`),
   };
-  if (!legacy) {
+  if (!legacyV1) {
     result.registrySlug = safeString(value.registrySlug, `${path}.registrySlug`, { pattern: SAFE_KEY });
     if (!Number.isSafeInteger(value.registryVersion) || value.registryVersion <= 0) {
       fail(`${path}.registryVersion`, 'must be a positive safe integer');
@@ -178,6 +192,11 @@ function template(value, path, schemaVersion) {
   }
   result.documentSha256 = digest(value.documentSha256, `${path}.documentSha256`);
   result.snapshotSha256 = digest(value.snapshotSha256, `${path}.snapshotSha256`);
+  if (current) {
+    result.providerBindingSha256 = value.providerBindingSha256 === null
+      ? null
+      : digest(value.providerBindingSha256, `${path}.providerBindingSha256`);
+  }
   return result;
 }
 
@@ -267,6 +286,17 @@ function validateCurrentTemplateBinding(entry, expectedSlug, path) {
   if (entry.template.name !== registryTemplate.title) {
     fail(`${path}.template.name`, `must equal registry title ${JSON.stringify(registryTemplate.title)}`);
   }
+  if (registryTemplate.orderedSourceAttachments) {
+    const attestationEntry = requireProviderAttestationEntry(committedProviderAttestation(), expectedSlug);
+    if (String(entry.template.id) !== attestationEntry.templateId) {
+      fail(`${path}.template.id`, `must equal attested provider template ${attestationEntry.templateId}`);
+    }
+    if (entry.template.providerBindingSha256 !== attestationEntry.entrySha256) {
+      fail(`${path}.template.providerBindingSha256`, 'must equal the committed provider-byte attestation entry digest');
+    }
+  } else if (entry.template.providerBindingSha256 !== null) {
+    fail(`${path}.template.providerBindingSha256`, 'must be null for templates without a committed provider-byte attestation');
+  }
 }
 
 function validateExactDocumentLinks(documentKeys, outboundWhatsApp, path) {
@@ -284,8 +314,8 @@ export function validateOnboardingExecutionPlan(input) {
     'schemaVersion', 'classification', 'stage', 'language', 'recipient', 'roleRelease', 'documents',
     'outboundWhatsApp', 'trainingEvidenceRequired',
   ], path);
-  if (![1, ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION].includes(input.schemaVersion)) {
-    fail(`${path}.schemaVersion`, `must equal 1 or ${ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}`);
+  if (![1, LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION, ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION].includes(input.schemaVersion)) {
+    fail(`${path}.schemaVersion`, `must equal 1, ${LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}, or ${ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}`);
   }
   const classification = safeString(input.classification, `${path}.classification`, { pattern: /^[a-z][a-z0-9_]*$/ });
   const classificationRules = CLASSIFICATION_RULES[classification];

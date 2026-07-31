@@ -72,6 +72,28 @@ test('created-template readback proves document, UUID, type, owner, geometry, an
   }
 });
 
+test('created-template readback requires exact raw bytes and compares operator diagnostics', () => {
+  const fixture = createdFixture();
+  const fingerprint = {
+    algorithm: 'hamilton-pdf-semantic-visual-v1', scale: 2, pageCount: 2,
+    semanticSha256: '1'.repeat(64), visualSha256: '2'.repeat(64), operatorSha256: '3'.repeat(64),
+    pages: [{}, {}],
+  };
+  fixture.expectedDocuments[0].fingerprint = fingerprint;
+  delete fixture.savedDocumentDigests;
+  fixture.savedDocumentInspections = new Map([['doc-1', {
+    rawSha256: fixture.expectedDocuments[0].sha256,
+    fingerprint: structuredClone(fingerprint),
+  }]]);
+  assert.deepEqual(verifyCreatedTemplateReadback(fixture), { f1: 'field-1', f2: 'field-2' });
+
+  fixture.savedDocumentInspections.get('doc-1').rawSha256 = 'b'.repeat(64);
+  assert.throws(() => verifyCreatedTemplateReadback(fixture), /raw digest changed/);
+  fixture.savedDocumentInspections.get('doc-1').rawSha256 = fixture.expectedDocuments[0].sha256;
+  fixture.savedDocumentInspections.get('doc-1').fingerprint.operatorSha256 = '4'.repeat(64);
+  assert.throws(() => verifyCreatedTemplateReadback(fixture), /diagnostic fingerprint changed/);
+});
+
 test('created-template readback canonicalizes only a stripped final .pdf suffix', () => {
   const fixture = createdFixture();
   fixture.saved.schema[0].name = 'packet';
@@ -111,7 +133,7 @@ test('created-template readback accepts 15 ordered documents including fieldless
 
   const changedDigest = structuredClone(fixture);
   changedDigest.savedDocumentDigests.set('doc-8', 'f'.repeat(64));
-  assert.throws(() => verifyCreatedTemplateReadback(changedDigest), /document 7 digest changed/);
+  assert.throws(() => verifyCreatedTemplateReadback(changedDigest), /document 7 raw digest changed/);
 });
 
 test('created-template readback rejects a required policy acknowledgment made optional', () => {

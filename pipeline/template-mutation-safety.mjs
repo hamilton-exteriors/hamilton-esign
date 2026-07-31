@@ -120,6 +120,8 @@ export function verifyCreatedTemplateReadback({
   expectedName,
   expectedSchema,
   expectedDocuments,
+  savedDocumentInspections,
+  // Legacy test/read compatibility for templates whose expected contract is raw-byte identity.
   savedDocumentDigests,
   expectedSubmitters,
   expectedFields,
@@ -159,21 +161,38 @@ export function verifyCreatedTemplateReadback({
       !Array.isArray(saved?.documents) || saved.documents.length !== expectedAttachments.length) {
     throw new Error('created template provider document coverage changed');
   }
-  const digestMap = savedDocumentDigests instanceof Map
+  const legacyDigestMap = savedDocumentDigests instanceof Map
     ? savedDocumentDigests
     : new Map(Object.entries(savedDocumentDigests || {}));
+  const inspectionMap = savedDocumentInspections instanceof Map
+    ? savedDocumentInspections
+    : new Map([...legacyDigestMap].map(([uuid, rawSha256]) => [uuid, { rawSha256 }]));
   expectedDocuments.forEach((expected, index) => {
     const actual = saved.documents[index];
     if (expected.uuid !== expectedAttachments[index] || actual?.uuid !== expected.uuid ||
       canonicalProviderPdfName(actual?.filename) !== canonicalProviderPdfName(expected.filename)) {
       throw new Error(`created template provider document ${index} UUID/filename/order changed`);
     }
-    if (!SHA256.test(expected.sha256 || '') || digestMap.get(expected.uuid) !== expected.sha256) {
-      throw new Error(`created template provider document ${index} digest changed`);
+    const inspection = inspectionMap.get(expected.uuid);
+    if (!SHA256.test(expected.sha256 || '') || !inspection || !SHA256.test(inspection.rawSha256 || '')) {
+      throw new Error(`created template provider document ${index} digest coverage changed`);
+    }
+    if (inspection.rawSha256 !== expected.sha256) {
+      throw new Error(`created template provider document ${index} raw digest changed`);
+    }
+    if (expected.fingerprint) {
+      if (!inspection.fingerprint || inspection.fingerprint.algorithm !== expected.fingerprint.algorithm ||
+        inspection.fingerprint.scale !== expected.fingerprint.scale ||
+        inspection.fingerprint.pageCount !== expected.fingerprint.pageCount ||
+        inspection.fingerprint.semanticSha256 !== expected.fingerprint.semanticSha256 ||
+        inspection.fingerprint.visualSha256 !== expected.fingerprint.visualSha256 ||
+        inspection.fingerprint.operatorSha256 !== expected.fingerprint.operatorSha256) {
+        throw new Error(`created template provider document ${index} diagnostic fingerprint changed`);
+      }
     }
   });
-  if (digestMap.size !== expectedDocuments.length) {
-    throw new Error('created template provider document digest coverage changed');
+  if (inspectionMap.size !== expectedDocuments.length) {
+    throw new Error('created template provider document digest/fingerprint coverage changed');
   }
 
   const expectedRoles = uniqueUuidMap(expectedSubmitters, 'expected submitter');

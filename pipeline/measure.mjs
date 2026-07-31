@@ -18,6 +18,7 @@ import { PAGE } from './build-docs.mjs';
 import { validateGeneratedGeometry } from './field-geometry.mjs';
 import { measuredLayoutDigest, sha256 } from './build-manifest.mjs';
 import { deterministicPdfBytes, packetFooterDescriptors } from './pdf-determinism.mjs';
+import { fingerprintPdf } from './pdf-fingerprint.mjs';
 import { locateStatutoryFooterMasks } from './statutory-assets.mjs';
 import {
   attachmentFilenameForSource,
@@ -435,6 +436,7 @@ async function emitSourceAttachments(entry, compositeBytes, sources, fields) {
       ...source,
       attachmentFilename,
       attachmentSha256: sha256(bytes),
+      attachmentFingerprint: await fingerprintPdf(bytes),
     });
   }
   return {

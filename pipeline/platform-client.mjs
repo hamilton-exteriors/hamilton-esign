@@ -4,6 +4,11 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const META_REF = /^meta:[A-Za-z0-9._:-]{6,240}$/;
 const DRIVE_REF = /^drive:[A-Za-z0-9_-]{10,256}$/;
 
+function requiredDigest(value, label) {
+  if (!SHA256.test(value || '')) throw new Error(`${label} must be a lowercase SHA-256 digest`);
+  return value;
+}
+
 function exactKeys(value, allowed) {
   return value && typeof value === 'object' && !Array.isArray(value) &&
     Object.keys(value).every((key) => allowed.includes(key));
@@ -78,8 +83,15 @@ export class PlatformOnboardingClient {
   publishRoleRelease(release) { return this.request('/role-releases', 'POST', release); }
   status(id) { return this.request(`/${encodeURIComponent(id)}/status`); }
   plan(id, stage = 'initial') { return this.request(`/${encodeURIComponent(id)}/plan?stage=${encodeURIComponent(stage)}`); }
-  approveCopy(id, planId, stage, copyHash, approvalReference) {
-    return this.request(`/${encodeURIComponent(id)}/approve-copy`, 'POST', { planId, stage, copyHash, approvalReference });
+  approveCopy(id, planId, stage, copyHash, approvalReference, planDigest, providerBindingSha256) {
+    return this.request(`/${encodeURIComponent(id)}/approve-copy`, 'POST', {
+      planId,
+      stage,
+      copyHash: requiredDigest(copyHash, 'copy hash'),
+      approvalReference,
+      planDigest: requiredDigest(planDigest, 'plan digest'),
+      providerBindingSha256: requiredDigest(providerBindingSha256, 'provider binding'),
+    });
   }
   recordGate(id, gate, evidenceReference) {
     return this.request(`/${encodeURIComponent(id)}/gates`, 'POST', { gate, evidenceReference });
@@ -87,8 +99,13 @@ export class PlatformOnboardingClient {
   rebindRole(id, roleKey, releaseVersion) {
     return this.request(`/${encodeURIComponent(id)}/rebind-role`, 'POST', { roleKey, releaseVersion });
   }
-  start(id, planId, stage, digest) {
-    return this.request(`/${encodeURIComponent(id)}/start`, 'POST', { planId, stage, digest });
+  start(id, planId, stage, digest, providerBindingSha256) {
+    return this.request(`/${encodeURIComponent(id)}/start`, 'POST', {
+      planId,
+      stage,
+      digest: requiredDigest(digest, 'plan digest'),
+      providerBindingSha256: requiredDigest(providerBindingSha256, 'provider binding'),
+    });
   }
   reconcile(id) { return this.request(`/${encodeURIComponent(id)}/reconcile`, 'POST'); }
   importLegacy(record, { dryRun = true } = {}) {

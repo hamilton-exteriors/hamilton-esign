@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   canonicalizeOnboardingExecutionPlan,
@@ -10,6 +11,11 @@ import {
 const A = 'a'.repeat(64);
 const B = 'b'.repeat(64);
 const C = 'c'.repeat(64);
+const providerAttestation = JSON.parse(readFileSync(
+  new URL('../brand/reflow/provider-attestations.json', import.meta.url),
+  'utf8',
+));
+const providerBindingBySlug = new Map(providerAttestation.entries.map((entry) => [entry.slug, entry.entrySha256]));
 
 function doc(key, name, id, filingDestination, registry = null) {
   return {
@@ -17,7 +23,11 @@ function doc(key, name, id, filingDestination, registry = null) {
     template: {
       id,
       name,
-      ...(registry ? { registrySlug: registry.slug, registryVersion: registry.version } : {}),
+      ...(registry ? {
+        registrySlug: registry.slug,
+        registryVersion: registry.version,
+        providerBindingSha256: providerBindingBySlug.get(registry.slug) || null,
+      } : {}),
       documentSha256: A,
       snapshotSha256: B,
     },
@@ -62,7 +72,7 @@ function overseasPlan() {
 
 function w2InitialPlan() {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     classification: 'w2_local',
     stage: 'initial',
     language: 'en',
@@ -72,7 +82,7 @@ function w2InitialPlan() {
       doc(
         'initial-packet',
         'W-2 Initial Employment Packet v3',
-        1,
+        380,
         'Personnel',
         { slug: 'w2-initial-packet-v3', version: 3 },
       ),
@@ -168,11 +178,13 @@ test('classification and stage enforce deferred W-2 training and exact document 
   );
 });
 
-test('schema v2 binds classification, stage, language, and document key to the exact registry template', () => {
+test('schema v3 binds classification, stage, language, document key, and provider bytes to the exact registry template', () => {
   const spanish = mutate(w2InitialPlan(), (copy) => {
     copy.language = 'es';
+    copy.documents[0].template.id = 381;
     copy.documents[0].template.name = 'Paquete Inicial de Empleo W-2 v3';
     copy.documents[0].template.registrySlug = 'w2-initial-packet-es-v3';
+    copy.documents[0].template.providerBindingSha256 = providerBindingBySlug.get('w2-initial-packet-es-v3');
   });
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(spanish));
 
@@ -182,14 +194,20 @@ test('schema v2 binds classification, stage, language, and document key to the e
     [mutate(w2InitialPlan(), (copy) => { copy.documents[0].key = 'safety-roster'; }), /ordered w2_local initial document set/],
     [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registrySlug = 'safety-training-roster'; }), /registrySlug must equal w2-initial-packet-v3/],
     [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registryVersion = 1; }), /registryVersion must equal 3/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.id = 999; }), /must equal attested provider template 380/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.providerBindingSha256 = C; }), /committed provider-byte attestation/],
     [mutate(w2InitialPlan(), (copy) => { delete copy.documents[0].template.registryVersion; }), /missing keys: registryVersion/],
   ];
   for (const [input, expected] of failures) assert.throws(() => validateOnboardingExecutionPlan(input), expected);
 });
 
-test('schema v1 compatibility is explicit and does not weaken schema v2', () => {
+test('schema v1 and v2 compatibility is explicit and does not weaken schema v3', () => {
   const legacy = legacyW2InitialPlan();
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(legacy));
+  const legacyV2 = w2InitialPlan();
+  legacyV2.schemaVersion = 2;
+  delete legacyV2.documents[0].template.providerBindingSha256;
+  assert.doesNotThrow(() => validateOnboardingExecutionPlan(legacyV2));
   assert.throws(
     () => validateOnboardingExecutionPlan(mutate(legacy, (copy) => {
       copy.documents[0].template.registrySlug = 'employment-agreement';
@@ -266,7 +284,7 @@ test('recipient identity enforces exact keys, E.164 classification, and optional
   for (const [input, expected] of failures) assert.throws(() => validateOnboardingExecutionPlan(input), expected);
 });
 
-test('schema v2 requires one ordered document-link message for every planned document', () => {
+test('schema v3 requires one ordered document-link message for every planned document', () => {
   const duplicateLink = structuredClone(w2InitialPlan().outboundWhatsApp[0]);
   duplicateLink.key = 'duplicate-initial-packet-link';
   const failures = [

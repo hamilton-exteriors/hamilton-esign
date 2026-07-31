@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { PDFDocument } from 'pdf-lib';
 import { BUILD_DIR, DOCS_DIR, loadDocusealSecrets } from './config.mjs';
 import { sha256, validateMeasuredBuild } from './build-manifest.mjs';
+import { fingerprintPdf } from './pdf-fingerprint.mjs';
+import { buildProviderAttestation } from './provider-attestation.mjs';
 import { createDocusealClient } from './docuseal-api.mjs';
 import { TEMPLATE_BY_SLUG } from './registry.mjs';
 import { stampReflowAnchors } from './reflow-anchor.mjs';
@@ -139,18 +141,22 @@ async function uploadPdfs(id, document) {
   return { schema: j.schema, csrf };
 }
 
-async function providerDocumentDigests(saved) {
+async function providerDocumentInspections(saved) {
   if (!Array.isArray(saved?.documents)) throw new Error('created template readback omitted documents');
-  const digests = new Map();
+  const inspections = new Map();
   for (const document of saved.documents) {
-    if (!document?.uuid || !document?.url || digests.has(document.uuid)) {
+    if (!document?.uuid || !document?.url || inspections.has(document.uuid)) {
       throw new Error('created template document identity or source URL is missing/duplicated');
     }
     const response = await fetch(document.url);
     if (!response.ok) throw new Error(`created template document ${document.uuid} returned ${response.status}`);
-    digests.set(document.uuid, sha256(Buffer.from(await response.arrayBuffer())));
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    inspections.set(document.uuid, {
+      rawSha256: sha256(bytes),
+      fingerprint: await fingerprintPdf(bytes),
+    });
   }
-  return digests;
+  return inspections;
 }
 
 async function saveTemplate(id, schema, csrf, submitters, fields) {
@@ -232,9 +238,11 @@ URL_ = SEC.url;
 const REFLOW_DIR = new URL('../brand/reflow/', import.meta.url);
 mkdirSync(REFLOW_DIR, { recursive: true });
 const indexPath = new URL('index.json', REFLOW_DIR);
+const attestationPath = new URL('provider-attestations.json', REFLOW_DIR);
 const artifactPaths = [
   ...docs.map((document) => fileURLToPath(new URL(`${document.slug}.reflow.html`, REFLOW_DIR))),
   fileURLToPath(indexPath),
+  fileURLToPath(attestationPath),
 ];
 const creationJournal = createTemplateCreationJournal(undefined, {
   lockOwner: lockAcquisition.metadata,
@@ -343,8 +351,9 @@ for (const d of docs) {
     uuid: schema[index].attachment_uuid,
     filename: source.attachmentFilename,
     sha256: source.attachmentSha256,
+    fingerprint: source.attachmentFingerprint,
   }));
-  const savedDocumentDigests = await providerDocumentDigests(saved);
+  const savedDocumentInspections = await providerDocumentInspections(saved);
   const providerMeasuredFields = d.fields.map((field) => ({ ...field, page: field.sourcePage }));
   const uuidById = verifyCreatedTemplateReadback({
     saved,
@@ -352,7 +361,7 @@ for (const d of docs) {
     expectedName: name,
     expectedSchema: schema,
     expectedDocuments,
-    savedDocumentDigests,
+    savedDocumentInspections,
     expectedSubmitters: submitters,
     expectedFields: fields,
     measuredFields: providerMeasuredFields,
@@ -361,7 +370,17 @@ for (const d of docs) {
   creationJournal.recordReadback(id);
   const split = owners.map(o => `${o}:${d.fields.filter(f => f.owner === o).length}`).join(' ');
   console.log(`${String(id).padStart(3)}  ${name.padEnd(44)} ${String(fields.length).padStart(3)}f  [${split}]  save=${st} prefs=${pst}`);
-  built.push({ id, slug: d.slug, name, roles: submitters.map(s => s.name), fields: fields.length, uuidById });
+  built.push({
+    id, slug: d.slug, name, roles: submitters.map(s => s.name), fields: fields.length, uuidById,
+    layoutSha256: d.layoutSha256,
+    providerDocuments: saved.documents.map((document, index) => ({
+      uuid: document.uuid,
+      filename: document.filename,
+      localRawSha256: d.sources[index].attachmentSha256,
+      providerRawSha256: savedDocumentInspections.get(document.uuid).rawSha256,
+      fingerprint: savedDocumentInspections.get(document.uuid).fingerprint,
+    })),
+  });
 }
 console.log('\nbuilt ' + built.length + ' templates');
 
@@ -395,6 +414,20 @@ for (const b of built) {
   index[b.name] = b.slug;
 }
 stagedArtifacts.push({ path: fileURLToPath(indexPath), contents: JSON.stringify(index, null, 2) + '\n' });
+const providerAttestation = buildProviderAttestation(built.map((template) => ({
+  slug: template.slug,
+  registryVersion: TEMPLATE_BY_SLUG.get(template.slug).version,
+  templateId: template.id,
+  templateName: template.name,
+  layoutSha256: template.layoutSha256,
+  reflowSha256: sha256(Buffer.from(stagedArtifacts.find((artifact) =>
+    artifact.path.endsWith(`${template.slug}.reflow.html`)).contents)),
+  documents: template.providerDocuments,
+})));
+stagedArtifacts.push({
+  path: fileURLToPath(attestationPath),
+  contents: `${JSON.stringify(providerAttestation, null, 2)}\n`,
+});
 stageCreationArtifacts({ journal: creationJournal, artifacts: stagedArtifacts });
 creationJournal.complete();
 console.log(`staged ${Object.keys(index).length} reading view(s) into brand/reflow/`);

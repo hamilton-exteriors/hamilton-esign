@@ -5,6 +5,7 @@ import { createCanvas, DOMMatrix, ImageData, Path2D } from '@napi-rs/canvas';
 import { createDocusealClient } from './docuseal-api.mjs';
 import { BUILD_DIR } from './config.mjs';
 import { sha256 } from './build-manifest.mjs';
+import { fingerprintPdf } from './pdf-fingerprint.mjs';
 import {
   CURRENT_TEMPLATE_REGISTRY,
   RETAINED_LEGACY_TEMPLATE_REGISTRY,
@@ -23,6 +24,10 @@ import {
   validateFirstPageBodyInk,
   validateProviderDocumentTopology,
 } from './template-verifier.mjs';
+import {
+  requireProviderAttestationEntry,
+  validateProviderAttestation,
+} from './provider-attestation.mjs';
 
 globalThis.DOMMatrix ||= DOMMatrix;
 globalThis.ImageData ||= ImageData;
@@ -37,6 +42,11 @@ const measuredPath = `${BUILD_DIR}/fields.json`;
 const measuredBySlug = existsSync(measuredPath)
   ? new Map(JSON.parse(readFileSync(measuredPath, 'utf8')).map((document) => [document.slug, document]))
   : new Map();
+const attestationPath = new URL('../brand/reflow/provider-attestations.json', import.meta.url);
+const requiresAttestation = registry.some((entry) => entry.orderedSourceAttachments);
+const providerAttestation = requiresAttestation
+  ? validateProviderAttestation(JSON.parse(readFileSync(attestationPath, 'utf8')))
+  : null;
 
 const client = createDocusealClient();
 
@@ -45,6 +55,11 @@ async function inspectPdf(url) {
   if (!response.ok) throw new Error(`source PDF returned ${response.status}`);
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (!bytes.length) throw new Error('source PDF is empty');
+  // PDF.js may transfer/detach the supplied ArrayBuffer. Capture the provider's raw
+  // bytes before handing ownership to the parser; hashing afterward can hash a detached
+  // or parser-owned view instead of the response that was actually downloaded.
+  const rawSha256 = sha256(bytes);
+  const fingerprint = await fingerprintPdf(bytes);
   const loadingTask = getDocument({ data: bytes, disableWorker: true, ...PDFJS_NODE_ASSETS });
   const pdf = await loadingTask.promise;
   const pages = [];
@@ -63,7 +78,7 @@ async function inspectPdf(url) {
   } finally {
     await loadingTask.destroy();
   }
-  return { sha256: sha256(bytes), pages };
+  return { sha256: rawSha256, fingerprint, pages };
 }
 
 const inventory = await client.listAll('/api/templates', { what: 'template inventory' });
@@ -107,10 +122,16 @@ for (const entry of registry) {
     for (const document of full.documents) inspections.push(await inspectPdf(document.url));
     const measured = measuredBySlug.get(entry.slug);
     let uuidByFieldId;
+    let attestationEntry;
     if (entry.orderedSourceAttachments) {
       const reflowPath = new URL(`../brand/reflow/${entry.slug}.reflow.html`, import.meta.url);
       if (!existsSync(reflowPath)) throw new Error('post-create UUID-stamped reflow artifact is missing');
-      uuidByFieldId = stampedReflowUuidMap(readFileSync(reflowPath, 'utf8'), measured?.fields || []);
+      const reflowBytes = readFileSync(reflowPath);
+      uuidByFieldId = stampedReflowUuidMap(reflowBytes.toString('utf8'), measured?.fields || []);
+      attestationEntry = requireProviderAttestationEntry(providerAttestation, entry.slug);
+      if (attestationEntry.reflowSha256 !== sha256(reflowBytes)) {
+        throw new Error('UUID-stamped reflow bytes differ from committed provider attestation');
+      }
     }
     const topology = validateProviderDocumentTopology({
       entry,
@@ -118,6 +139,8 @@ for (const entry of registry) {
       measured,
       inspections,
       uuidByFieldId,
+      attestation: providerAttestation,
+      attestationEntry,
     });
     const pages = inspections.flatMap((inspection) => inspection.pages);
     for (let index = 0; index < pages.length; index++) {

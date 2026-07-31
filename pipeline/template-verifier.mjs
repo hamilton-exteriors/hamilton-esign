@@ -1,18 +1,7 @@
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PAGE } from './build-docs.mjs';
 import { canonicalProviderPdfName } from './packet-topology.mjs';
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-const PDFJS_ROOT = join(HERE, '..', 'node_modules', 'pdfjs-dist');
-const directoryPath = (value) => `${value.replaceAll('\\', '/').replace(/\/$/, '')}/`;
-
-export const PDFJS_NODE_ASSETS = Object.freeze({
-  standardFontDataUrl: directoryPath(join(PDFJS_ROOT, 'standard_fonts')),
-  wasmUrl: directoryPath(join(PDFJS_ROOT, 'wasm')),
-  useSystemFonts: false,
-  isImageDecoderSupported: false,
-});
+import { validateProviderAttestation } from './provider-attestation.mjs';
+export { PDFJS_NODE_ASSETS } from './pdfjs-assets.mjs';
 
 export const BODY_BAND = Object.freeze({
   topRatio: PAGE.mt / PAGE.h,
@@ -169,7 +158,9 @@ function verifyExactMeasuredFields(template, measured, schema, uuidByFieldId) {
   }
 }
 
-export function validateProviderDocumentTopology({ entry, template, measured, inspections, uuidByFieldId }) {
+export function validateProviderDocumentTopology({
+  entry, template, measured, inspections, uuidByFieldId, attestation, attestationEntry,
+}) {
   const schema = template?.schema || [];
   const documents = template?.documents || [];
   const expectedCount = entry.providerDocuments ?? 1;
@@ -188,6 +179,13 @@ export function validateProviderDocumentTopology({ entry, template, measured, in
     }
   });
   if (entry.orderedSourceAttachments) {
+    validateProviderAttestation(attestation);
+    if (!attestationEntry || attestationEntry.slug !== entry.slug ||
+      attestationEntry.templateId !== String(template.id) || attestationEntry.templateName !== template.name ||
+      attestationEntry.registryVersion !== entry.version || attestationEntry.layoutSha256 !== measured?.layoutSha256 ||
+      attestationEntry.documents?.length !== expectedCount) {
+      throw new Error('provider attestation does not bind this exact template/build');
+    }
     if (!measured || measured.slug !== entry.slug || measured.sources?.length !== expectedCount) {
       throw new Error('local measured source-attachment manifest is required for v3 verification');
     }
@@ -195,8 +193,30 @@ export function validateProviderDocumentTopology({ entry, template, measured, in
       if (canonicalProviderPdfName(documents[index].filename) !== canonicalProviderPdfName(source.attachmentFilename)) {
         throw new Error(`provider source ${index} filename differs from measured manifest`);
       }
-      if (inspections[index].sha256 !== source.attachmentSha256) {
-        throw new Error(`provider source ${index} digest differs from measured manifest`);
+      const pinned = attestationEntry.documents[index];
+      if (pinned.order !== index || pinned.uuid !== documents[index].uuid ||
+        canonicalProviderPdfName(pinned.filename) !== canonicalProviderPdfName(documents[index].filename) ||
+        pinned.localRawSha256 !== source.attachmentSha256 ||
+        pinned.providerRawSha256 !== source.attachmentSha256 ||
+        inspections[index].sha256 !== source.attachmentSha256) {
+        throw new Error(`provider source ${index} raw bytes/identity differ from the approved local source`);
+      }
+      const expectedFingerprint = source.attachmentFingerprint;
+      const providerFingerprint = inspections[index].fingerprint;
+      if (!expectedFingerprint || !providerFingerprint ||
+        providerFingerprint.algorithm !== expectedFingerprint.algorithm ||
+        providerFingerprint.scale !== expectedFingerprint.scale ||
+        providerFingerprint.pageCount !== expectedFingerprint.pageCount ||
+        providerFingerprint.semanticSha256 !== expectedFingerprint.semanticSha256 ||
+        providerFingerprint.visualSha256 !== expectedFingerprint.visualSha256 ||
+        providerFingerprint.operatorSha256 !== expectedFingerprint.operatorSha256 ||
+        pinned.fingerprint.algorithm !== providerFingerprint.algorithm ||
+        pinned.fingerprint.scale !== providerFingerprint.scale ||
+        pinned.fingerprint.pageCount !== providerFingerprint.pageCount ||
+        pinned.fingerprint.semanticSha256 !== providerFingerprint.semanticSha256 ||
+        pinned.fingerprint.visualSha256 !== providerFingerprint.visualSha256 ||
+        pinned.fingerprint.operatorSha256 !== providerFingerprint.operatorSha256) {
+        throw new Error(`provider source ${index} diagnostic fingerprint differs from measured manifest`);
       }
       if (inspections[index].pages.length !== source.pageCount) {
         throw new Error(`provider source ${index} has ${inspections[index].pages.length} pages, expected ${source.pageCount}`);
