@@ -49,6 +49,10 @@ export const TEMPLATE_REGISTRY = [
     providerDocuments: 1,
     pageCount: 87,
   },
+  // Retained v3 generation: live templates 380/381 stay active and verifiable, and the
+  // build remains reproducible (retainedBuildable) so the committed gen-C provider
+  // attestation and retained schema-v3/v4 execution plans stay checkable byte-for-byte.
+  // The v3 composition path embeds statutory PDFs at native page size; do not change it.
   {
     title: 'W-2 Initial Employment Packet v3',
     slug: 'w2-initial-packet-v3',
@@ -59,6 +63,8 @@ export const TEMPLATE_REGISTRY = [
     providerDocuments: 15,
     pageCount: 82,
     orderedSourceAttachments: true,
+    legacy: true,
+    retainedBuildable: true,
   },
   {
     title: 'Paquete Inicial de Empleo W-2 v3',
@@ -70,6 +76,36 @@ export const TEMPLATE_REGISTRY = [
     providerDocuments: 15,
     pageCount: 87,
     orderedSourceAttachments: true,
+    legacy: true,
+    retainedBuildable: true,
+  },
+  // Current v4 generation: identical ordered sources and 1:1 page mapping, but every
+  // statutory page is normalized to exactly US Letter portrait (612x792pt) during
+  // composition — uniform fit for portrait sources, rotate-then-fit for landscape
+  // spreads — so the executed packet no longer mixes five paper sizes.
+  {
+    title: 'W-2 Initial Employment Packet v4',
+    slug: 'w2-initial-packet-v4',
+    version: 4,
+    fields: 62,
+    owners: { worker: 41, hamilton: 21 },
+    sources: w2PacketSources('en'),
+    providerDocuments: 15,
+    pageCount: 82,
+    orderedSourceAttachments: true,
+    letterNormalized: true,
+  },
+  {
+    title: 'Paquete Inicial de Empleo W-2 v4',
+    slug: 'w2-initial-packet-es-v4',
+    version: 4,
+    fields: 61,
+    owners: { worker: 41, hamilton: 20 },
+    sources: w2PacketSources('es'),
+    providerDocuments: 15,
+    pageCount: 87,
+    orderedSourceAttachments: true,
+    letterNormalized: true,
   },
   { title: 'Safety Training Roster', slug: 'safety-training-roster', fields: 65, owners: { worker: 54, hamilton: 11 } },
   { title: 'Registro de Capacitación en Seguridad', slug: 'safety-training-roster-es', fields: 65, owners: { worker: 54, hamilton: 11 } },
@@ -89,11 +125,18 @@ export const RETAINED_LEGACY_TEMPLATE_REGISTRY = TEMPLATE_REGISTRY
   .filter((entry) => entry.legacy && !entry.sourceOnly);
 export const CURRENT_TEMPLATE_REGISTRY = TEMPLATE_REGISTRY
   .filter((entry) => !entry.legacy && entry.liveExpected !== false && !entry.sourceOnly);
+export const RETAINED_BUILDABLE_TEMPLATE_REGISTRY = TEMPLATE_REGISTRY
+  .filter((entry) => entry.retainedBuildable);
 export const STAMP_TEMPLATE_REGISTRY = CURRENT_TEMPLATE_REGISTRY;
 export const TEMPLATE_BY_TITLE = new Map(TEMPLATE_REGISTRY.map((entry) => [entry.title, entry]));
 export const TEMPLATE_BY_SLUG = new Map(TEMPLATE_REGISTRY.map((entry) => [entry.slug, entry]));
-export const DEFAULT_DOCUMENT_SLUGS = CURRENT_TEMPLATE_REGISTRY
-  .map((entry) => entry.slug);
+// Retained-buildable identities stay in the default build set so their measured
+// manifests remain available to retained live verification (w2-cutover/all-live)
+// and their pinned layout digests remain reproducible.
+export const DEFAULT_DOCUMENT_SLUGS = [
+  ...CURRENT_TEMPLATE_REGISTRY.map((entry) => entry.slug),
+  ...RETAINED_BUILDABLE_TEMPLATE_REGISTRY.map((entry) => entry.slug),
+];
 
 export function orderedSources(entry) {
   const raw = entry.sources || [{ kind: 'markdown', slug: entry.slug }];

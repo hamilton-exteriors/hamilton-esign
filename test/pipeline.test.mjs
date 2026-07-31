@@ -81,7 +81,12 @@ test('template resolution fails on zero or duplicate active names', () => {
   assert.throws(() => requireUniqueActiveTemplate([], template.name), /found 0/);
   assert.throws(() => requireUniqueActiveTemplate([template, { ...template, id: 2 }], template.name), /found 2/);
   assert.ok(DEFAULT_DOCUMENT_SLUGS.includes('independent-contractor-agreement'));
+  assert.ok(DEFAULT_DOCUMENT_SLUGS.includes('w2-initial-packet-v4'));
+  // The retained v3 packets stay in the default build set so their measured
+  // manifests remain available to retained live verification and their pinned
+  // layout digests remain reproducible.
   assert.ok(DEFAULT_DOCUMENT_SLUGS.includes('w2-initial-packet-v3'));
+  assert.ok(DEFAULT_DOCUMENT_SLUGS.includes('w2-initial-packet-es-v3'));
   assert.ok(!DEFAULT_DOCUMENT_SLUGS.includes('iipp-es'));
   assert.ok(!DEFAULT_DOCUMENT_SLUGS.includes('fall-protection-program-es'));
   assert.deepEqual(
@@ -90,7 +95,32 @@ test('template resolution fails on zero or duplicate active names', () => {
   );
   assert.ok(SOURCE_ONLY_TEMPLATE_REGISTRY.every((entry) => entry.liveExpected === false));
   assert.ok(CURRENT_TEMPLATE_REGISTRY.every((entry) => !entry.sourceOnly && entry.liveExpected !== false));
-  assert.equal(DEFAULT_DOCUMENT_SLUGS.length, 10);
+  assert.ok(!CURRENT_TEMPLATE_REGISTRY.some((entry) => entry.slug.endsWith('-v3')));
+  assert.equal(DEFAULT_DOCUMENT_SLUGS.length, 12);
+});
+
+test('the current W-2 v4 generation is letter-normalized and the retained v3 generation is not', () => {
+  for (const [current, retained] of [
+    ['w2-initial-packet-v4', 'w2-initial-packet-v3'],
+    ['w2-initial-packet-es-v4', 'w2-initial-packet-es-v3'],
+  ]) {
+    const currentEntry = TEMPLATE_BY_SLUG.get(current);
+    const retainedEntry = TEMPLATE_BY_SLUG.get(retained);
+    assert.equal(currentEntry.version, 4);
+    assert.equal(currentEntry.letterNormalized, true);
+    assert.equal(currentEntry.legacy, undefined);
+    assert.equal(retainedEntry.version, 3);
+    assert.equal(retainedEntry.letterNormalized, undefined);
+    assert.equal(retainedEntry.legacy, true);
+    assert.equal(retainedEntry.retainedBuildable, true);
+    // Same identity apart from the version: sources, page counts, field counts,
+    // and ownership are 1:1 — normalization is per-page geometry only.
+    assert.deepEqual(orderedSources(currentEntry), orderedSources(retainedEntry));
+    assert.equal(currentEntry.pageCount, retainedEntry.pageCount);
+    assert.equal(currentEntry.fields, retainedEntry.fields);
+    assert.deepEqual(currentEntry.owners, retainedEntry.owners);
+    assert.equal(currentEntry.providerDocuments, retainedEntry.providerDocuments);
+  }
 });
 
 test('composite build manifest pins markdown and statutory PDF sources and detects drift', () => {
@@ -149,7 +179,7 @@ test('composite build manifest pins markdown and statutory PDF sources and detec
 });
 
 test('W-2 composites put the receipt acknowledgment after all statutory PDFs and four programs', () => {
-  for (const slug of ['w2-initial-packet-v3', 'w2-initial-packet-es-v3']) {
+  for (const slug of ['w2-initial-packet-v3', 'w2-initial-packet-es-v3', 'w2-initial-packet-v4', 'w2-initial-packet-es-v4']) {
     const sources = orderedSources(TEMPLATE_BY_SLUG.get(slug));
     assert.equal(sources.filter((source) => source.kind === 'pdf').length, 8);
     const sourceSlugs = sources.map((source) => source.slug);
@@ -482,7 +512,7 @@ test('worker type is mandatory and packets never fall across classifications', (
   assert.throws(() => packetFor(undefined, 'en'), /worker type is required/);
   assert.deepEqual(packetFor('overseas_contractor', 'en').docs.map((doc) => doc.title),
     ['Independent Contractor Agreement']);
-  assert.ok(packetFor('w2_local', 'en').docs.some((doc) => doc.title === 'W-2 Initial Employment Packet v3'));
+  assert.ok(packetFor('w2_local', 'en').docs.some((doc) => doc.title === 'W-2 Initial Employment Packet v4'));
   const wrong = validate({ type: 'overseas_contractor', name: 'ZZ TEST', phone: '+16509773241' });
   assert.equal(wrong.ok, false);
   assert.match(wrong.problems.join(' '), /looks domestic/);

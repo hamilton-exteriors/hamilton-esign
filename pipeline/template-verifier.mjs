@@ -82,16 +82,19 @@ export function parseVerifierArgs(argv) {
 }
 
 const W2_RELEASE_SLUGS = new Set([
-  'w2-initial-packet-v3',
-  'w2-initial-packet-es-v3',
+  'w2-initial-packet-v4',
+  'w2-initial-packet-es-v4',
   'safety-training-roster',
   'safety-training-roster-es',
 ]);
 
+// v4 cutover proves the release set together with the retained v3 generation it
+// supersedes. The flattened v2 templates are two generations back and remain
+// covered only by all-live.
 const W2_CUTOVER_SLUGS = new Set([
   ...W2_RELEASE_SLUGS,
-  'w2-initial-packet-v2',
-  'w2-initial-packet-es-v2',
+  'w2-initial-packet-v3',
+  'w2-initial-packet-es-v3',
 ]);
 
 export function stampedReflowUuidMap(html, measuredFields) {
@@ -305,6 +308,22 @@ export function validateProviderDocumentTopology({
     throw new Error(`provider source documents total ${totalPages} pages, expected ${entry.pageCount}`);
   }
   return { totalPages, attachmentUuids: [...seen] };
+}
+
+/** For letter-normalized packets every provider page must measure exactly
+ *  612x792pt when parsed at scale 1 — a provider page at any other size means
+ *  normalization regressed or the wrong artifact is live. */
+export function validateLetterNormalizedPageSizes(inspections, { width = 612, height = 792 } = {}) {
+  let globalPage = 0;
+  for (const inspection of inspections) {
+    for (const page of inspection.pages) {
+      globalPage += 1;
+      if (page.width !== width || page.height !== height) {
+        throw new Error(`normalized page ${globalPage} is ${page.width}x${page.height}, expected exactly ${width}x${height}`);
+      }
+    }
+  }
+  return globalPage;
 }
 
 export function validateActiveInventory(active, allowedEntries, sourceOnlyEntries) {

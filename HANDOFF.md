@@ -82,6 +82,63 @@ ever appear in a plan row, that row predates this proof and needs manual review 
 "fix" it by regenerating attestation files. `test/provider-attestation.test.mjs` pins the
 v1 file identity by value and the legacy validator's fail-closed negative paths.
 
+### W-2 packet v4 — Letter normalization (2026-07-31, branch `claude/letter-normalize`)
+
+The owner reviewed the executed v3 packet and rejected the mixed paper sizes ("why are
+they so narrow") and approved normalization. v4 rebuilds the same 15-document packet with
+EVERY page exactly 612x792pt Letter portrait: portrait/square statutory pages uniform-fit
+and center (half-letter pamphlets upscale ~1.29x by design), landscape spreads (DE 2511
+11x8.5, DE 2515 17x8.5) rotate 90° CCW first (turn the printed page clockwise to read),
+the 11x17 CRD poster fits without rotation. `pipeline/letter-normalize.mjs` embeds source
+pages as transformed vector XObjects — never rasterized — with stale-footer masks drawn in
+source space before the transform; text extraction is proven intact.
+
+- **Live templates 382 (EN, 62f 41/21, 82p) and 383 (ES, 61f 41/20, 87p)** created via the
+  guarded journaled flow with exact readback. 380/381 and 378/379 were NOT mutated or
+  archived. New registry identities `w2-initial-packet-v4` / `-es-v4`, registryVersion 4,
+  `letterNormalized: true`; v3 entries are `legacy: true, retainedBuildable: true` and stay
+  in the default build set so the gen-C bytes remain reproducible (verified: rebuilt v3
+  layout digests still `d2369b0b…`/`cf4fbb32…` and all 30 v3 attachments byte-match gen-C).
+- **Normalization is per-page geometry only, enforced in `measure.mjs`:** the v4 build must
+  match the retained v3 build page-for-page (page counts, source ranges) and field-for-field
+  (identical measured geometry — every signable field lives on a generated page that was
+  already Letter). All composite pages are asserted exactly 612x792 portrait.
+- **Attestation generations now:** current `provider-attestations.json` = gen-D for 382/383,
+  aggregate `03676a00d46e2dd70d392679b6c87b984bc27c6af0f4ab3cfbf0fcabd94d9279`
+  (EN entry `5db7760a…`, ES entry `33125cab…`). The pre-v4 gen-C content is retained
+  byte-identical as immutable `brand/reflow/provider-attestations-v2.json` (aggregate
+  `d43df547…`, entries `54bf6eab…`/`c3ba4158…`), pinned by value in
+  `test/provider-attestation.test.mjs`. gen-A (`provider-attestations-v1.json`) unchanged.
+- **Plan schemas:** 5 is the new current generation (binds v4 slugs to gen-D); 4 is retained
+  (v3 slugs bound to the immutable v2 file — this is why the v2 retention file exists: v4-era
+  plan rows bind gen-C entry digests by value, and retained v3 live verification needs the
+  schema-2 gen-C entries after the live file moved to gen-D); 3 retained (v3 slugs, gen-A);
+  1/2 legacy-read. Retained schemas may resolve the now-legacy v3 registry entries; schema 5
+  still rejects every legacy identity. **Platform still emits schema 4 — it must move to
+  schema 5 + v4 binding before any new W-2 start uses the v4 packet.**
+- **Verify scopes:** `w2-release` = v4 packets + rosters (passes 4/4); `w2-cutover` = release
+  + retained v3 (passes 6/6, v3 checked against the v2 retention file); `current` passes
+  10/10; v2 flattened templates remain covered by `all-live` only. v4 verification also
+  requires every live provider page to measure exactly 612x792 (new
+  `validateLetterNormalizedPageSizes`).
+- **Validation:** 207/207 tests; independent double-build byte-identical across all 132
+  build artifacts; dry preflight layout digests EN `60b15a7a…` ES `b5054a3b…`; visual PNG
+  review of agreement/pamphlet/DE 2515/DE 2511/CRD pages confirmed centering, rotation
+  direction, and footer legibility.
+- **Two traps fixed on the way:** (1) `build-templates.mjs` called `.get()` on the plain
+  object returned by `verifyCreatedTemplateReadback`, which would have thrown AFTER both
+  templates were created (recovery would then archive them); fixed to index access before
+  `--apply` ran. (2) **Windows CRLF checkout smudging**: `core.autocrlf=true` materialized
+  the committed LF reflow files as CRLF, so raw-byte reflow pins failed locally while the
+  blobs matched. `.gitattributes` now marks `brand/reflow/** -text`; if an existing Windows
+  checkout still shows reflow-byte mismatches, restore blob bytes
+  (`git show HEAD:<path> > <path>`), never recapture the attestation to "fix" it.
+- **Deliberately NOT done here:** no push, no deploy, no submissions, no archival, no
+  disposable E2E. Remaining cutover work: push + `railway up` this exact commit (git push
+  does not deploy), verify live `/reflow/` artifacts byte-match, Platform schema-5 binding
+  + synthetic no-send plan, authorized disposable v4 E2E, then archive 380/381 only after
+  submission inventory proves no dependency (same policy that still defers 378/379).
+
 **Aggregate request deadlines are Platform-owned.** The production timeout defect class
 from the rollback is fixed in `hamilton-platform`'s `docuseal-execution-client`
 (`boundedPhaseSignal`, one 120s phase across every provider call, fail-closed on expiry).

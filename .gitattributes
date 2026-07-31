@@ -1,0 +1,3 @@
+# Provider attestations pin raw SHA-256 of these files; autocrlf smudging a
+# checkout breaks byte-exact verification on Windows. Never EOL-convert them.
+brand/reflow/** -text

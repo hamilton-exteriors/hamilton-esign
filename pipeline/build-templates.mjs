@@ -205,10 +205,10 @@ const args = process.argv.slice(2);
 const apply = args.includes('--apply');
 if (args.some((arg) => arg !== '--apply')) throw new Error('usage: node pipeline/build-templates.mjs [--apply]');
 const generated = JSON.parse(readFileSync(`${DIR}/fields.json`, 'utf8'));
-const docs = generated.filter((document) => TEMPLATE_BY_SLUG.get(document.slug)?.version === 3);
-if (docs.length !== 2 || !docs.some((document) => document.slug === 'w2-initial-packet-v3') ||
-  !docs.some((document) => document.slug === 'w2-initial-packet-es-v3')) {
-  throw new Error('build-templates requires exactly the two versioned W-2 v3 source-attachment artifacts');
+const docs = generated.filter((document) => TEMPLATE_BY_SLUG.get(document.slug)?.version === 4);
+if (docs.length !== 2 || !docs.some((document) => document.slug === 'w2-initial-packet-v4') ||
+  !docs.some((document) => document.slug === 'w2-initial-packet-es-v4')) {
+  throw new Error('build-templates requires exactly the two versioned W-2 v4 source-attachment artifacts');
 }
 for (const document of docs) {
   const entry = TEMPLATE_BY_SLUG.get(document.slug);
@@ -352,8 +352,11 @@ for (const d of docs) {
       fingerprint: savedDocumentInspections.get(document.uuid).fingerprint,
       fieldRegions: d.fields.filter((field) => field.attachmentOrder === index).map((field, order) => {
         const metadata = metadataById.get(field.id);
+        // verifyCreatedTemplateReadback returns a plain id->uuid object, not a
+        // Map; a .get() here returned undefined for every region and the
+        // attestation builder then failed AFTER both templates existed.
         return {
-          order, id: field.id, uuid: uuidById.get(field.id), name: metadata.name,
+          order, id: field.id, uuid: uuidById[field.id], name: metadata.name,
           description: metadata.description, type: field.type, owner: field.owner,
           required: metadata.required, readonly: metadata.readonly,
           page: field.sourcePage, x: field.x, y: field.y, w: field.w, h: field.h,

@@ -22,6 +22,7 @@ import {
   stampedReflowUuidMap,
   validateActiveInventory,
   validateFirstPageBodyInk,
+  validateLetterNormalizedPageSizes,
   validateProviderDocumentTopology,
 } from './template-verifier.mjs';
 import {
@@ -42,10 +43,17 @@ const measuredPath = `${BUILD_DIR}/fields.json`;
 const measuredBySlug = existsSync(measuredPath)
   ? new Map(JSON.parse(readFileSync(measuredPath, 'utf8')).map((document) => [document.slug, document]))
   : new Map();
+// Current ordered-source packets (v4) are pinned by the live attestation file;
+// the retained v3 generation is pinned by the immutable retained copy of its
+// gen-C attestation, kept so 380/381 stay verifiable after the v4 capture
+// replaced provider-attestations.json.
 const attestationPath = new URL('../brand/reflow/provider-attestations.json', import.meta.url);
-const requiresAttestation = registry.some((entry) => entry.orderedSourceAttachments);
-const providerAttestation = requiresAttestation
+const retainedAttestationPath = new URL('../brand/reflow/provider-attestations-v2.json', import.meta.url);
+const providerAttestation = registry.some((entry) => entry.orderedSourceAttachments && !entry.legacy)
   ? validateProviderAttestation(JSON.parse(readFileSync(attestationPath, 'utf8')))
+  : null;
+const retainedProviderAttestation = registry.some((entry) => entry.orderedSourceAttachments && entry.legacy)
+  ? validateProviderAttestation(JSON.parse(readFileSync(retainedAttestationPath, 'utf8')))
   : null;
 
 const client = createDocusealClient();
@@ -73,7 +81,13 @@ async function inspectPdf(url) {
       const canvas = createCanvas(width, height);
       const context = canvas.getContext('2d');
       await pdfPage.render({ canvasContext: context, viewport }).promise;
-      pages.push(inspectInkBands(context, width, height));
+      pages.push({
+        ...inspectInkBands(context, width, height),
+        // Exact PDF-space page size at scale 1, before the raster ceil, so
+        // letter-normalized packets can require exactly 612x792 per page.
+        width: viewport.width,
+        height: viewport.height,
+      });
       pdfPage.cleanup();
     }
   } finally {
@@ -124,12 +138,13 @@ for (const entry of registry) {
     const measured = measuredBySlug.get(entry.slug);
     let uuidByFieldId;
     let attestationEntry;
+    const attestationForEntry = entry.legacy ? retainedProviderAttestation : providerAttestation;
     if (entry.orderedSourceAttachments) {
       const reflowPath = new URL(`../brand/reflow/${entry.slug}.reflow.html`, import.meta.url);
       if (!existsSync(reflowPath)) throw new Error('post-create UUID-stamped reflow artifact is missing');
       const reflowBytes = readFileSync(reflowPath);
       uuidByFieldId = stampedReflowUuidMap(reflowBytes.toString('utf8'), measured?.fields || []);
-      attestationEntry = requireProviderAttestationEntry(providerAttestation, entry.slug);
+      attestationEntry = requireProviderAttestationEntry(attestationForEntry, entry.slug);
       if (attestationEntry.reflowSha256 !== sha256(reflowBytes)) {
         throw new Error('UUID-stamped reflow bytes differ from committed provider attestation');
       }
@@ -140,9 +155,10 @@ for (const entry of registry) {
       measured,
       inspections,
       uuidByFieldId,
-      attestation: providerAttestation,
+      attestation: attestationForEntry,
       attestationEntry,
     });
+    if (entry.letterNormalized) validateLetterNormalizedPageSizes(inspections);
     const pages = inspections.flatMap((inspection) => inspection.pages);
     for (let index = 0; index < pages.length; index++) {
       const result = pages[index];

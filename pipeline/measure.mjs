@@ -20,6 +20,7 @@ import { measuredLayoutDigest, sha256 } from './build-manifest.mjs';
 import { deterministicPdfBytes, packetFooterDescriptors } from './pdf-determinism.mjs';
 import { fingerprintPdf } from './pdf-fingerprint.mjs';
 import { locateStatutoryFooterMasks } from './statutory-assets.mjs';
+import { LETTER_PAGE, appendLetterNormalizedStatutoryPages } from './letter-normalize.mjs';
 import {
   attachmentFilenameForSource,
   mapFieldsToSourceAttachments,
@@ -469,6 +470,24 @@ async function composeOrderedPdf(manifestEntry, measured, basePdfPath, outputPat
         output.addPage(page);
       });
       source.pageCount = indices.length;
+    } else if (entry.letterNormalized) {
+      // v4+: every statutory page lands on a Letter portrait sheet as vector
+      // content (uniform fit + center; landscape sources rotate 90 degrees
+      // first). The retained v3 branch below must keep embedding native sizes
+      // so its committed provider attestation stays byte-reproducible.
+      const bytes = readFileSync(`${DIR}/${source.filename}`);
+      const footerMasks = await locateStatutoryFooterMasks(bytes);
+      const before = output.getPageCount();
+      await appendLetterNormalizedStatutoryPages({
+        output,
+        statutoryBytes: bytes,
+        footerMasks,
+        expectedPageCount: source.pageCount,
+        label: `${entry.slug}: ${definition.slug}`,
+      });
+      if (output.getPageCount() - before !== source.pageCount) {
+        throw new Error(`${entry.slug}: letter normalization changed ${definition.slug} page count`);
+      }
     } else {
       const bytes = readFileSync(`${DIR}/${source.filename}`);
       const statutory = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
@@ -558,6 +577,16 @@ async function composeOrderedPdf(manifestEntry, measured, basePdfPath, outputPat
   if (verified.getPageCount() !== output.getPageCount()) {
     throw new Error(`${entry.slug}: serialized PDF page count changed during composition`);
   }
+  if (entry.letterNormalized) {
+    verified.getPages().forEach((page, index) => {
+      const { width, height } = page.getSize();
+      const rotation = page.getRotation().angle;
+      if (width !== LETTER_PAGE.width || height !== LETTER_PAGE.height || rotation !== 0) {
+        throw new Error(`${entry.slug}: page ${index + 1} is ${width}x${height} rot=${rotation}, ` +
+          `expected exactly ${LETTER_PAGE.width}x${LETTER_PAGE.height} portrait`);
+      }
+    });
+  }
   const attachments = await emitSourceAttachments(entry, serialized, sources, fields);
   return {
     fields: attachments.fields,
@@ -632,6 +661,35 @@ for (const m of manifest) {
 await browser.close();
 if (failures.length) {
   throw new Error(`measurement failed; fields.json not written:\n${failures.join('\n')}`);
+}
+// v4 letter normalization is per-page geometry only: 1:1 page mapping, same
+// source order and boundaries, and — because every signable field lives on a
+// generated page that was already Letter — identical measured field geometry.
+// The retained v3 build is measured in the same run, so pin the identity here
+// rather than trusting that the two code paths merely look similar.
+const NORMALIZED_IDENTITY_PAIRS = [
+  ['w2-initial-packet-v4', 'w2-initial-packet-v3'],
+  ['w2-initial-packet-es-v4', 'w2-initial-packet-es-v3'],
+];
+const resultBySlug = new Map(results.map((document) => [document.slug, document]));
+const comparableFields = (document) => document.fields.map(({
+  id, name, section, type, presentation, owner, sourceSlug, page, sourcePage, attachmentOrder, x, y, w, h,
+}) => ({ id, name, section, type, presentation, owner, sourceSlug, page, sourcePage, attachmentOrder, x, y, w, h }));
+const comparableRanges = (document) => document.sources.map(({ slug, outputStartPage, pageCount }) =>
+  ({ slug, outputStartPage, pageCount }));
+for (const [normalizedSlug, retainedSlug] of NORMALIZED_IDENTITY_PAIRS) {
+  const normalized = resultBySlug.get(normalizedSlug);
+  const retained = resultBySlug.get(retainedSlug);
+  if (!normalized || !retained) continue;
+  if (normalized.pageCount !== retained.pageCount) {
+    throw new Error(`${normalizedSlug}: page count ${normalized.pageCount} differs from retained ${retainedSlug} (${retained.pageCount})`);
+  }
+  if (JSON.stringify(comparableRanges(normalized)) !== JSON.stringify(comparableRanges(retained))) {
+    throw new Error(`${normalizedSlug}: source page ranges differ from retained ${retainedSlug}; normalization must be per-page only`);
+  }
+  if (JSON.stringify(comparableFields(normalized)) !== JSON.stringify(comparableFields(retained))) {
+    throw new Error(`${normalizedSlug}: measured field geometry differs from retained ${retainedSlug}; normalization must not move any field`);
+  }
 }
 writeFileSync(`${DIR}/fields.json`, JSON.stringify(results, null, 2));
 console.log('\nwrote build/fields.json');

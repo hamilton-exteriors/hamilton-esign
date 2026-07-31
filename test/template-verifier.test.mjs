@@ -11,6 +11,7 @@ import {
   stampedReflowUuidMap,
   validateActiveInventory,
   validateFirstPageBodyInk,
+  validateLetterNormalizedPageSizes,
   validateProviderDocumentTopology,
 } from '../pipeline/template-verifier.mjs';
 import { buildProviderAttestation } from '../pipeline/provider-attestation.mjs';
@@ -58,8 +59,8 @@ test('provider raw digest is captured before PDF.js can take ownership of respon
 test('verifier scope targets the explicit four-template W-2 release', () => {
   const current = [
     { slug: 'standalone' },
-    { slug: 'w2-initial-packet-v3', sources: [{ slug: 'a' }, { slug: 'b' }] },
-    { slug: 'w2-initial-packet-es-v3', sources: [{ slug: 'a-es' }, { slug: 'b-es' }] },
+    { slug: 'w2-initial-packet-v4', sources: [{ slug: 'a' }, { slug: 'b' }] },
+    { slug: 'w2-initial-packet-es-v4', sources: [{ slug: 'a-es' }, { slug: 'b-es' }] },
     { slug: 'safety-training-roster' },
     { slug: 'safety-training-roster-es' },
   ];
@@ -69,26 +70,47 @@ test('verifier scope targets the explicit four-template W-2 release', () => {
   assert.deepEqual(parseVerifierArgs(['--scope=all-live']), { scope: 'all-live' });
   assert.deepEqual(
     entriesForScope({ current, retainedLegacy: [{ slug: 'legacy' }] }, 'w2-release').map((entry) => entry.slug),
-    ['w2-initial-packet-v3', 'w2-initial-packet-es-v3', 'safety-training-roster', 'safety-training-roster-es'],
+    ['w2-initial-packet-v4', 'w2-initial-packet-es-v4', 'safety-training-roster', 'safety-training-roster-es'],
   );
+  // Cutover proves the v4 release together with the retained v3 generation it
+  // supersedes; the two-generations-back v2 templates stay under all-live only.
   const retainedLegacy = [
     { slug: 'w2-initial-packet-v2' },
     { slug: 'w2-initial-packet-es-v2' },
+    { slug: 'w2-initial-packet-v3' },
+    { slug: 'w2-initial-packet-es-v3' },
     { slug: 'legacy' },
   ];
   assert.deepEqual(
     entriesForScope({ current, retainedLegacy }, 'w2-cutover').map((entry) => entry.slug),
     [
-      'w2-initial-packet-v3', 'w2-initial-packet-es-v3',
+      'w2-initial-packet-v4', 'w2-initial-packet-es-v4',
       'safety-training-roster', 'safety-training-roster-es',
-      'w2-initial-packet-v2', 'w2-initial-packet-es-v2',
+      'w2-initial-packet-v3', 'w2-initial-packet-es-v3',
     ],
   );
   assert.deepEqual(
     entriesForScope({ current, retainedLegacy }, 'all-live').at(-1),
     { slug: 'legacy' },
   );
+  assert.ok(entriesForScope({ current, retainedLegacy }, 'all-live')
+    .some((entry) => entry.slug === 'w2-initial-packet-v2'));
   assert.throws(() => parseVerifierArgs(['--scope', 'composites']), /current, w2-release, w2-cutover, or all-live/);
+});
+
+test('letter-normalized live verification requires exactly 612x792 on every provider page', () => {
+  const inspections = [
+    { pages: [{ width: 612, height: 792 }, { width: 612, height: 792 }] },
+    { pages: [{ width: 612, height: 792 }] },
+  ];
+  assert.equal(validateLetterNormalizedPageSizes(inspections), 3);
+  const nativeBrochure = structuredClone(inspections);
+  nativeBrochure[1].pages[0] = { width: 1224, height: 612 };
+  assert.throws(() => validateLetterNormalizedPageSizes(nativeBrochure),
+    /normalized page 3 is 1224x612, expected exactly 612x792/);
+  const offByHalf = structuredClone(inspections);
+  offByHalf[0].pages[1] = { width: 612, height: 791.5 };
+  assert.throws(() => validateLetterNormalizedPageSizes(offByHalf), /normalized page 2/);
 });
 
 test('v3 verifier requires 15 ordered measured provider documents and local field pages', () => {

@@ -33,7 +33,7 @@ Deployed on Railway (project `backoffice`, service `docuseal`).
 Markdown source of truth lives in
 `~/.claude/skills/onboard-worker/references/documents/`. Immutable statutory PDF
 assets and their SHA-256/page-count lock live in `statutory/`; normal builds are
-fully offline. The versioned v3 W-2 initial packet is one DocuSeal submission with
+fully offline. The versioned v4 W-2 initial packet is one DocuSeal submission with
 15 ordered provider documents, not one flattened provider attachment. It orders the
 agreement and wage notice first, then eight statutory PDFs and all four company safety
 programs, and only then the policy acknowledgment that attests receipt of those materials:
@@ -48,7 +48,21 @@ remains its own post-training signing event. The build retains an 82-page EN / 8
 ES composite PDF only as a deterministic reference artifact. Template creation uploads
 the 15 measured source PDFs in manifest order, preserves each source filename and
 SHA-256, and maps every field from its global composite page to the owning attachment
-UUID and source-local page. Before any journal or provider access, `--apply` atomically
+UUID and source-local page.
+
+The v4 generation additionally normalizes EVERY packet page to exactly US Letter
+portrait (612x792pt) during composition (`pipeline/letter-normalize.mjs`): portrait
+and square statutory pages scale uniformly to fit and center on both axes (the
+half-letter pamphlets upscale ~1.29x by design), landscape spreads (the 11x8.5 and
+17x8.5 EDD sheets) rotate 90 degrees first per standard print convention, and the
+11x17 CRD poster is fit without rotation. Content is embedded as transformed vector
+XObjects, never rasterized, so text stays extractable for the fingerprint stack.
+Normalization is per-page geometry only: source order, document boundaries, the
+global `Page X of N` footer sequence, page counts (82 EN / 87 ES), and every measured
+field's geometry are pinned identical to the retained v3 build in the same
+measurement run. The retained v3 identities stay in the default build set so their
+committed gen-C attestation remains byte-reproducible; their native-size composition
+path is deliberately unchanged. Before any journal or provider access, `--apply` atomically
 acquires one ownership lock and holds it through recovery, both creates/readbacks, local
 staging, rollback, and completion. Live, foreign, malformed, and uncertain owners block
 with zero provider access; only a demonstrably dead owner or verified PID-reuse identity
@@ -76,11 +90,13 @@ Post-create `brand/reflow/provider-attestations.json` pins and exposes the exact
 `templateId, order, uuid, filename, sourceByteLength, localRawSha256, providerRawSha256, fingerprint, fieldRegions` with layout and
 UUID-stamped reflow digests. Each ordered field region binds the local ID, provider UUID,
 name, description, type, owner, required/readonly state, source-local page, and normalized
-top-left geometry. Execution-plan schema v4 binds the attestation entry digest
-into copy approval and start. This binding is not a provider atomicity claim: Platform is
+top-left geometry. Execution-plan schema v5 binds the current (v4 packet) attestation entry
+digest into copy approval and start. This binding is not a provider atomicity claim: Platform is
 responsible for rereading provider bytes after submission creation and comparing this exact
-tuple before releasing a signing route. Plan schemas v1/v2 remain legacy-read only; retained
-plan schema v3 binds the immutable `provider-attestations-v1.json`, while new plans emit v4.
+tuple before releasing a signing route. Plan schemas v1/v2 remain legacy-read only. Retained
+plan schema v3 binds the v3 packets to the immutable `provider-attestations-v1.json` (gen-A),
+retained plan schema v4 binds them to the immutable `provider-attestations-v2.json` (gen-C,
+the byte-identical retention copy of the pre-v4 live file), and new plans emit v5.
 
     bun install
     node pipeline/build-docs.mjs        # ordered sources -> print + reflow HTML
@@ -89,17 +105,20 @@ plan schema v3 binds the immutable `provider-attestations-v1.json`, while new pl
     node pipeline/build-templates.mjs --apply  # explicit production creation only
     node pipeline/stamp-reflow.mjs      # publish generated reflow + verify/stamp live UUIDs
     node pipeline/verify-templates.mjs --scope current      # read-only current live inventory
-    node pipeline/verify-templates.mjs --scope w2-release   # read-only v3 packets + two rosters
-    node pipeline/verify-templates.mjs --scope w2-cutover  # read-only v2 + v3 packets + rosters
+    node pipeline/verify-templates.mjs --scope w2-release   # read-only v4 packets + two rosters
+    node pipeline/verify-templates.mjs --scope w2-cutover  # read-only v4 + retained v3 packets + rosters
     node pipeline/verify-templates.mjs --scope all-live     # current plus retained legacy templates
     node pipeline/file-to-drive.mjs sweep   # file completed submissions into Drive
 
 The live verifier rasterizes every page using PDF.js's bundled standard fonts and
 WASM image decoders. Its first-page layout assertion measures the body band against
 both expected Letter-page margins, excluding the deliberately wider packet footer;
-the full page is still required to contain ink. V3 verification also requires the
-post-create UUID-stamped reflow artifacts and compares every live field by UUID against
-its exact measured attachment, source-local page, geometry, type, and submitter. Moving
+the full page is still required to contain ink. Ordered-source packet verification
+(current v4 against `provider-attestations.json`, retained v3 against the immutable
+`provider-attestations-v2.json`) also requires the post-create UUID-stamped reflow
+artifacts and compares every live field by UUID against its exact measured attachment,
+source-local page, geometry, type, and submitter; v4 additionally requires every live
+provider page to measure exactly 612x792pt. Moving
 a field onto any other document, including an otherwise valid fieldless source, fails.
 Provider filenames are strict path-free slugs; only omission of one final lowercase
 `.pdf` suffix is canonicalized. Spanish IIPP and fall-protection
@@ -218,7 +237,7 @@ inspect the conversation before explicitly using `--retry-ambiguous`.
 
 ## California new-hire statutory PDFs
 
-The versioned EN/ES v3 initial packet presents eight statutory PDFs and all four
+The versioned EN/ES v4 initial packet presents eight statutory PDFs and all four
 company safety programs before the policy acknowledgment's receipt attestations.
 DocuSeal stores those as 15 ordered source documents inside one template/submission.
 Normal builds use the immutable source files in `statutory/` and verify those cached
@@ -238,11 +257,11 @@ cache after deliberate review. Sources are DIR/DWC (Time of Hire and DWC 9783), 
 composite labels that English-only source truthfully rather than implying a translation.
 
 Direct standalone pamphlet delivery remains disabled. New W-2 execution binds only to
-v3 and uses the 15-document template; the separate safety training roster is sent only
-after actual training evidence exists. The active v2 flattened templates remain retained
-legacy until cutover proof is complete.
+v4 and uses the 15-document template; the separate safety training roster is sent only
+after actual training evidence exists. The v3 ordered-source templates and v2 flattened
+templates remain retained legacy.
 
-Safe v3 cutover order:
+Safe packet-generation cutover order (written for v3, followed again for v4):
 
 1. Review the deterministic v3 build and run `build-templates.mjs` without `--apply`.
 2. Create v3 as new templates; never rewrite v2 in place. One transaction journal remains

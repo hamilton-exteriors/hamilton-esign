@@ -1,4 +1,4 @@
-// Read-only provider capture. Downloads current v3 source bytes, proves exact byte identity
+// Read-only provider capture. Downloads current v4 source bytes, proves exact byte identity
 // with every approved local source, and writes a commit-ready attestation.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createDocusealClient } from './docuseal-api.mjs';
@@ -12,8 +12,8 @@ import { buildProviderAttestation } from './provider-attestation.mjs';
 import { expectedProviderFieldMetadata, stampedReflowUuidMap, verifyExactMeasuredFields } from './template-verifier.mjs';
 
 if (process.argv.length !== 2) throw new Error('usage: node pipeline/capture-provider-attestation.mjs');
-const entries = CURRENT_TEMPLATE_REGISTRY.filter((entry) => entry.version === 3 && entry.orderedSourceAttachments);
-if (entries.length !== 2) throw new Error('provider attestation capture requires exactly two current W-2 v3 entries');
+const entries = CURRENT_TEMPLATE_REGISTRY.filter((entry) => entry.version === 4 && entry.orderedSourceAttachments);
+if (entries.length !== 2) throw new Error('provider attestation capture requires exactly two current W-2 v4 entries');
 const measured = JSON.parse(readFileSync(`${BUILD_DIR}/fields.json`, 'utf8'));
 const measuredBySlug = new Map(measured.map((document) => [document.slug, document]));
 const client = createDocusealClient();

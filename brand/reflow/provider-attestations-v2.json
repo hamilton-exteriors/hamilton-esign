@@ -2,20 +2,20 @@
   "schemaVersion": 2,
   "entries": [
     {
-      "slug": "w2-initial-packet-v4",
-      "registryVersion": 4,
-      "templateId": "382",
-      "templateName": "W-2 Initial Employment Packet v4",
-      "layoutSha256": "60b15a7aa21a8154a5316d776a1f7f801745228f5665b072111a9968c0479b0f",
-      "reflowSha256": "c4473626876fc2d3f57d22a152273679f3544b403b5de398215a99c3c790397a",
+      "slug": "w2-initial-packet-v3",
+      "registryVersion": 3,
+      "templateId": "380",
+      "templateName": "W-2 Initial Employment Packet v3",
+      "layoutSha256": "d2369b0b652392ac1db3f20e135490396bc76a7be519f4dcbb0372a77881adf0",
+      "reflowSha256": "8794f4e5e468ac3f47167f1959d5e5e39212efe6155a0516005e5c1e7e2f6a5d",
       "documents": [
         {
           "order": 0,
-          "uuid": "a7c2889e-411d-4fa0-999a-3e8efc3d1fbb",
+          "uuid": "c4f75a73-6665-4bd6-9c8c-293524bb2f9f",
           "filename": "employment-agreement.pdf",
-          "sourceByteLength": 126467,
-          "localRawSha256": "0546d3a32ede655858e299359443c5afa5fc8ecbf25a4fdf70ea5a8cd62ff8dc",
-          "providerRawSha256": "0546d3a32ede655858e299359443c5afa5fc8ecbf25a4fdf70ea5a8cd62ff8dc",
+          "sourceByteLength": 126471,
+          "localRawSha256": "bc536ef9f489531fa5b23921daf0ff3990868f0ff5efba0dd89f9d7d85131b30",
+          "providerRawSha256": "bc536ef9f489531fa5b23921daf0ff3990868f0ff5efba0dd89f9d7d85131b30",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -28,7 +28,7 @@
             {
               "order": 0,
               "id": "f1",
-              "uuid": "bce9e999-af12-4da1-8cbd-bc7c30e8f16a",
+              "uuid": "e5048b3e-4eb3-48b1-a3b9-2abfb8ad6c34",
               "name": "1/41 Employee",
               "description": "",
               "type": "text",
@@ -44,7 +44,7 @@
             {
               "order": 1,
               "id": "f2",
-              "uuid": "7321f60c-4012-4bde-94c2-8e71a132a995",
+              "uuid": "8897e020-9b7c-41ae-b0e3-55af2e7c0aab",
               "name": "1/21 Roofer",
               "description": "",
               "type": "checkbox",
@@ -60,7 +60,7 @@
             {
               "order": 2,
               "id": "f3",
-              "uuid": "5232f4fc-67b2-4eb5-989d-49b1c1179c73",
+              "uuid": "67f5e77b-29eb-4923-b012-e63237f3f2d6",
               "name": "2/21 Foreman",
               "description": "",
               "type": "checkbox",
@@ -76,7 +76,7 @@
             {
               "order": 3,
               "id": "f4",
-              "uuid": "02d03f0c-c7da-49f3-8ebd-46e072d80808",
+              "uuid": "62725ac8-4f17-429e-906a-c074b68de96e",
               "name": "2/41 Start date",
               "description": "",
               "type": "date",
@@ -92,7 +92,7 @@
             {
               "order": 4,
               "id": "f5",
-              "uuid": "8d3f747a-b7f0-4d55-96d5-5644f5003fd7",
+              "uuid": "ee8f00f5-2039-4698-9239-1392472fc934",
               "name": "3/41 Signature",
               "description": "",
               "type": "signature",
@@ -108,7 +108,7 @@
             {
               "order": 5,
               "id": "f6",
-              "uuid": "abcb5681-9410-4991-9586-92e89180339e",
+              "uuid": "29b6d31c-8698-4248-a304-8644c16d65d7",
               "name": "4/41 Print name",
               "description": "",
               "type": "text",
@@ -124,7 +124,7 @@
             {
               "order": 6,
               "id": "f7",
-              "uuid": "b6babf6d-59ba-47b4-a374-d784d669ac9b",
+              "uuid": "2f03d2bc-c234-47ac-bcdf-922001780b9c",
               "name": "5/41 Date",
               "description": "",
               "type": "date",
@@ -140,7 +140,7 @@
             {
               "order": 7,
               "id": "f8",
-              "uuid": "c18ae94b-1e0b-433c-a02e-b3ebd5d138e1",
+              "uuid": "d5c9b4ab-317d-413e-8a12-0f466bd13fe3",
               "name": "3/21 Signature",
               "description": "",
               "type": "signature",
@@ -156,7 +156,7 @@
             {
               "order": 8,
               "id": "f9",
-              "uuid": "99404011-a7f4-4252-8d5f-b9581924b261",
+              "uuid": "9aefe22c-b115-4e96-bdc2-d9f6db196553",
               "name": "4/21 Date",
               "description": "",
               "type": "date",
@@ -173,11 +173,11 @@
         },
         {
           "order": 1,
-          "uuid": "feafa3c3-f7bc-4a56-9a86-c5af9033bf9a",
+          "uuid": "b3f47944-2260-4cec-9f30-76118d4916ee",
           "filename": "wage-notice-2810-5.pdf",
-          "sourceByteLength": 123841,
-          "localRawSha256": "361c27359e6e53435ac14f8b68b430caa9354fd02f5ae96aa34a90eab766fb57",
-          "providerRawSha256": "361c27359e6e53435ac14f8b68b430caa9354fd02f5ae96aa34a90eab766fb57",
+          "sourceByteLength": 123842,
+          "localRawSha256": "217104b89e77b04e7764354eb9b7fa3cac1a1ec1c8320c7d8191139d4352fcc0",
+          "providerRawSha256": "217104b89e77b04e7764354eb9b7fa3cac1a1ec1c8320c7d8191139d4352fcc0",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -190,7 +190,7 @@
             {
               "order": 0,
               "id": "f10",
-              "uuid": "3adcf69a-7f28-4d41-89ce-a349bf9b5764",
+              "uuid": "17b0f281-667b-4686-aac1-7fb066022b3d",
               "name": "6/41 Name",
               "description": "",
               "type": "text",
@@ -206,7 +206,7 @@
             {
               "order": 1,
               "id": "f11",
-              "uuid": "b111c1c1-d7c5-459e-b681-3996eb7eba82",
+              "uuid": "f20893a4-b991-4dbd-af32-6a120d67ca9f",
               "name": "7/41 Start date",
               "description": "",
               "type": "date",
@@ -222,7 +222,7 @@
             {
               "order": 2,
               "id": "f12",
-              "uuid": "d9c6c6d0-88d5-4710-8180-d99665c5d401",
+              "uuid": "e299cc1b-3a87-40bc-8b96-09e015eda4f9",
               "name": "5/21 Roofer",
               "description": "3. Piece-rate arrangement",
               "type": "checkbox",
@@ -238,7 +238,7 @@
             {
               "order": 3,
               "id": "f13",
-              "uuid": "a56616d4-42a3-4673-9ce2-be4743f29608",
+              "uuid": "d13019e8-187e-4b40-a5b6-e74fcfa63948",
               "name": "6/21 Foreman",
               "description": "3. Piece-rate arrangement",
               "type": "checkbox",
@@ -254,7 +254,7 @@
             {
               "order": 4,
               "id": "f14",
-              "uuid": "016501bc-af1a-411b-9a70-df132cbe74be",
+              "uuid": "0dc02bce-471f-4a9b-84e8-cb9122c2a7e1",
               "name": "7/21 Carrier name",
               "description": "6. Workers compensation carrier",
               "type": "text",
@@ -270,7 +270,7 @@
             {
               "order": 5,
               "id": "f15",
-              "uuid": "d43ffd0f-9458-4d7d-a34b-8e251442d2c0",
+              "uuid": "738c5755-8811-4c53-8172-e428d70c0bdd",
               "name": "8/21 Policy number",
               "description": "6. Workers compensation carrier",
               "type": "text",
@@ -286,7 +286,7 @@
             {
               "order": 6,
               "id": "f16",
-              "uuid": "d8e65c19-0529-4f1d-9908-7e34d97dde42",
+              "uuid": "c49f3a3b-cbd9-4a99-a71a-9e03f2322587",
               "name": "9/21 Carrier address",
               "description": "6. Workers compensation carrier",
               "type": "text",
@@ -302,7 +302,7 @@
             {
               "order": 7,
               "id": "f17",
-              "uuid": "f63d7ba8-aa45-4118-97ea-23a958f774b1",
+              "uuid": "441dabe3-e692-4c18-82af-481df52f230c",
               "name": "10/21 Carrier telephone",
               "description": "6. Workers compensation carrier",
               "type": "phone",
@@ -318,7 +318,7 @@
             {
               "order": 8,
               "id": "f18",
-              "uuid": "bb89bf0b-40e3-40cc-a233-f19d2a4a2266",
+              "uuid": "33b0112f-9393-49af-8da2-d11f8a6883af",
               "name": "11/21 Sick leave: accrual",
               "description": "7. Paid sick leave",
               "type": "checkbox",
@@ -334,7 +334,7 @@
             {
               "order": 9,
               "id": "f19",
-              "uuid": "3fb3e524-341c-49f5-b2ff-37027c7c8dfe",
+              "uuid": "f70f7a72-b400-495a-bd57-f9f9d484bd1b",
               "name": "12/21 Sick leave: front load",
               "description": "7. Paid sick leave",
               "type": "checkbox",
@@ -350,7 +350,7 @@
             {
               "order": 10,
               "id": "f20",
-              "uuid": "cdffdc60-57d5-4580-8db6-9acaf36a9457",
+              "uuid": "5e844de6-5ef9-4bff-b967-13d5bd80803e",
               "name": "13/21 Language: English",
               "description": "Acknowledgment of receipt",
               "type": "checkbox",
@@ -366,7 +366,7 @@
             {
               "order": 11,
               "id": "f21",
-              "uuid": "26e0936c-d44f-4e26-8d97-2b61f3328d66",
+              "uuid": "384c04ba-76d9-474e-9a4e-1f529c9a1ab8",
               "name": "14/21 Language: Spanish",
               "description": "Acknowledgment of receipt",
               "type": "checkbox",
@@ -382,7 +382,7 @@
             {
               "order": 12,
               "id": "f22",
-              "uuid": "68339a83-0daf-4eec-9438-f41c040afe78",
+              "uuid": "897f17b8-4576-4c03-bd62-f1825f4851ac",
               "name": "8/41 Signature",
               "description": "",
               "type": "signature",
@@ -398,7 +398,7 @@
             {
               "order": 13,
               "id": "f23",
-              "uuid": "6cc03814-2186-4f74-a500-6dc7e63bd143",
+              "uuid": "3badcdc1-0c51-4601-900c-6f882a39fe73",
               "name": "9/41 Print name",
               "description": "",
               "type": "text",
@@ -414,7 +414,7 @@
             {
               "order": 14,
               "id": "f24",
-              "uuid": "ebf49e5a-ab93-4a89-a51c-f7f7cc99bf65",
+              "uuid": "038cdafa-0cc9-48f5-b11f-afc0d4b9ae4c",
               "name": "10/41 Date",
               "description": "",
               "type": "date",
@@ -430,7 +430,7 @@
             {
               "order": 15,
               "id": "f25",
-              "uuid": "25cf1f07-bb83-431d-b445-4ee4b01d5519",
+              "uuid": "94ac3ed7-3834-499c-a15e-015107208ea6",
               "name": "15/21 Signature",
               "description": "",
               "type": "signature",
@@ -446,7 +446,7 @@
             {
               "order": 16,
               "id": "f26",
-              "uuid": "17962dac-e358-4477-b132-a498fa4afe4c",
+              "uuid": "80cad979-9166-42d0-8021-9f3861a5afd2",
               "name": "16/21 Name / title",
               "description": "",
               "type": "text",
@@ -462,7 +462,7 @@
             {
               "order": 17,
               "id": "f27",
-              "uuid": "8b79414b-a692-476a-808d-98c9d40fe067",
+              "uuid": "18c0faa7-e4f6-4ae9-9cd0-ca95c225bfcc",
               "name": "17/21 Date",
               "description": "",
               "type": "date",
@@ -478,7 +478,7 @@
             {
               "order": 18,
               "id": "f28",
-              "uuid": "b9e2edea-ade1-401b-bf1a-c15416854fd4",
+              "uuid": "f5e5f9dc-6c36-41b3-967a-13383fb6d70b",
               "name": "18/21 Copy given to Employee on",
               "description": "",
               "type": "text",
@@ -495,147 +495,147 @@
         },
         {
           "order": 2,
-          "uuid": "858379e6-9e23-4a20-9331-fdceec475ad6",
+          "uuid": "f905aca1-8354-4617-a6af-2d642d73d737",
           "filename": "statutory-dwc-time-of-hire.pdf",
-          "sourceByteLength": 1262149,
-          "localRawSha256": "9fdef6bf44374e5af1c40e649a2e7416e4b9c19d8855437917fd09fb31f0de3b",
-          "providerRawSha256": "9fdef6bf44374e5af1c40e649a2e7416e4b9c19d8855437917fd09fb31f0de3b",
+          "sourceByteLength": 1268779,
+          "localRawSha256": "380a8c7856287362cbe7c38d56562f2fef33335bdeccb3cf4c123b2788e82ba6",
+          "providerRawSha256": "380a8c7856287362cbe7c38d56562f2fef33335bdeccb3cf4c123b2788e82ba6",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 8,
-            "semanticSha256": "93d9ae958a053f77bb9f265e4a38ffe89f9812718e1d27cef6250a0041539593",
+            "semanticSha256": "1699f079612ed7ad4d7529e9fac7fe2427df24ec2d958c7a943054c7ce42672c",
             "visualSha256": "a5581714b16ab6fce18b5d6d8471bdc0e585ff0ddae4e607a14de707cca1c357",
-            "operatorSha256": "be63959c17012a9e19d5b3488921063016de5f5e598a43c40514e3fa0685228b"
+            "operatorSha256": "7cf402bb078238a054e4ea65c95ea4bd81938ea1f18b54321e1dc31e176630e5"
           },
           "fieldRegions": []
         },
         {
           "order": 3,
-          "uuid": "c063db8c-22b9-4528-bf2e-8dc35c5722dc",
+          "uuid": "2417ae05-91f4-4d15-955d-e4666ca41b76",
           "filename": "statutory-dwc-predesignation.pdf",
-          "sourceByteLength": 194128,
-          "localRawSha256": "91351e575f2e7be4214c01ba4c3186ad60a36216531a9085a0e7a445912b06b6",
-          "providerRawSha256": "91351e575f2e7be4214c01ba4c3186ad60a36216531a9085a0e7a445912b06b6",
+          "sourceByteLength": 196753,
+          "localRawSha256": "0757a861866612b8122e7db6d7b0510cfb8506b9a75b8b6d66b27817f0532798",
+          "providerRawSha256": "0757a861866612b8122e7db6d7b0510cfb8506b9a75b8b6d66b27817f0532798",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 1,
-            "semanticSha256": "334d26f71c1008d6a4eda731779f1be4bfe56b185369b4696275d0d0ecad72e7",
+            "semanticSha256": "ba27156f65abc410255aea6eb418d0fbab3cf49a0db1d92f38699f7de22b2aa1",
             "visualSha256": "8fb14207f04d9ae0b382313e49ad6cf6e1a9c9b6312d4208880c24c29f24eff5",
-            "operatorSha256": "088f6db9c4670bd086848c77935f096e6f265842e069048ecfe00e5baf02d2ac"
+            "operatorSha256": "5ca5622e96af3f398e95b4348d71afa39b50625c8dc6380b5e3043eded8430fe"
           },
           "fieldRegions": []
         },
         {
           "order": 4,
-          "uuid": "f8448f8b-adcd-4460-9790-4038f2c91115",
+          "uuid": "0ef44d4e-4c7f-4a2b-a109-09f851d53919",
           "filename": "statutory-de-2320.pdf",
-          "sourceByteLength": 166452,
-          "localRawSha256": "7a0cd1b64820c59d760db6d209008b3a93607282de4db975ee99449cd7da9213",
-          "providerRawSha256": "7a0cd1b64820c59d760db6d209008b3a93607282de4db975ee99449cd7da9213",
+          "sourceByteLength": 197575,
+          "localRawSha256": "bea0a479795469a101b6f9ab2233c3537eba7f1b2bf821bdf79a256b6aa14e8e",
+          "providerRawSha256": "bea0a479795469a101b6f9ab2233c3537eba7f1b2bf821bdf79a256b6aa14e8e",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 22,
-            "semanticSha256": "ad98cb296c24f880a681596e6b63d8d26d523ac5d895def5a1202ebd7177cfb8",
-            "visualSha256": "ee256cb24c3c9b72947cfc261e52b7fec63425800b936bcff0cfedb3ee94ab4d",
-            "operatorSha256": "358bd57f71cb1266c4e439a0f002f56163df242dad630beb3245a453cdf79e39"
+            "semanticSha256": "8cf6427048fe4414e8b76542fac3d64d8592f5b85dd91bd63bbd61bc2099caa4",
+            "visualSha256": "be7953a2d8f9a16e96af53ebfa931da8f9ed10a057e564861e35f158f3178f28",
+            "operatorSha256": "2749127abda97ff04cf7c369e443cf5e9bd8c1980aad3f1b32c4ba23fa7eb80c"
           },
           "fieldRegions": []
         },
         {
           "order": 5,
-          "uuid": "48fa75fd-ec27-47e1-adf8-308790b42040",
+          "uuid": "a80356b0-d548-4bd8-8ff4-64ca39db3812",
           "filename": "statutory-de-2515.pdf",
-          "sourceByteLength": 1683153,
-          "localRawSha256": "dd0335cea7d55169ef23a9d194db8cae64073b7abd8ffc15018a39b45aa0ad34",
-          "providerRawSha256": "dd0335cea7d55169ef23a9d194db8cae64073b7abd8ffc15018a39b45aa0ad34",
+          "sourceByteLength": 1692148,
+          "localRawSha256": "4582fa51dedf08941f32849e1044a9808aef3f8267d1830779f69fe1ef2a15ad",
+          "providerRawSha256": "4582fa51dedf08941f32849e1044a9808aef3f8267d1830779f69fe1ef2a15ad",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 2,
-            "semanticSha256": "08e14902695225b65841405d9e32b9beab5d0074ff3631040e158686d7b64d5f",
-            "visualSha256": "45fc11b9c597a1f3b933dacb429521330a7a2b39e6d3fedbb378d0a3e081adf6",
-            "operatorSha256": "f6cdd0fd1b6a7ff3a0adda8a8b1fd10520562ff0db6bbfa88b96e7b8012ffc87"
+            "semanticSha256": "a70e5c929355fc5919a39d1359771481102b49ad1fe9dbc5c37f7fb96b0da8d5",
+            "visualSha256": "ab44917a29877e1e329c1ddc30cc75af1cb79e61691feac49b8655d3b034fd3b",
+            "operatorSha256": "60b7189a46e8752f4fe34976905eaae638c239c760ef201a2a2dde15bf4cd9c2"
           },
           "fieldRegions": []
         },
         {
           "order": 6,
-          "uuid": "9737b67e-6dfb-4299-8e7f-b214d9d66d1c",
+          "uuid": "8f07c5f2-e5c2-42dc-b05e-b80c5a9d210b",
           "filename": "statutory-de-2511.pdf",
-          "sourceByteLength": 557285,
-          "localRawSha256": "04404a7d3ba141ef9f0c21d8d3283b32db967c09e7b778af86ac7355753c195b",
-          "providerRawSha256": "04404a7d3ba141ef9f0c21d8d3283b32db967c09e7b778af86ac7355753c195b",
+          "sourceByteLength": 565455,
+          "localRawSha256": "af3fa4c20ce7fc43d3d0777e7cde5c08d102a286c30b75393ded0e77b5df5a39",
+          "providerRawSha256": "af3fa4c20ce7fc43d3d0777e7cde5c08d102a286c30b75393ded0e77b5df5a39",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 2,
-            "semanticSha256": "9e8f45b8445ca4255b39f1db292e6f5298b97ae37aef57af60e861f928a94242",
-            "visualSha256": "c9e097b9f16a1c31d10a40f2ba334b1bc2c7fb2e848332574b31305538ffd6e1",
-            "operatorSha256": "8b9598c43cca524c78e567dff90f6047dbdfbfe76dbc67165f60984c85fe4afe"
+            "semanticSha256": "e78239d68b51960dee343381b50f7f71db178721ee0538995c617fa30c5c0048",
+            "visualSha256": "5bd14230500399d6edc44c8baf4d0375c23e34921a7e60b927f576865902269e",
+            "operatorSha256": "5eaf2df01d8d5e6d2ffe41bf9cd1950eb695194d36531070e07899fe5f402abd"
           },
           "fieldRegions": []
         },
         {
           "order": 7,
-          "uuid": "9dd758c8-8b3f-40ed-818d-32491cf3de04",
+          "uuid": "63caa7ba-66ef-4c15-a427-ea97ea22daf5",
           "filename": "statutory-paid-sick-leave.pdf",
-          "sourceByteLength": 148982,
-          "localRawSha256": "45d17a1f5caaa8842e1d4e9c25d1e553134c66b9d2498a4e9ac78371802c631e",
-          "providerRawSha256": "45d17a1f5caaa8842e1d4e9c25d1e553134c66b9d2498a4e9ac78371802c631e",
+          "sourceByteLength": 151306,
+          "localRawSha256": "d628d28132f5908c6723855b95e620811bdbb780c6e43db5d1607ea615600567",
+          "providerRawSha256": "d628d28132f5908c6723855b95e620811bdbb780c6e43db5d1607ea615600567",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 1,
-            "semanticSha256": "43159fba7aeb618030d8f5cf235a972c0680ed5b856e31f4f97940a00a7c43b6",
+            "semanticSha256": "0b5d78839fa56a023f96d18fe9ed6f9aab7c8e178e0533cb1e5bc9f16874123c",
             "visualSha256": "ff60e89e6fa439617f0b3520975e67a227a171191d49d6cd6af9ab45ecc55f20",
-            "operatorSha256": "cd4fe4deeb26128ae5280cc6b9849d3ec0068c1db146d14bf615fa9592a66ea3"
+            "operatorSha256": "153682b64e6383b4ca7dfa87460fa0b5425d3e0c365900d3d6aebb8bba361118"
           },
           "fieldRegions": []
         },
         {
           "order": 8,
-          "uuid": "14177695-6ea6-4751-abf4-893e9c5c5bd7",
+          "uuid": "62460d40-dcc0-40ad-9341-a6b21014e73c",
           "filename": "statutory-crd-sexual-harassment.pdf",
-          "sourceByteLength": 4113973,
-          "localRawSha256": "bf654e2999f1ebca0348909c3587101695fae5c200cecc52c4b5aace8f6a26f8",
-          "providerRawSha256": "bf654e2999f1ebca0348909c3587101695fae5c200cecc52c4b5aace8f6a26f8",
+          "sourceByteLength": 4117090,
+          "localRawSha256": "03439f75e13e5b473fb2233b3a25ab954d2e150d85f99962ecacd0320bdb2d31",
+          "providerRawSha256": "03439f75e13e5b473fb2233b3a25ab954d2e150d85f99962ecacd0320bdb2d31",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 2,
-            "semanticSha256": "8c5283470db30fd0526797cadadfe354f56165a50d382b05e52dc866fa10c243",
-            "visualSha256": "0d3b77c481d95b9c34a64f0536ecaca956a77959c31d5cf0eb2505089181f86a",
-            "operatorSha256": "1dc26c285ecdc81805878978d34ed3632eb9f002737be133401e8d2f107abfe0"
+            "semanticSha256": "9038233b17c52fa05c95c692d4315f53dc770ff5d1e91140263439398a4e50bb",
+            "visualSha256": "48024ddd6d5ca8e07aafac18fd5b94248437e972d4ec4b521df3b3e74f7245cc",
+            "operatorSha256": "0409890aa83f0861d06bd87d58c14f51cc4872b9c4ed29a385bff63281ed3180"
           },
           "fieldRegions": []
         },
         {
           "order": 9,
-          "uuid": "27d35f82-ad7c-42d5-9a79-52dba656eb9b",
+          "uuid": "a444b183-cac1-49ad-8380-f59e579d1621",
           "filename": "statutory-victims-rights.pdf",
-          "sourceByteLength": 438009,
-          "localRawSha256": "752767e3bfffe643a1a8106363fa8fb6c75989536898023b95583f15765ba61c",
-          "providerRawSha256": "752767e3bfffe643a1a8106363fa8fb6c75989536898023b95583f15765ba61c",
+          "sourceByteLength": 439873,
+          "localRawSha256": "a8e8067834d29bd539d472617adf42b9afb5f732e63a8085a2e7b771e26c7433",
+          "providerRawSha256": "a8e8067834d29bd539d472617adf42b9afb5f732e63a8085a2e7b771e26c7433",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 2,
-            "semanticSha256": "819e445be02f784d1a6c495e21fe531c8b7ad7d95962fb6d7d905402d5be4282",
+            "semanticSha256": "da42a1588465148c67cdee919c7a294cf6453a1cce6f0f8dc99f2a8be5a0d790",
             "visualSha256": "5597803ee030be5041b95d700316d18ce2db78617eb8bef6a4603d187e6857ea",
-            "operatorSha256": "be0ce68c9d1a3b209634fdb4a3634b0bdf835bc48fe87f2c2727c9d97f90d40c"
+            "operatorSha256": "f2b9d37dac862766e82b6a4cd035c9f56bb7590301795a1d535ddbaa24ab9198"
           },
           "fieldRegions": []
         },
         {
           "order": 10,
-          "uuid": "6f5cfab3-67e4-4b97-a84c-8a2db45c9fb2",
+          "uuid": "bd002928-6f49-4513-befb-48bc61dd0a35",
           "filename": "iipp.pdf",
-          "sourceByteLength": 127713,
-          "localRawSha256": "c128655c62195b2e06be74a91145e3e8c0d78f0e8210f583b1b42d9e28e6b6d7",
-          "providerRawSha256": "c128655c62195b2e06be74a91145e3e8c0d78f0e8210f583b1b42d9e28e6b6d7",
+          "sourceByteLength": 127716,
+          "localRawSha256": "3fcc2c4010c805db56dae766daf7dbbe2760669aa323afcd4db8177bfdb63d06",
+          "providerRawSha256": "3fcc2c4010c805db56dae766daf7dbbe2760669aa323afcd4db8177bfdb63d06",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -648,11 +648,11 @@
         },
         {
           "order": 11,
-          "uuid": "46b8e37a-a3d0-4127-9e55-f430d9d8a236",
+          "uuid": "02782099-3c73-45b1-8135-be5b1b4175a0",
           "filename": "heat-illness-prevention-plan.pdf",
-          "sourceByteLength": 126458,
-          "localRawSha256": "5ffb9ee9482b9d22c7db12b4fa044f7c9823dacd812e4cc9257be428a1c043fe",
-          "providerRawSha256": "5ffb9ee9482b9d22c7db12b4fa044f7c9823dacd812e4cc9257be428a1c043fe",
+          "sourceByteLength": 126454,
+          "localRawSha256": "82428e6bb2d23198207f3c96f4c266f6ecc9af1f8067aaea0c6f163309950927",
+          "providerRawSha256": "82428e6bb2d23198207f3c96f4c266f6ecc9af1f8067aaea0c6f163309950927",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -665,11 +665,11 @@
         },
         {
           "order": 12,
-          "uuid": "c8b46827-cc40-4073-9c09-b50298a25eb5",
+          "uuid": "738a7b03-0bf8-49a3-ad43-f1343cfbecbb",
           "filename": "fall-protection-program.pdf",
-          "sourceByteLength": 130910,
-          "localRawSha256": "04df97e1f5fe2654f85c148cb9d0b92c184865b635eef767134a5dc3e5e67de5",
-          "providerRawSha256": "04df97e1f5fe2654f85c148cb9d0b92c184865b635eef767134a5dc3e5e67de5",
+          "sourceByteLength": 130914,
+          "localRawSha256": "f48e9f815ad27ef8a2399db9c1c759772ace10bbdb483668dd17bc496d947124",
+          "providerRawSha256": "f48e9f815ad27ef8a2399db9c1c759772ace10bbdb483668dd17bc496d947124",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -682,11 +682,11 @@
         },
         {
           "order": 13,
-          "uuid": "839af2fa-1069-43ce-a5d1-7a6156c9cdb1",
+          "uuid": "7d7851ba-fe85-4910-bddd-104dd39220e0",
           "filename": "code-of-safe-practices.pdf",
-          "sourceByteLength": 109523,
-          "localRawSha256": "8201fcc9e5e5ecb41e9a2c0cbbff9c8b2937870476ac6aef46b4e3fca427928b",
-          "providerRawSha256": "8201fcc9e5e5ecb41e9a2c0cbbff9c8b2937870476ac6aef46b4e3fca427928b",
+          "sourceByteLength": 109514,
+          "localRawSha256": "e07672af91491df76c549304ef84301d6156f42fe5a16d8651e36f7f2cd55519",
+          "providerRawSha256": "e07672af91491df76c549304ef84301d6156f42fe5a16d8651e36f7f2cd55519",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -699,11 +699,11 @@
         },
         {
           "order": 14,
-          "uuid": "60ff4409-c43d-491c-8823-72d85bef2c67",
+          "uuid": "5dad8c5e-9d51-4576-b22a-9f6dbf2180cc",
           "filename": "policy-acknowledgment.pdf",
-          "sourceByteLength": 123752,
-          "localRawSha256": "6a01835d481daaacfffbbb8d800fa6464d6caed255b2280b8a90f51e0a76e871",
-          "providerRawSha256": "6a01835d481daaacfffbbb8d800fa6464d6caed255b2280b8a90f51e0a76e871",
+          "sourceByteLength": 123758,
+          "localRawSha256": "dc140c84b7503e142c22dc12f8edafe35ff32187cecfaf405cbce15d7fd14634",
+          "providerRawSha256": "dc140c84b7503e142c22dc12f8edafe35ff32187cecfaf405cbce15d7fd14634",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -716,7 +716,7 @@
             {
               "order": 0,
               "id": "f29",
-              "uuid": "b7ffb33d-fcb0-4413-b0c9-8063cc7ebfb5",
+              "uuid": "ed20f9d3-f0e2-4cfe-856f-b530f5b8ad25",
               "name": "11/41 Employee",
               "description": "",
               "type": "text",
@@ -732,7 +732,7 @@
             {
               "order": 1,
               "id": "f30",
-              "uuid": "767f62fd-2ef4-4d42-902c-1816260cf440",
+              "uuid": "94ef9036-8d81-4b90-bd6c-5a5d8e346a96",
               "name": "12/41 Start date",
               "description": "",
               "type": "date",
@@ -748,7 +748,7 @@
             {
               "order": 2,
               "id": "f31",
-              "uuid": "df2eb20a-5bce-4808-8fb9-3b99134c9214",
+              "uuid": "c2d40d16-b4be-4b86-999c-798f8b3eabac",
               "name": "13/41 Employment Agreement — I signed it and…",
               "description": "A · Documents I received",
               "type": "initials",
@@ -764,7 +764,7 @@
             {
               "order": 3,
               "id": "f32",
-              "uuid": "480f599e-ffb9-443b-82a8-f739a73ac77a",
+              "uuid": "3de43436-6f9f-49e2-abf5-013c24604420",
               "name": "14/41 Labor Code §2810.5 wage notice — I signed it…",
               "description": "A · Documents I received",
               "type": "initials",
@@ -780,7 +780,7 @@
             {
               "order": 4,
               "id": "f33",
-              "uuid": "fea73faa-6c60-4ab1-8896-8931bb7d1303",
+              "uuid": "b73c143c-27e4-4fff-8a68-e3e99810da69",
               "name": "15/41 DWC Time of Hire pamphlet (workers…",
               "description": "A · Documents I received",
               "type": "initials",
@@ -796,7 +796,7 @@
             {
               "order": 5,
               "id": "f34",
-              "uuid": "74aa3df4-396e-4a20-9401-3baece775b06",
+              "uuid": "9ebf6171-e63a-4d87-979f-9ad4313bc1c5",
               "name": "16/41 Workers compensation predesignation of…",
               "description": "A · Documents I received",
               "type": "initials",
@@ -812,7 +812,7 @@
             {
               "order": 6,
               "id": "f35",
-              "uuid": "ce772851-a086-4a06-b2f5-9136e52e6922",
+              "uuid": "8af5915e-5db2-4d3f-9c8c-0f2a66ed260a",
               "name": "17/41 DE 2320 — For Your Benefit: California's…",
               "description": "A · Documents I received",
               "type": "initials",
@@ -828,7 +828,7 @@
             {
               "order": 7,
               "id": "f36",
-              "uuid": "1bb63bc2-3162-4e55-b7e6-82cad5ff881b",
+              "uuid": "c88b8836-8d49-4474-aeb1-bb9b89fac0b8",
               "name": "18/41 DE 2515 — Disability Insurance Provisions",
               "description": "A · Documents I received",
               "type": "initials",
@@ -844,7 +844,7 @@
             {
               "order": 8,
               "id": "f37",
-              "uuid": "f6851546-4161-418a-a946-533a9f177234",
+              "uuid": "6a2a473e-cd11-4116-b424-1dfe55c46a0f",
               "name": "19/41 DE 2511 — Paid Family Leave",
               "description": "A · Documents I received",
               "type": "initials",
@@ -860,7 +860,7 @@
             {
               "order": 9,
               "id": "f38",
-              "uuid": "654722e9-ded0-4fd4-bdef-e1dbeb7d4515",
+              "uuid": "f3669001-097a-4f4d-a255-860518e371aa",
               "name": "20/41 Paid sick leave notice (40 hours / 5 days)",
               "description": "A · Documents I received",
               "type": "initials",
@@ -876,7 +876,7 @@
             {
               "order": 10,
               "id": "f39",
-              "uuid": "0efd96c9-7259-4d87-b193-af38a617e67f",
+              "uuid": "81c3751c-08b0-4c29-8ee3-92220c4ad3df",
               "name": "21/41 CRD sexual harassment prevention brochure…",
               "description": "A · Documents I received",
               "type": "initials",
@@ -892,7 +892,7 @@
             {
               "order": 11,
               "id": "f40",
-              "uuid": "67a22a62-b878-4557-b143-7d452b39596a",
+              "uuid": "3cb115f6-69ca-4d42-9694-86f117411fe7",
               "name": "22/41 Rights of victims of domestic violence…",
               "description": "A · Documents I received",
               "type": "initials",
@@ -908,7 +908,7 @@
             {
               "order": 12,
               "id": "f41",
-              "uuid": "12f28a47-f994-4bf1-9848-c1639e7fa653",
+              "uuid": "08616d57-a2c0-48c5-8e0f-31e8c3bc41a5",
               "name": "23/41 Injury and Illness Prevention Program",
               "description": "A · Documents I received",
               "type": "initials",
@@ -924,7 +924,7 @@
             {
               "order": 13,
               "id": "f42",
-              "uuid": "194bd71c-0828-478a-95d5-cf3cf3251411",
+              "uuid": "1a9c6cda-18a9-471e-b9e3-6d59d3ac6dfa",
               "name": "24/41 Heat Illness Prevention Plan",
               "description": "A · Documents I received",
               "type": "initials",
@@ -940,7 +940,7 @@
             {
               "order": 14,
               "id": "f43",
-              "uuid": "e82a4e99-1fbb-4ee3-be59-0f6cd44bd9fc",
+              "uuid": "eb5c93ea-215f-4ea0-bd98-09b55d27af71",
               "name": "25/41 Fall Protection Program",
               "description": "A · Documents I received",
               "type": "initials",
@@ -956,7 +956,7 @@
             {
               "order": 15,
               "id": "f44",
-              "uuid": "3adc1438-6128-4b7d-9316-8bb7659d9379",
+              "uuid": "b3ecfa46-4435-47ab-a2b1-b3480702c967",
               "name": "26/41 Code of Safe Practices",
               "description": "A · Documents I received",
               "type": "initials",
@@ -972,7 +972,7 @@
             {
               "order": 16,
               "id": "f45",
-              "uuid": "ae1818f5-d512-4a9d-ab1a-589af2a7a9fa",
+              "uuid": "2d79e784-509d-40c2-85b0-04b62a20ea02",
               "name": "27/41 Section B initials",
               "description": "B · At-will employment",
               "type": "initials",
@@ -988,7 +988,7 @@
             {
               "order": 17,
               "id": "f46",
-              "uuid": "f78d6be6-5000-48a9-8d7a-427acc36f98d",
+              "uuid": "2ff7c77c-eba4-46c0-8235-4d41cf7f47ba",
               "name": "28/41 Section C initials",
               "description": "C · Timekeeping",
               "type": "initials",
@@ -1004,7 +1004,7 @@
             {
               "order": 18,
               "id": "f47",
-              "uuid": "f42af5e0-2403-4a20-b3a6-f3d167807041",
+              "uuid": "df0053ee-19df-4633-880d-610004dce251",
               "name": "29/41 Section D initials",
               "description": "D · Meal and rest periods",
               "type": "initials",
@@ -1020,7 +1020,7 @@
             {
               "order": 19,
               "id": "f48",
-              "uuid": "ccebfb5b-e52e-4a49-9f55-39a7a28bdd10",
+              "uuid": "d4a2517d-c2ec-483e-8984-fd8f3e4c8018",
               "name": "30/41 Section E initials",
               "description": "E · Pay",
               "type": "initials",
@@ -1036,7 +1036,7 @@
             {
               "order": 20,
               "id": "f49",
-              "uuid": "e1debbf1-7cec-45a7-9375-c141990f841a",
+              "uuid": "fc9c1779-c7bf-4884-8acc-090cd14ce969",
               "name": "31/41 Section F initials",
               "description": "F · Safety",
               "type": "initials",
@@ -1052,7 +1052,7 @@
             {
               "order": 21,
               "id": "f50",
-              "uuid": "8976d170-c4f6-4134-bb0f-a50d4cbab95b",
+              "uuid": "4eb0e1b4-a24b-4a4e-9cf3-e49ada0b4d89",
               "name": "32/41 Section G initials",
               "description": "G · Tools and equipment",
               "type": "initials",
@@ -1068,7 +1068,7 @@
             {
               "order": 22,
               "id": "f51",
-              "uuid": "7b21331b-c551-4b3f-b44f-bb680ae320a6",
+              "uuid": "40838cd9-be41-4f1a-9fe6-282796120e4a",
               "name": "33/41 Write YES or NO",
               "description": "H · Driving",
               "type": "text",
@@ -1084,7 +1084,7 @@
             {
               "order": 23,
               "id": "f52",
-              "uuid": "a92e537d-595e-48c0-9de2-b291b4154243",
+              "uuid": "9457128a-7389-494c-b190-c0fe6e90b58a",
               "name": "34/41 Section H initials",
               "description": "H · Driving",
               "type": "initials",
@@ -1100,7 +1100,7 @@
             {
               "order": 24,
               "id": "f53",
-              "uuid": "de957f39-0eb7-42be-ab45-fb4be2e57811",
+              "uuid": "88ac4e9b-c044-4adb-9fb2-f9ac372d84d4",
               "name": "35/41 Section I initials",
               "description": "I · Company property",
               "type": "initials",
@@ -1116,7 +1116,7 @@
             {
               "order": 25,
               "id": "f54",
-              "uuid": "2c60f12d-c866-4446-aed7-2b3d7f3e1c80",
+              "uuid": "474a4b46-2c9b-44df-96fe-a22717b595dd",
               "name": "36/41 Section J initials",
               "description": "J · Reporting and non-retaliation",
               "type": "initials",
@@ -1132,7 +1132,7 @@
             {
               "order": 26,
               "id": "f55",
-              "uuid": "30da5d59-8267-4664-b473-372d204c9d74",
+              "uuid": "daa8710a-c759-47ea-be43-df7f9a070ce7",
               "name": "37/41 Primary language (write English or Spanish)",
               "description": "K · Language",
               "type": "text",
@@ -1148,7 +1148,7 @@
             {
               "order": 27,
               "id": "f56",
-              "uuid": "34e710f6-9062-427b-b338-c3a1caa53d0e",
+              "uuid": "77af72fa-c7ee-4fa0-9d97-21e07bfdf757",
               "name": "38/41 Section K initials",
               "description": "K · Language",
               "type": "initials",
@@ -1164,7 +1164,7 @@
             {
               "order": 28,
               "id": "f57",
-              "uuid": "e61d8aab-7a03-4688-880d-d7c0f6cc1122",
+              "uuid": "b7e07f44-c171-40ad-a820-bbd98dd20123",
               "name": "39/41 Signature",
               "description": "",
               "type": "signature",
@@ -1180,7 +1180,7 @@
             {
               "order": 29,
               "id": "f58",
-              "uuid": "918a429e-7e27-4753-857d-2542322e4b79",
+              "uuid": "534f3d49-048c-48e5-a206-88f18efe32c2",
               "name": "40/41 Print name",
               "description": "",
               "type": "text",
@@ -1196,7 +1196,7 @@
             {
               "order": 30,
               "id": "f59",
-              "uuid": "eb811dd0-f98a-4771-aa4f-b0b3380b4a57",
+              "uuid": "3467dc52-44d1-4741-8502-de5a731f711d",
               "name": "41/41 Date",
               "description": "",
               "type": "date",
@@ -1212,7 +1212,7 @@
             {
               "order": 31,
               "id": "f60",
-              "uuid": "447b5e64-c223-4719-833e-7fcd17e3b2d4",
+              "uuid": "7bae2fe6-5e67-445b-946d-f6b24e6150c4",
               "name": "19/21 Signature",
               "description": "",
               "type": "signature",
@@ -1228,7 +1228,7 @@
             {
               "order": 32,
               "id": "f61",
-              "uuid": "312f9f00-e31b-40b2-bb65-5a78d0a3f6cd",
+              "uuid": "7496e4ac-b423-4eb3-b566-3d2e3c6d2f3f",
               "name": "20/21 Name / title",
               "description": "",
               "type": "text",
@@ -1244,7 +1244,7 @@
             {
               "order": 33,
               "id": "f62",
-              "uuid": "5a65942f-594d-4749-a2e7-d421bbe97585",
+              "uuid": "a24d7c70-1aa3-4ae0-8d3e-550a763ed579",
               "name": "21/21 Date",
               "description": "",
               "type": "date",
@@ -1260,23 +1260,23 @@
           ]
         }
       ],
-      "entrySha256": "5db7760ab75e4a5f7700a83a1619d16f781e1049a4151ff765cd7e7c8d9f5f60"
+      "entrySha256": "54bf6eabc157ea7e2c948a2d2e00588df70329cb12b6405d9ca4a0265fb1f208"
     },
     {
-      "slug": "w2-initial-packet-es-v4",
-      "registryVersion": 4,
-      "templateId": "383",
-      "templateName": "Paquete Inicial de Empleo W-2 v4",
-      "layoutSha256": "b5054a3b2dfbc465e95306506cb28fa20153070d24d8a8e4e75a0425d0b0de1b",
-      "reflowSha256": "820906b6eb2ae6cf5e21d71dc8f1686ac588a7a9f1e6c88f44d434fd7ea9f7ee",
+      "slug": "w2-initial-packet-es-v3",
+      "registryVersion": 3,
+      "templateId": "381",
+      "templateName": "Paquete Inicial de Empleo W-2 v3",
+      "layoutSha256": "cf4fbb322d0fdf7078e4dad4bbe9a488831675546709b6f1a67a40a211bbf523",
+      "reflowSha256": "f36f421a2fd547d7a348502590f7ed9885ef130430ce0d697348572b5ae09cd3",
       "documents": [
         {
           "order": 0,
-          "uuid": "0474fe84-649d-4a76-ab4b-535f3891c819",
+          "uuid": "bfc84cf1-c747-43ba-8ef9-9c9fb9be88a9",
           "filename": "employment-agreement-es.pdf",
-          "sourceByteLength": 127681,
-          "localRawSha256": "02ec4e8a17796020987ed8aaad2cb4b89e81157318ce3fd0c9b8ad177189294e",
-          "providerRawSha256": "02ec4e8a17796020987ed8aaad2cb4b89e81157318ce3fd0c9b8ad177189294e",
+          "sourceByteLength": 127682,
+          "localRawSha256": "b787f6e5ea3e2eb6f41cd4b1fb152eda41dae2a9f5f663de758dd1a85eca76a6",
+          "providerRawSha256": "b787f6e5ea3e2eb6f41cd4b1fb152eda41dae2a9f5f663de758dd1a85eca76a6",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -1289,7 +1289,7 @@
             {
               "order": 0,
               "id": "f1",
-              "uuid": "786ce6b0-19a1-44ca-afef-af45cceb70ef",
+              "uuid": "19d1846c-647e-48ba-ad57-9fe83d730758",
               "name": "1/41 Empleado",
               "description": "",
               "type": "text",
@@ -1305,7 +1305,7 @@
             {
               "order": 1,
               "id": "f2",
-              "uuid": "d5c75a89-0c91-4495-a1f2-88ffc85f515c",
+              "uuid": "ef23f1f3-51e2-44d4-aa55-b573b1b637dd",
               "name": "1/20 Techador",
               "description": "",
               "type": "checkbox",
@@ -1321,7 +1321,7 @@
             {
               "order": 2,
               "id": "f3",
-              "uuid": "20f55b83-09c3-4304-85f4-810b86c49386",
+              "uuid": "9a7bbcc9-bbd8-45de-8137-11ddc54b41e3",
               "name": "2/20 Capataz (Foreman)",
               "description": "",
               "type": "checkbox",
@@ -1337,7 +1337,7 @@
             {
               "order": 3,
               "id": "f4",
-              "uuid": "7fcb2187-4dad-4c27-b8ad-d5473d25f940",
+              "uuid": "16212a5a-4af6-47db-b19c-7f8ee75dcfd6",
               "name": "2/41 Fecha de inicio",
               "description": "",
               "type": "date",
@@ -1353,7 +1353,7 @@
             {
               "order": 4,
               "id": "f5",
-              "uuid": "40550c48-9464-4d57-a50b-969d036b3435",
+              "uuid": "f8fdfcd3-ef8f-4257-9fd6-f394d3a78ea9",
               "name": "3/41 Firma",
               "description": "",
               "type": "signature",
@@ -1369,7 +1369,7 @@
             {
               "order": 5,
               "id": "f6",
-              "uuid": "3ca61e37-4671-434b-969a-34db8013528b",
+              "uuid": "ef365c5f-4cc9-4c59-a911-0653d4f6b2a1",
               "name": "4/41 Nombre en letra de molde",
               "description": "",
               "type": "text",
@@ -1385,7 +1385,7 @@
             {
               "order": 6,
               "id": "f7",
-              "uuid": "a0202a08-ea48-4ec3-84f5-acd8f0783a31",
+              "uuid": "71c57ca1-5b60-425c-b80b-a72161ff0bf1",
               "name": "5/41 Fecha",
               "description": "",
               "type": "date",
@@ -1401,7 +1401,7 @@
             {
               "order": 7,
               "id": "f8",
-              "uuid": "6fed39b9-f853-4029-9785-3982273abd81",
+              "uuid": "84415806-6689-42d2-85cf-26a4ee3c87a9",
               "name": "3/20 Firma",
               "description": "",
               "type": "signature",
@@ -1417,7 +1417,7 @@
             {
               "order": 8,
               "id": "f9",
-              "uuid": "560e842e-62e3-44a4-b1da-eca9a8e44155",
+              "uuid": "6ef73f07-e888-46c1-b281-20bb0cda7970",
               "name": "4/20 Fecha",
               "description": "",
               "type": "date",
@@ -1434,11 +1434,11 @@
         },
         {
           "order": 1,
-          "uuid": "b1f980f2-7e89-49f7-8a49-d4f5faf33ca9",
+          "uuid": "d517cb11-0fa5-4abb-b429-9ef4c0cedf73",
           "filename": "wage-notice-2810-5-es.pdf",
           "sourceByteLength": 125750,
-          "localRawSha256": "b87e8e6c235e2785bc824c6e4250f84566ce63474be4111a20ace5f6294a0908",
-          "providerRawSha256": "b87e8e6c235e2785bc824c6e4250f84566ce63474be4111a20ace5f6294a0908",
+          "localRawSha256": "9bc4b5d515ffd680c633eba28b40a388f8923008261caf738b3db4286abb74a1",
+          "providerRawSha256": "9bc4b5d515ffd680c633eba28b40a388f8923008261caf738b3db4286abb74a1",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -1451,7 +1451,7 @@
             {
               "order": 0,
               "id": "f10",
-              "uuid": "4ba0b6ef-36e6-43b1-9d8b-a3a67e6b34aa",
+              "uuid": "bdef7bfa-2d4d-4ba7-9b3e-d12324f33b5b",
               "name": "6/41 Nombre",
               "description": "",
               "type": "text",
@@ -1467,7 +1467,7 @@
             {
               "order": 1,
               "id": "f11",
-              "uuid": "31d48109-187f-46c7-9598-54da1cac8b5a",
+              "uuid": "bfdb2d54-d3a3-4fc6-b8d4-3630d3ad131d",
               "name": "7/41 Fecha de inicio",
               "description": "",
               "type": "date",
@@ -1483,7 +1483,7 @@
             {
               "order": 2,
               "id": "f12",
-              "uuid": "c4069ed6-d870-4ad0-951e-04bfa3c4cde7",
+              "uuid": "89624bb0-ceee-4050-9f9a-5d6346a133d0",
               "name": "5/20 Techador",
               "description": "3. Arreglo de pago por pieza",
               "type": "checkbox",
@@ -1499,7 +1499,7 @@
             {
               "order": 3,
               "id": "f13",
-              "uuid": "a84c241d-615b-48a7-8849-e95640685d2c",
+              "uuid": "76fab0cf-2974-4ffb-b9c6-eea7a6dcda0f",
               "name": "6/20 Capataz",
               "description": "3. Arreglo de pago por pieza",
               "type": "checkbox",
@@ -1515,7 +1515,7 @@
             {
               "order": 4,
               "id": "f14",
-              "uuid": "8924c0ce-37c4-4c96-81b5-00628fcecbc7",
+              "uuid": "e890b8f4-0a28-4787-b588-a3c80bb6ba5d",
               "name": "7/20 Nombre de la aseguradora",
               "description": "",
               "type": "text",
@@ -1531,7 +1531,7 @@
             {
               "order": 5,
               "id": "f15",
-              "uuid": "6c08ca9f-c224-458a-a597-7c45c22de0ed",
+              "uuid": "c5a4f807-d36d-4d35-b2c8-15faca29a329",
               "name": "8/20 Número de póliza",
               "description": "",
               "type": "text",
@@ -1547,7 +1547,7 @@
             {
               "order": 6,
               "id": "f16",
-              "uuid": "749ecfc1-862d-4291-8e61-2615a49779a8",
+              "uuid": "b26e93a1-6a11-45d1-a4b2-95e2dad4e017",
               "name": "9/20 Dirección de la aseguradora",
               "description": "",
               "type": "text",
@@ -1563,7 +1563,7 @@
             {
               "order": 7,
               "id": "f17",
-              "uuid": "a4b6f189-7f2e-4eb4-9169-a772ce698f43",
+              "uuid": "0a418251-f3ff-490b-a0f4-b926ae1237f7",
               "name": "10/20 Teléfono de la aseguradora",
               "description": "",
               "type": "phone",
@@ -1579,7 +1579,7 @@
             {
               "order": 8,
               "id": "f18",
-              "uuid": "353ab2c5-9c49-4e8c-9fd2-a2cdfb935182",
+              "uuid": "3d8d49a1-dea6-4580-b1fe-764ab12b07fa",
               "name": "11/20 Sick leave: accrual",
               "description": "7. Días pagados por enfermedad",
               "type": "checkbox",
@@ -1595,7 +1595,7 @@
             {
               "order": 9,
               "id": "f19",
-              "uuid": "72eb9c0d-f655-430f-99b7-e4d378b46177",
+              "uuid": "a7342421-4e87-40c9-a8d5-59a14cc3dfce",
               "name": "12/20 Sick leave: front load",
               "description": "7. Días pagados por enfermedad",
               "type": "checkbox",
@@ -1611,7 +1611,7 @@
             {
               "order": 10,
               "id": "f20",
-              "uuid": "d0d1a66e-eda9-4aeb-8294-35202063f04e",
+              "uuid": "bd4b890b-3444-402b-8d7e-bcd473488a2a",
               "name": "13/20 Language: Spanish",
               "description": "Acuse de recibo",
               "type": "checkbox",
@@ -1627,7 +1627,7 @@
             {
               "order": 11,
               "id": "f21",
-              "uuid": "a71dbfc6-d6df-47d1-a468-7c0b0bc487ac",
+              "uuid": "8cd32385-dbc2-4dc8-ac33-90f1071307ef",
               "name": "8/41 Firma",
               "description": "",
               "type": "signature",
@@ -1643,7 +1643,7 @@
             {
               "order": 12,
               "id": "f22",
-              "uuid": "44b7a63a-69c3-41f2-a054-692960a9183e",
+              "uuid": "8230e443-2c88-4953-b668-02d07f2b3790",
               "name": "9/41 Nombre en letra de molde",
               "description": "",
               "type": "text",
@@ -1659,7 +1659,7 @@
             {
               "order": 13,
               "id": "f23",
-              "uuid": "314521e8-7239-49d2-bff0-c5681da842fe",
+              "uuid": "b362efc3-e288-435d-a6fd-e3ad2ebdb9a9",
               "name": "10/41 Fecha",
               "description": "",
               "type": "date",
@@ -1675,7 +1675,7 @@
             {
               "order": 14,
               "id": "f24",
-              "uuid": "3c361082-a713-4d44-8ff9-61174de96271",
+              "uuid": "bc67fcab-7d8f-4b36-9e22-6ae871c57015",
               "name": "14/20 Firma",
               "description": "",
               "type": "signature",
@@ -1691,7 +1691,7 @@
             {
               "order": 15,
               "id": "f25",
-              "uuid": "e3025f7f-f0e7-49fe-ae31-8c558226bdef",
+              "uuid": "74b02be6-9a62-46fe-97ad-d1f434bcfb5b",
               "name": "15/20 Nombre / título",
               "description": "",
               "type": "text",
@@ -1707,7 +1707,7 @@
             {
               "order": 16,
               "id": "f26",
-              "uuid": "dc8919ff-c03c-4ccb-85a0-651703ff7fa4",
+              "uuid": "5ed1d70f-b5ac-4a7b-86a7-5c9d533e68f7",
               "name": "16/20 Fecha",
               "description": "",
               "type": "date",
@@ -1723,7 +1723,7 @@
             {
               "order": 17,
               "id": "f27",
-              "uuid": "f231022e-a847-451b-943d-62f1ec4b7772",
+              "uuid": "6c6062cc-abf9-42f0-8c57-d63594a00ba7",
               "name": "17/20 Copia entregada al Empleado el",
               "description": "",
               "type": "text",
@@ -1740,147 +1740,147 @@
         },
         {
           "order": 2,
-          "uuid": "1cf81482-ccb4-478b-9391-aae6d90ea8db",
+          "uuid": "37c5e5ed-45de-4e82-a194-9a68ed0f4259",
           "filename": "statutory-dwc-time-of-hire-es.pdf",
-          "sourceByteLength": 1193268,
-          "localRawSha256": "94da12c371cc5b8958bc8d96d78924ad17df5155436ea8f0c7179ca19d7e2e2e",
-          "providerRawSha256": "94da12c371cc5b8958bc8d96d78924ad17df5155436ea8f0c7179ca19d7e2e2e",
+          "sourceByteLength": 1197227,
+          "localRawSha256": "925a60c0c011c98f0eafee6d6fe462d0d3f47e543af528d0de4e33f38683f1ff",
+          "providerRawSha256": "925a60c0c011c98f0eafee6d6fe462d0d3f47e543af528d0de4e33f38683f1ff",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 8,
-            "semanticSha256": "2a9d2d83e6e8261e77a3295dc58c2fb487eeaa57e9f6b3eb9b6375f845fb50c0",
+            "semanticSha256": "c2940a5d44359974fbc78fa7e5778c9cf8f89db677672ac14b87daac6bd0d3fe",
             "visualSha256": "13775ee760d7e65ff1f8302dbe6a3447953aa77f6d5c088317ee091b345b7822",
-            "operatorSha256": "2c300379c62c9960a694a2d786a613960f52279cbf52269311bda8681e9315bf"
+            "operatorSha256": "e4dd1e41a941f872501bea83be0bfcc18e0fb2654df17037b58f6e639585bfe3"
           },
           "fieldRegions": []
         },
         {
           "order": 3,
-          "uuid": "3e6075dc-57c4-4dc9-94e4-e36b4dfb4cad",
+          "uuid": "4159c315-3eb0-421b-be0a-036a8f37f2cb",
           "filename": "statutory-dwc-predesignation.pdf",
-          "sourceByteLength": 194128,
-          "localRawSha256": "0b1ed4ab162838d1c314ff9f27d2b8d3ae4c669a3071d4cdb102f9352b2e0adc",
-          "providerRawSha256": "0b1ed4ab162838d1c314ff9f27d2b8d3ae4c669a3071d4cdb102f9352b2e0adc",
+          "sourceByteLength": 196752,
+          "localRawSha256": "b29858ac31960b5006124b87999ddea69abe01a6b8c6e5bd2ae156c6d5c3a37e",
+          "providerRawSha256": "b29858ac31960b5006124b87999ddea69abe01a6b8c6e5bd2ae156c6d5c3a37e",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 1,
-            "semanticSha256": "4816263cfeebd2fdd1ce8805cce35c14c05bd3c9d09825b617d1bfc845420494",
+            "semanticSha256": "9833cd73fb46aaffb7c2e053c862b0194e49133d87b861e370814e4fe8814e94",
             "visualSha256": "4b6dce24fa9f3bdd1d6ec2e3be7c7b678856ed890e904ad4935960c269834b7e",
-            "operatorSha256": "75431288dea3e5b98d6ff5309d9fe985b3187e0a593bd370ab50f41b64bd3e61"
+            "operatorSha256": "6224d635c00348698c73eb3b5296ef2657ae6c28df04dafa63365189db3ebab4"
           },
           "fieldRegions": []
         },
         {
           "order": 4,
-          "uuid": "e116c562-91e3-42fb-bc02-37936eeb62c8",
+          "uuid": "d79b12c9-b91b-47f6-b303-be340be85065",
           "filename": "statutory-de-2320-es.pdf",
-          "sourceByteLength": 173262,
-          "localRawSha256": "f38bdd50718ef4cd26047aa8921f6f3bf1b2285b0396705dc8cf646e18fcc979",
-          "providerRawSha256": "f38bdd50718ef4cd26047aa8921f6f3bf1b2285b0396705dc8cf646e18fcc979",
+          "sourceByteLength": 202050,
+          "localRawSha256": "5f00c420f632be5535fb1fbf7219503928231c3a0a84fa0c4ed75ea61cbcd111",
+          "providerRawSha256": "5f00c420f632be5535fb1fbf7219503928231c3a0a84fa0c4ed75ea61cbcd111",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 26,
-            "semanticSha256": "3de8d8be5d3ae68826639179ccbc3ae9a424262fe12835e980369f7e595d3b95",
-            "visualSha256": "b60be1e6f51205ad79a9ee61e3ea1a801944a4d9a0e61dc2b59e5aa1c14f2dbb",
-            "operatorSha256": "9ee30d3c2f041fc93113935a82f74f972a38f57c5381dc472899b490b5346ada"
+            "semanticSha256": "b550bac24051ca6eaaa560cb1ffab49fba8a8c6a40b9f471e2e9454090e4f519",
+            "visualSha256": "4c179deaf05bec350cd1060370952a7b973ecb454f218d3e5799070c20e36c4f",
+            "operatorSha256": "cedc7dd6884f750c02800e086521ed16e2c82ed7c7bcb8cda4ac471a2a97988b"
           },
           "fieldRegions": []
         },
         {
           "order": 5,
-          "uuid": "9d1e30c8-ca52-4656-a2fb-06f9160d371a",
+          "uuid": "80cf9ed5-66ca-46ab-b432-8de9f9bab567",
           "filename": "statutory-de-2515-es.pdf",
-          "sourceByteLength": 3054434,
-          "localRawSha256": "d39ab80c98f7f86fdb282f7f8375137077c157666200004199d1a8499ceac49b",
-          "providerRawSha256": "d39ab80c98f7f86fdb282f7f8375137077c157666200004199d1a8499ceac49b",
+          "sourceByteLength": 3063839,
+          "localRawSha256": "5432d812feba1920285c591d034cc62254b270cc7347eacd14283bedc2e61d8c",
+          "providerRawSha256": "5432d812feba1920285c591d034cc62254b270cc7347eacd14283bedc2e61d8c",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 2,
-            "semanticSha256": "fd101ea3425554ba9dd8a5202fd7e214efa657f79c8819ba56fbd26c39d3d6ec",
-            "visualSha256": "15966a7e0ce3eb06047b43546f2adc745da92cbd249a87e1c2c165b8449324d0",
-            "operatorSha256": "b1eba6ec0d52a215396fa16c5ae25cba080dd69ff69103c886a72f8dc6959638"
+            "semanticSha256": "8c2944e87a14d3fac00122da60bac1b48988313282f719ac13663d79d7516e80",
+            "visualSha256": "6bee711f4beaafb963daa8345eb1628d1fb9486d2bd8b153fc5438beeb725fb0",
+            "operatorSha256": "9963c034c4922643647c456473849f31bbbdf4cee9548b2e157f13db0ab95adb"
           },
           "fieldRegions": []
         },
         {
           "order": 6,
-          "uuid": "aee8f768-fe5c-49ee-98a7-ec43d63cc526",
+          "uuid": "f1213a40-eb72-4656-a394-c1c9a0d3b928",
           "filename": "statutory-de-2511-es.pdf",
-          "sourceByteLength": 524499,
-          "localRawSha256": "5ccc0fcd3daa2597275ac4f0f275239a5a6e5c95f5f2078edc712ec55fb60323",
-          "providerRawSha256": "5ccc0fcd3daa2597275ac4f0f275239a5a6e5c95f5f2078edc712ec55fb60323",
+          "sourceByteLength": 533050,
+          "localRawSha256": "e2c63e841d17227c19c79ea7683c4d52cd495ca27c80f0d9d55a9f35eceed9dc",
+          "providerRawSha256": "e2c63e841d17227c19c79ea7683c4d52cd495ca27c80f0d9d55a9f35eceed9dc",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 2,
-            "semanticSha256": "43e740eba00cb6d83bc99cfea9f78e6a17a7282bf10f6d207e68b1db6ceac8ee",
-            "visualSha256": "c5b939faa90cefb05ec850554cfa7d7db92f9dd60b5b17ef53a8751fd92dd57d",
-            "operatorSha256": "b141bdfcef2dee999ce132d481fedaa903074154386b3ad8a19e28b30614987b"
+            "semanticSha256": "feeae118dd8ba7f58f61bfcb29c0f82979799f40d3d8880251c46942f8f603b4",
+            "visualSha256": "b5200f7ec70af710dc4ede0963b3239c71dea2af17ddb0d9a0aa0167cd2d3845",
+            "operatorSha256": "be7d6e43e6c0c410a29b3cd38f0bbabf69e140b154eb6b77d36fa002b7837b1d"
           },
           "fieldRegions": []
         },
         {
           "order": 7,
-          "uuid": "126d65bb-7fa4-4413-8dc8-66fd7c0dae36",
+          "uuid": "b05dcd63-3813-460d-a526-db72ea8914e7",
           "filename": "statutory-paid-sick-leave.pdf",
-          "sourceByteLength": 148982,
-          "localRawSha256": "bc6ba2c49442c7142bccaa167749868334030ceef6cefb948260ba80d41a1b54",
-          "providerRawSha256": "bc6ba2c49442c7142bccaa167749868334030ceef6cefb948260ba80d41a1b54",
+          "sourceByteLength": 151306,
+          "localRawSha256": "6e5e71740b35f598a60896825b2d3c90d885f98cf2adcdfe72b92267370385d6",
+          "providerRawSha256": "6e5e71740b35f598a60896825b2d3c90d885f98cf2adcdfe72b92267370385d6",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 1,
-            "semanticSha256": "4ea37a414e1c0208579f20e5bb98eecb552739112d01771cc816af56c78cd3b4",
+            "semanticSha256": "0836c510bbdd8eb0ed9229402b2925dfabfa7bd21427858a3b82d6d39a56d4a5",
             "visualSha256": "59b1c8f6656e86c16db4054b87e2748d764dc338774898fe5d0034145cb2fc1b",
-            "operatorSha256": "1b0ec58fd7e42142a9b437b3223a008088fcec8b5af52fb0dedc41b4c9004463"
+            "operatorSha256": "0d01431fe4db278e8c059cbbdca753d61a27844c92b1182bfcace52948cb44ad"
           },
           "fieldRegions": []
         },
         {
           "order": 8,
-          "uuid": "031ebbba-87ea-454d-9656-f7a186b41206",
+          "uuid": "78fdc4e2-84de-4f7a-8a74-c6a4345bc463",
           "filename": "statutory-crd-sexual-harassment-es.pdf",
-          "sourceByteLength": 388210,
-          "localRawSha256": "8086c31aa82f680ba317937afd2377a0c9604a0f87643bbcfe23693bb3604478",
-          "providerRawSha256": "8086c31aa82f680ba317937afd2377a0c9604a0f87643bbcfe23693bb3604478",
+          "sourceByteLength": 392159,
+          "localRawSha256": "7f985f6fb7765fdc7272cf77b924339a52cfdb6a0411a82105496c2e04c57a39",
+          "providerRawSha256": "7f985f6fb7765fdc7272cf77b924339a52cfdb6a0411a82105496c2e04c57a39",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 2,
-            "semanticSha256": "47fc281abd68041ea445aa8d77d48d4e8bc0f92f97a036475a7fa827166184fe",
+            "semanticSha256": "eb7eb19abc556f6c32ced5e04757835a8c275d10e4fb243d716e5a8288198eaa",
             "visualSha256": "78e14f7bebd5240bb866f452c5609d9b648600266c80217a99f42659ad6b519b",
-            "operatorSha256": "c096d0e6e0c51845bc672acc2467cf55b209a367ada611988a85c733f061e0d5"
+            "operatorSha256": "405e9350326daa2d1cc5554b9c80b26c36409b2efbbe67ccde1c96abae63e875"
           },
           "fieldRegions": []
         },
         {
           "order": 9,
-          "uuid": "4125c5fb-28bb-4730-aecd-120236df03c5",
+          "uuid": "176d7d46-e4d3-4a45-8529-af47cc86f1ea",
           "filename": "statutory-victims-rights-es.pdf",
-          "sourceByteLength": 157455,
-          "localRawSha256": "30286e058518ab6213bfef558b65d95d8b1c567c10e754e01adff6fda6809b52",
-          "providerRawSha256": "30286e058518ab6213bfef558b65d95d8b1c567c10e754e01adff6fda6809b52",
+          "sourceByteLength": 157647,
+          "localRawSha256": "8e557887bc0d0c2302c76515f388930c69ce428615d6e4c62b84bb335290bf5e",
+          "providerRawSha256": "8e557887bc0d0c2302c76515f388930c69ce428615d6e4c62b84bb335290bf5e",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
             "pageCount": 2,
-            "semanticSha256": "fa3c87de4e78c2adb3eec78224ea3650da2c031394facf0c2fa3bfbcec709c5c",
+            "semanticSha256": "29770e973af2a8a8dfe908fe6ce9a50095c7ea4930238bbddae22f408e7d8a23",
             "visualSha256": "de6e3fe03697cbc502a74ea068b1b2ca5ae3f2a41b6f3ba28e9f49d8d3bc9e5b",
-            "operatorSha256": "b032a3d573aefc2e3a2f43d4313ae6fa8ac280ea3f46be2fbcb14144f32e24fb"
+            "operatorSha256": "6e3b201d6d48d445e4a0365653cf53e33a4b0304a8e601e201cae5309938de55"
           },
           "fieldRegions": []
         },
         {
           "order": 10,
-          "uuid": "e246731b-1be2-4db8-bc43-da6bac0834b2",
+          "uuid": "fa3e7d14-84a1-4660-9797-32bd219fc6e4",
           "filename": "iipp-es.pdf",
-          "sourceByteLength": 128543,
-          "localRawSha256": "6115950444d5ab9f7fcf8585e3211797fd4e9eead3f136c8abbd88350e399289",
-          "providerRawSha256": "6115950444d5ab9f7fcf8585e3211797fd4e9eead3f136c8abbd88350e399289",
+          "sourceByteLength": 128546,
+          "localRawSha256": "5c71de9f5dbfc57c3cd5c217318df26f8fb073ad108daecca39e4911daf81afb",
+          "providerRawSha256": "5c71de9f5dbfc57c3cd5c217318df26f8fb073ad108daecca39e4911daf81afb",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -1893,11 +1893,11 @@
         },
         {
           "order": 11,
-          "uuid": "47c3dca3-1419-442f-a86e-c8f40f539549",
+          "uuid": "78aacd11-2df4-4a62-9d9e-244beddf6b66",
           "filename": "heat-illness-prevention-plan-es.pdf",
-          "sourceByteLength": 125952,
-          "localRawSha256": "268a3ae31b7f2d8afa5bee9cda903c25f48090fa61b42f4032bd52b9ea0e13de",
-          "providerRawSha256": "268a3ae31b7f2d8afa5bee9cda903c25f48090fa61b42f4032bd52b9ea0e13de",
+          "sourceByteLength": 125950,
+          "localRawSha256": "1f814fb24bc390a15f382805f8f58f71f7cf90efaef7afd75fa793286ad78e3b",
+          "providerRawSha256": "1f814fb24bc390a15f382805f8f58f71f7cf90efaef7afd75fa793286ad78e3b",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -1910,11 +1910,11 @@
         },
         {
           "order": 12,
-          "uuid": "a660cb6b-e47d-4931-ba6a-f462dc57516f",
+          "uuid": "76236e49-6938-4812-93ff-22ea4a4c8f62",
           "filename": "fall-protection-program-es.pdf",
-          "sourceByteLength": 131926,
-          "localRawSha256": "7dc903b462b8cf8efbd16858fdcab2ed93ec72b09e59c5843eb10d4bd045e11d",
-          "providerRawSha256": "7dc903b462b8cf8efbd16858fdcab2ed93ec72b09e59c5843eb10d4bd045e11d",
+          "sourceByteLength": 131927,
+          "localRawSha256": "e638f9287dccd7c30af9caf5ee9699560124f5cda156441ee298d77317c1b581",
+          "providerRawSha256": "e638f9287dccd7c30af9caf5ee9699560124f5cda156441ee298d77317c1b581",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -1927,11 +1927,11 @@
         },
         {
           "order": 13,
-          "uuid": "749255f7-93b8-4e1b-bfa5-afa9c69bfb06",
+          "uuid": "f7a50df6-f9fc-49cc-a930-a21c6fee99e4",
           "filename": "code-of-safe-practices.pdf",
-          "sourceByteLength": 112304,
-          "localRawSha256": "5ff995b24f07b760099960ad9b5407fb3be67b0287409f105014704f668b97ac",
-          "providerRawSha256": "5ff995b24f07b760099960ad9b5407fb3be67b0287409f105014704f668b97ac",
+          "sourceByteLength": 112305,
+          "localRawSha256": "1ad9e61d48c1fa61521208fd97f3b063b9af840f80f6fea7d95cc91e7632dbed",
+          "providerRawSha256": "1ad9e61d48c1fa61521208fd97f3b063b9af840f80f6fea7d95cc91e7632dbed",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -1944,11 +1944,11 @@
         },
         {
           "order": 14,
-          "uuid": "ad7168e9-6365-478b-9ae9-e4ae5492615d",
+          "uuid": "2a2de056-0bff-48e9-a7fb-3ebfed3f64cf",
           "filename": "policy-acknowledgment-es.pdf",
-          "sourceByteLength": 125893,
-          "localRawSha256": "29b4c4b5a3752ded7db4007590f51cb7d2c27347a895e7d3ee41ad3c6c51d25a",
-          "providerRawSha256": "29b4c4b5a3752ded7db4007590f51cb7d2c27347a895e7d3ee41ad3c6c51d25a",
+          "sourceByteLength": 125889,
+          "localRawSha256": "2632d0fb2107e76e5841147c3073a85da5e88fb90baa08a38297818d2bbc83f3",
+          "providerRawSha256": "2632d0fb2107e76e5841147c3073a85da5e88fb90baa08a38297818d2bbc83f3",
           "fingerprint": {
             "algorithm": "hamilton-pdf-semantic-visual-v1",
             "scale": 2,
@@ -1961,7 +1961,7 @@
             {
               "order": 0,
               "id": "f28",
-              "uuid": "a8cd2a72-4e71-46be-8791-e4a1dd4014ed",
+              "uuid": "ec5d8c38-d213-4646-acc7-69f1e9d8d19f",
               "name": "11/41 Empleado",
               "description": "",
               "type": "text",
@@ -1977,7 +1977,7 @@
             {
               "order": 1,
               "id": "f29",
-              "uuid": "43e575fd-0199-474b-a8d0-394e82020bd6",
+              "uuid": "efc7edfb-0493-40e7-a264-c54fdb0a0155",
               "name": "12/41 Fecha de inicio",
               "description": "",
               "type": "date",
@@ -1993,7 +1993,7 @@
             {
               "order": 2,
               "id": "f30",
-              "uuid": "5ae382d9-41f1-49b3-ba75-c8f4e2b48066",
+              "uuid": "c9993d24-63ea-4911-ae64-86f0d1aed78e",
               "name": "13/41 Contrato de Empleo — lo firmé y Hamilton me…",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2009,7 +2009,7 @@
             {
               "order": 3,
               "id": "f31",
-              "uuid": "03029280-e5d1-49f8-bdb3-db7d7c6e175a",
+              "uuid": "a72e8247-fa8d-42e6-bef2-810677bafd24",
               "name": "14/41 Aviso de salario del Código Laboral §2810.5 —…",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2025,7 +2025,7 @@
             {
               "order": 4,
               "id": "f32",
-              "uuid": "9f0867fe-47e3-4a30-bb6d-8c0233d9084b",
+              "uuid": "8ee46242-4ec6-47aa-bd5a-799f536e89af",
               "name": "15/41 Folleto DWC \"Time of Hire\" (derechos de…",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2041,7 +2041,7 @@
             {
               "order": 5,
               "id": "f33",
-              "uuid": "6ecb5ed7-c31a-4644-9887-b7a9e1d47d90",
+              "uuid": "96c07868-8ecb-457d-94b2-f3562af0b53d",
               "name": "16/41 Formulario de predesignación de médico…",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2057,7 +2057,7 @@
             {
               "order": 6,
               "id": "f34",
-              "uuid": "f22a79b5-a942-4f2a-8c4c-4526e4a43b8b",
+              "uuid": "77654ec8-3fa6-454b-821a-d09edfea06b8",
               "name": "17/41 DE 2320 — Para Su Beneficio: Programas de…",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2073,7 +2073,7 @@
             {
               "order": 7,
               "id": "f35",
-              "uuid": "705420b1-1905-463c-a63d-10a7b54d3f7f",
+              "uuid": "26bc0b07-66eb-48cd-a019-1103b887d723",
               "name": "18/41 DE 2515 — Disposiciones del Seguro de…",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2089,7 +2089,7 @@
             {
               "order": 8,
               "id": "f36",
-              "uuid": "ce271328-238a-4b93-9a44-ff29150cbaa4",
+              "uuid": "62caa10b-5f7b-4d49-a91d-d2d5d89284d7",
               "name": "19/41 DE 2511 — Permiso Familiar Pagado",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2105,7 +2105,7 @@
             {
               "order": 9,
               "id": "f37",
-              "uuid": "46e693c8-0721-412f-96be-b0264d5ab707",
+              "uuid": "04c3321c-b1ce-4fcb-b7e9-944c65314bb8",
               "name": "20/41 Aviso de días de enfermedad pagados (40 horas…",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2121,7 +2121,7 @@
             {
               "order": 10,
               "id": "f38",
-              "uuid": "20d4d165-3e33-41fa-82b9-ec4642335f07",
+              "uuid": "25c3e864-e857-4ef6-a653-2b3c16274830",
               "name": "21/41 Folleto del CRD sobre prevención del acoso…",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2137,7 +2137,7 @@
             {
               "order": 11,
               "id": "f39",
-              "uuid": "6b0e3081-f416-4525-92c0-43b4e7456d78",
+              "uuid": "369129c0-c33a-42c2-992a-177e60b1a87b",
               "name": "22/41 Aviso de derechos de víctimas de violencia…",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2153,7 +2153,7 @@
             {
               "order": 12,
               "id": "f40",
-              "uuid": "d5325bbd-efb2-4f04-a581-a5b4f35f3b2c",
+              "uuid": "813e9324-573d-43b1-b8bf-eed23c967213",
               "name": "23/41 Programa de Prevención de Lesiones y…",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2169,7 +2169,7 @@
             {
               "order": 13,
               "id": "f41",
-              "uuid": "c93afaa3-1c89-481b-8fb8-d0474377f03b",
+              "uuid": "ba9f4dac-b40e-4ccd-8a3c-18dab3127000",
               "name": "24/41 Plan de Prevención de Enfermedades por Calor",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2185,7 +2185,7 @@
             {
               "order": 14,
               "id": "f42",
-              "uuid": "6070271c-7125-4676-a0be-670084c44fb8",
+              "uuid": "80e84e31-432a-48ad-8035-20ed27fad091",
               "name": "25/41 Programa de Protección contra Caídas",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2201,7 +2201,7 @@
             {
               "order": 15,
               "id": "f43",
-              "uuid": "4fe51215-42a2-4241-84ae-eeac3ff3a99d",
+              "uuid": "6352521b-acfc-479a-9e99-8b2ede3312c1",
               "name": "26/41 Código de Prácticas Seguras",
               "description": "A · Documentos que recibí",
               "type": "initials",
@@ -2217,7 +2217,7 @@
             {
               "order": 16,
               "id": "f44",
-              "uuid": "0b0757dc-9ec4-48e7-8abc-9b6753168c12",
+              "uuid": "3b114a09-1559-441f-8b89-187edfd99534",
               "name": "27/41 Iniciales de la sección B",
               "description": "B · Empleo a voluntad",
               "type": "initials",
@@ -2233,7 +2233,7 @@
             {
               "order": 17,
               "id": "f45",
-              "uuid": "05f8c6ad-ae20-48fc-91df-f5e55966480a",
+              "uuid": "908adb0f-4d95-45b4-b378-e0bf3f4405c0",
               "name": "28/41 Iniciales de la sección C",
               "description": "C · Registro de horas",
               "type": "initials",
@@ -2249,7 +2249,7 @@
             {
               "order": 18,
               "id": "f46",
-              "uuid": "27bfd00a-4c8b-43eb-8d17-c43657c01513",
+              "uuid": "bc0c73a7-f350-4668-8a26-be95d718bca5",
               "name": "29/41 Iniciales de la sección D",
               "description": "D · Períodos de comida y descanso",
               "type": "initials",
@@ -2265,7 +2265,7 @@
             {
               "order": 19,
               "id": "f47",
-              "uuid": "75d34591-12c7-4287-9152-faaa4049a20f",
+              "uuid": "df21ede6-143b-4cdc-a454-b6e7f41750de",
               "name": "30/41 Iniciales de la sección E",
               "description": "E · Pago",
               "type": "initials",
@@ -2281,7 +2281,7 @@
             {
               "order": 20,
               "id": "f48",
-              "uuid": "35e88197-ffa6-4b53-8b52-55150c353773",
+              "uuid": "af6173de-740c-4860-9f36-914158401dab",
               "name": "31/41 Iniciales de la sección F",
               "description": "F · Seguridad",
               "type": "initials",
@@ -2297,7 +2297,7 @@
             {
               "order": 21,
               "id": "f49",
-              "uuid": "21b6f697-2dcb-4d9d-ab33-d42018b53190",
+              "uuid": "06214ffa-45fd-47dd-8e8f-432b12c3e7a9",
               "name": "32/41 Iniciales de la sección G",
               "description": "G · Herramientas y equipo",
               "type": "initials",
@@ -2313,7 +2313,7 @@
             {
               "order": 22,
               "id": "f50",
-              "uuid": "514e720b-0ed3-4983-91cd-a2a176199fed",
+              "uuid": "35adf98a-138c-4f2d-b3c3-5b785a57612f",
               "name": "33/41 Escribe SÍ o NO",
               "description": "H · Manejo de vehículos",
               "type": "text",
@@ -2329,7 +2329,7 @@
             {
               "order": 23,
               "id": "f51",
-              "uuid": "69b56a35-2489-4623-86b0-aa1ceb9acd91",
+              "uuid": "7bf1263f-c19e-4ec9-910e-95c25fcfc55b",
               "name": "34/41 Iniciales de la sección H",
               "description": "H · Manejo de vehículos",
               "type": "initials",
@@ -2345,7 +2345,7 @@
             {
               "order": 24,
               "id": "f52",
-              "uuid": "f733b6c6-b334-48ef-b735-4d2c5d64436b",
+              "uuid": "35e96091-9c9e-4a27-ad9e-67b0b30f4639",
               "name": "35/41 Iniciales de la sección I",
               "description": "I · Propiedad de la empresa",
               "type": "initials",
@@ -2361,7 +2361,7 @@
             {
               "order": 25,
               "id": "f53",
-              "uuid": "e3a4eaa5-9a2f-4ee5-be9f-5cc365e83134",
+              "uuid": "97a965ac-93d4-4c49-88df-210d99835829",
               "name": "36/41 Iniciales de la sección J",
               "description": "J · Reportes y no represalias",
               "type": "initials",
@@ -2377,7 +2377,7 @@
             {
               "order": 26,
               "id": "f54",
-              "uuid": "8fa4dc56-dd4a-4f16-8dc2-c7713c2eda0a",
+              "uuid": "c376d63c-ca44-4899-9951-1f0e58d966ad",
               "name": "37/41 Idioma principal (escribe inglés o español)",
               "description": "K · Idioma",
               "type": "text",
@@ -2393,7 +2393,7 @@
             {
               "order": 27,
               "id": "f55",
-              "uuid": "a664f757-aa7b-47df-bef6-3f8c64f8f25d",
+              "uuid": "0fb6809c-2a49-4c68-9d05-bf609106b1b7",
               "name": "38/41 Iniciales de la sección K",
               "description": "K · Idioma",
               "type": "initials",
@@ -2409,7 +2409,7 @@
             {
               "order": 28,
               "id": "f56",
-              "uuid": "83a1eeb2-ddc6-49f2-bd35-be10db693f53",
+              "uuid": "38d231b5-777d-4086-ad66-2a3eb9733d36",
               "name": "39/41 Firma",
               "description": "",
               "type": "signature",
@@ -2425,7 +2425,7 @@
             {
               "order": 29,
               "id": "f57",
-              "uuid": "893ec277-dc74-4b8c-94ee-c82b3333c128",
+              "uuid": "b50a2f19-ddf9-481b-ad63-505c71f42a33",
               "name": "40/41 Nombre en letra de molde",
               "description": "",
               "type": "text",
@@ -2441,7 +2441,7 @@
             {
               "order": 30,
               "id": "f58",
-              "uuid": "a5839987-e8f2-4352-8e1f-0d4a122661f1",
+              "uuid": "0c427df3-17ad-42cd-8d53-09e5a7402621",
               "name": "41/41 Fecha",
               "description": "",
               "type": "date",
@@ -2457,7 +2457,7 @@
             {
               "order": 31,
               "id": "f59",
-              "uuid": "b80bb9c2-3a6e-462d-aeff-614717c6548b",
+              "uuid": "a4fe1802-f1d1-41ad-99f3-0884f9919aee",
               "name": "18/20 Firma",
               "description": "",
               "type": "signature",
@@ -2473,7 +2473,7 @@
             {
               "order": 32,
               "id": "f60",
-              "uuid": "3d5c2f36-4fff-40cf-9160-80f25881fd70",
+              "uuid": "df114558-cf6b-4bb2-afb8-132172eab803",
               "name": "19/20 Nombre / título",
               "description": "",
               "type": "text",
@@ -2489,7 +2489,7 @@
             {
               "order": 33,
               "id": "f61",
-              "uuid": "df5d6234-d131-4415-a7fb-e078a36d7e41",
+              "uuid": "2e232f0c-6d8a-41e2-9031-1a141ccb61e1",
               "name": "20/20 Fecha",
               "description": "",
               "type": "date",
@@ -2505,8 +2505,8 @@
           ]
         }
       ],
-      "entrySha256": "33125cab6e2d70b7c3a981d4ade56021140d197a1b3d64c62cb0a7533d1e45cf"
+      "entrySha256": "c3ba4158c721607f4f98170901505bfff75cbb3d3112f8cf571d136f649819b8"
     }
   ],
-  "attestationSha256": "03676a00d46e2dd70d392679b6c87b984bc27c6af0f4ab3cfbf0fcabd94d9279"
+  "attestationSha256": "d43df547a3d815e54678bb72fcef65f39b3271cfa97f65afcb9d3504596dd8d7"
 }
