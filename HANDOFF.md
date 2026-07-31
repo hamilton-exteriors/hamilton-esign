@@ -1,12 +1,16 @@
-# Handoff — Hamilton e-Sign, 2026-07-27/29
+# Handoff — Hamilton e-Sign, 2026-07-27/31
 
 For the next agent. Written to be reviewed and continued, not admired. Where I am
 unsure I say so. Where I broke something, I say that too.
 
 **Repo:** `hamilton-exteriors/hamilton-esign` (PUBLIC, AGPL-3.0)
 **Baseline before remediation:** `c922c07`
-**Current signer release:** `f14e3ed` on `origin/master`; Railway deployment
-`0be07a92-8d07-470a-b696-f0af74822a16` succeeded on 2026-07-29.
+**Current release:** `fc4eb04` on `origin/master` (W-2 packet v3 + immutable v1
+attestation retention); Railway deployment `85a024ed-40bf-410f-b9c3-d49b79406248`
+succeeded on 2026-07-31 via `railway up` from the committed worktree, both hosts
+200, live `/reflow/index.json` and `/reflow/provider-attestations.json`
+byte-identical to the commit. Prior signer release `f14e3ed` / Railway
+`0be07a92-8d07-470a-b696-f0af74822a16` (2026-07-29).
 **Live:** <https://sign.hamilton-exteriors.com> and
 <https://docuseal-production-7617.up.railway.app>, same service, both 200.
 **Railway:** project `backoffice` `9ff3cd8c-…`, env `72326ee3-…`, service
@@ -57,7 +61,12 @@ templates 378/379 are retained and unchanged. A first v3 release (`694af62` here
 Platform `66a8e31`) was deployed at ~03:12 and rolled back minutes later after a
 post-release review found compatibility and timeout defects; production was re-pinned to
 `df2d34c` / `c5f2d26`. The remaining fixes below passed a second two-repo adversarial
-review before re-release.
+review and were re-released 2026-07-31 as `fc4eb04` here (Railway `85a024ed`, live
+artifacts byte-verified) and Platform `d8060a2` + `07e816f` (the first Platform push
+failed Railway's build because its NODE_ENV=production preset defeated a NODE_ENV-based
+test-only guard; vitest is now detected via the VITEST env var). Template archival of
+378/379 remains deferred until submission inventory proves no dependency; Juan
+Alcantar's in-flight schema-v1 onboarding still exercises the v1 path.
 
 **Attestation generations — read this before touching either attestation file.** Three
 generations exist for templates 380/381: gen-A (`df2d34c`, schemaVersion 1, aggregate
