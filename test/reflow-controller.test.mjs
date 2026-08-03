@@ -590,8 +590,8 @@ test('wide reflow tables scroll locally while fields remain visible and focusabl
 test('all generated reflow fragments contain scoped, scalable, semantic document layout', () => {
   const reflowDir = new URL('../brand/reflow/', import.meta.url);
   const files = readdirSync(reflowDir).filter((name) => name.endsWith('.reflow.html'));
-  // 14 single-document views + the stamped v2, v3, and v4 packet pairs.
-  assert.equal(files.length, 20);
+  // 14 single-document views + the stamped v2, v3, v4, and v5 packet pairs.
+  assert.equal(files.length, 22);
   for (const file of files) {
     const html = readFileSync(new URL(file, reflowDir), 'utf8');
     assert.match(html, /#hx-read-doc \.tbl\s*\{[^}]*overflow-x:auto;contain:inline-size/);

@@ -9,14 +9,20 @@ import {
 } from './provider-attestation.mjs';
 
 // Plan schema generations for W-2 initial work:
-//   5 (current)      binds the v4 letter-normalized packets to the live
-//                    brand/reflow/provider-attestations.json entry digests.
+//   6 (current)      binds the v5 full-width packets (live templates 384/385)
+//                    to the live brand/reflow/provider-attestations.json
+//                    (gen-E) entry digests.
+//   5 (retained)     binds the v4 packets (live templates 382/383) to the
+//                    immutable retained provider-attestations-v3.json (gen-D,
+//                    schema 2) digests — the byte-identical retention copy of
+//                    the pre-v5 live file, made when the v5 capture replaced it.
 //   4 (retained)     binds the v3 packets to the immutable retained
 //                    provider-attestations-v2.json (gen-C, schema 2) digests.
 //   3 (retained)     binds the v3 packets to the immutable
 //                    provider-attestations-v1.json (gen-A, schema 1) digests.
 //   2 / 1 (legacy)   read-only compatibility with pre-attestation plans.
-export const ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION = 5;
+export const ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION = 6;
+export const RETAINED_GEN_D_PLAN_SCHEMA_VERSION = 5;
 export const RETAINED_GEN_C_PLAN_SCHEMA_VERSION = 4;
 export const RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION = 3;
 export const LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION = 2;
@@ -31,9 +37,11 @@ const E164 = /^\+[1-9]\d{7,14}$/;
 const EMAIL = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
 const SIGNING_URL_PLACEHOLDER = '{{signing_url}}';
 const PROVIDER_ATTESTATION_PATH = new URL('../brand/reflow/provider-attestations.json', import.meta.url);
+const RETAINED_V3_PROVIDER_ATTESTATION_PATH = new URL('../brand/reflow/provider-attestations-v3.json', import.meta.url);
 const RETAINED_V2_PROVIDER_ATTESTATION_PATH = new URL('../brand/reflow/provider-attestations-v2.json', import.meta.url);
 const LEGACY_PROVIDER_ATTESTATION_PATH = new URL('../brand/reflow/provider-attestations-v1.json', import.meta.url);
 let providerAttestationCache;
+let retainedV3ProviderAttestationCache;
 let retainedV2ProviderAttestationCache;
 let legacyProviderAttestationCache;
 function committedProviderAttestation() {
@@ -41,6 +49,12 @@ function committedProviderAttestation() {
     JSON.parse(readFileSync(PROVIDER_ATTESTATION_PATH, 'utf8')),
   );
   return providerAttestationCache;
+}
+function committedRetainedV3ProviderAttestation() {
+  retainedV3ProviderAttestationCache ||= validateProviderAttestation(
+    JSON.parse(readFileSync(RETAINED_V3_PROVIDER_ATTESTATION_PATH, 'utf8')),
+  );
+  return retainedV3ProviderAttestationCache;
 }
 function committedRetainedV2ProviderAttestation() {
   retainedV2ProviderAttestationCache ||= validateProviderAttestation(
@@ -63,14 +77,16 @@ const CLASSIFICATION_RULES = {
         documents: ['initial-packet'],
         destinations: ['Personnel'],
         templateSlugs: {
-          en: ['w2-initial-packet-v4'],
-          es: ['w2-initial-packet-es-v4'],
+          en: ['w2-initial-packet-v5'],
+          es: ['w2-initial-packet-es-v5'],
         },
-        // Retained plan schemas 3 and 4 were approved against the v3 packets;
-        // they keep binding those exact retained templates.
-        retainedTemplateSlugs: {
-          en: ['w2-initial-packet-v3'],
-          es: ['w2-initial-packet-es-v3'],
+        // Retained plan schemas were approved against their own generation and
+        // keep binding those exact retained templates: 3 and 4 against the v3
+        // packets, 5 against the v4 packets.
+        retainedTemplateSlugsBySchema: {
+          3: { en: ['w2-initial-packet-v3'], es: ['w2-initial-packet-es-v3'] },
+          4: { en: ['w2-initial-packet-v3'], es: ['w2-initial-packet-es-v3'] },
+          5: { en: ['w2-initial-packet-v4'], es: ['w2-initial-packet-es-v4'] },
         },
       },
       training: {
@@ -206,11 +222,13 @@ function roleRelease(value, required, path) {
 const PROVIDER_ATTESTED_PLAN_SCHEMA_VERSIONS = [
   RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION,
   RETAINED_GEN_C_PLAN_SCHEMA_VERSION,
+  RETAINED_GEN_D_PLAN_SCHEMA_VERSION,
   ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION,
 ];
 const RETAINED_PLAN_SCHEMA_VERSIONS = [
   RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION,
   RETAINED_GEN_C_PLAN_SCHEMA_VERSION,
+  RETAINED_GEN_D_PLAN_SCHEMA_VERSION,
 ];
 
 function template(value, path, schemaVersion) {
@@ -321,9 +339,9 @@ function outbound(value, path, documentKeys) {
 function validateCurrentTemplateBinding(entry, expectedSlug, path, schemaVersion) {
   const registryTemplate = TEMPLATE_BY_SLUG.get(expectedSlug);
   const retainedSchema = RETAINED_PLAN_SCHEMA_VERSIONS.includes(schemaVersion);
-  // Retained schemas 3/4 bind the retained v3 packets, which are legacy in the
-  // registry but must stay resolvable for previously approved plans. The
-  // current schema still rejects every legacy registry identity.
+  // Retained schemas 3/4/5 bind their own retained packet generation, which is
+  // legacy in the registry but must stay resolvable for previously approved
+  // plans. The current schema still rejects every legacy registry identity.
   if (!registryTemplate || (registryTemplate.legacy && !retainedSchema)) {
     fail(path, `references unavailable current registry template ${expectedSlug}`);
   }
@@ -338,11 +356,17 @@ function validateCurrentTemplateBinding(entry, expectedSlug, path, schemaVersion
     fail(`${path}.template.name`, `must equal registry title ${JSON.stringify(registryTemplate.title)}`);
   }
   if (registryTemplate.orderedSourceAttachments) {
+    // Schema 3 -> immutable gen-A (v1 file); schema 4 -> immutable gen-C (v2
+    // file); schema 5 -> immutable gen-D (v3 file, retained byte-identical
+    // when the v5 capture replaced the live file); schema 6 -> the live
+    // (gen-E, v5) file.
     const attestationEntry = schemaVersion === RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION
       ? requireLegacyProviderAttestationEntry(committedLegacyProviderAttestation(), expectedSlug)
       : schemaVersion === RETAINED_GEN_C_PLAN_SCHEMA_VERSION
         ? requireProviderAttestationEntry(committedRetainedV2ProviderAttestation(), expectedSlug)
-        : requireProviderAttestationEntry(committedProviderAttestation(), expectedSlug);
+        : schemaVersion === RETAINED_GEN_D_PLAN_SCHEMA_VERSION
+          ? requireProviderAttestationEntry(committedRetainedV3ProviderAttestation(), expectedSlug)
+          : requireProviderAttestationEntry(committedProviderAttestation(), expectedSlug);
     if (String(entry.template.id) !== attestationEntry.templateId) {
       fail(`${path}.template.id`, `must equal attested provider template ${attestationEntry.templateId}`);
     }
@@ -369,8 +393,8 @@ export function validateOnboardingExecutionPlan(input) {
     'schemaVersion', 'classification', 'stage', 'language', 'recipient', 'roleRelease', 'documents',
     'outboundWhatsApp', 'trainingEvidenceRequired',
   ], path);
-  if (![1, LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION, RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION, RETAINED_GEN_C_PLAN_SCHEMA_VERSION, ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION].includes(input.schemaVersion)) {
-    fail(`${path}.schemaVersion`, `must equal 1, ${LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}, ${RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION}, ${RETAINED_GEN_C_PLAN_SCHEMA_VERSION}, or ${ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}`);
+  if (![1, LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION, RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION, RETAINED_GEN_C_PLAN_SCHEMA_VERSION, RETAINED_GEN_D_PLAN_SCHEMA_VERSION, ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION].includes(input.schemaVersion)) {
+    fail(`${path}.schemaVersion`, `must equal 1, ${LEGACY_ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}, ${RETAINED_PROVIDER_ATTESTED_PLAN_SCHEMA_VERSION}, ${RETAINED_GEN_C_PLAN_SCHEMA_VERSION}, ${RETAINED_GEN_D_PLAN_SCHEMA_VERSION}, or ${ONBOARDING_EXECUTION_PLAN_SCHEMA_VERSION}`);
   }
   const classification = safeString(input.classification, `${path}.classification`, { pattern: /^[a-z][a-z0-9_]*$/ });
   const classificationRules = CLASSIFICATION_RULES[classification];
@@ -388,8 +412,8 @@ export function validateOnboardingExecutionPlan(input) {
   if (keys.length !== rules.documents.length || keys.some((key, index) => key !== rules.documents[index])) {
     fail(`${path}.documents`, `must use the ordered ${classification} ${stage} document set: ${rules.documents.join(', ')}`);
   }
-  const templateSlugsForSchema = RETAINED_PLAN_SCHEMA_VERSIONS.includes(input.schemaVersion) && rules.retainedTemplateSlugs
-    ? rules.retainedTemplateSlugs
+  const templateSlugsForSchema = RETAINED_PLAN_SCHEMA_VERSIONS.includes(input.schemaVersion) && rules.retainedTemplateSlugsBySchema?.[input.schemaVersion]
+    ? rules.retainedTemplateSlugsBySchema[input.schemaVersion]
     : rules.templateSlugs;
   documents.forEach((entry, index) => {
     if (entry.filingDestination !== rules.destinations[index]) {

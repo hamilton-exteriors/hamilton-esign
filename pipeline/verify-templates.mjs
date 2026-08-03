@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createCanvas, DOMMatrix, ImageData, Path2D } from '@napi-rs/canvas';
 import { createDocusealClient } from './docuseal-api.mjs';
 import { BUILD_DIR } from './config.mjs';
+import { pageGeometryFor } from './build-docs.mjs';
 import { sha256 } from './build-manifest.mjs';
 import { fingerprintPdf } from './pdf-fingerprint.mjs';
 import {
@@ -43,22 +44,31 @@ const measuredPath = `${BUILD_DIR}/fields.json`;
 const measuredBySlug = existsSync(measuredPath)
   ? new Map(JSON.parse(readFileSync(measuredPath, 'utf8')).map((document) => [document.slug, document]))
   : new Map();
-// Current ordered-source packets (v4) are pinned by the live attestation file;
-// the retained v3 generation is pinned by the immutable retained copy of its
-// gen-C attestation, kept so 380/381 stay verifiable after the v4 capture
-// replaced provider-attestations.json.
+// Ordered-source packets are pinned per generation. Current (v5, templates
+// 384/385) packets bind the live attestation file (gen-E). The retained v4
+// generation (templates 382/383) is pinned by the immutable retained copy of
+// its gen-D attestation (provider-attestations-v3.json — the byte-identical
+// retention of the pre-v5 live file). The retained v3 generation (380/381) is
+// pinned by the immutable retained copy of its gen-C attestation
+// (provider-attestations-v2.json).
 const attestationPath = new URL('../brand/reflow/provider-attestations.json', import.meta.url);
+const retainedGenDAttestationPath = new URL('../brand/reflow/provider-attestations-v3.json', import.meta.url);
 const retainedAttestationPath = new URL('../brand/reflow/provider-attestations-v2.json', import.meta.url);
 const providerAttestation = registry.some((entry) => entry.orderedSourceAttachments && !entry.legacy)
   ? validateProviderAttestation(JSON.parse(readFileSync(attestationPath, 'utf8')))
   : null;
-const retainedProviderAttestation = registry.some((entry) => entry.orderedSourceAttachments && entry.legacy)
+const retainedGenDProviderAttestation = registry.some((entry) => entry.orderedSourceAttachments &&
+  entry.legacy && entry.version === 4)
+  ? validateProviderAttestation(JSON.parse(readFileSync(retainedGenDAttestationPath, 'utf8')))
+  : null;
+const retainedProviderAttestation = registry.some((entry) => entry.orderedSourceAttachments &&
+  entry.legacy && entry.version === 3)
   ? validateProviderAttestation(JSON.parse(readFileSync(retainedAttestationPath, 'utf8')))
   : null;
 
 const client = createDocusealClient();
 
-async function inspectPdf(url) {
+async function inspectPdf(url, geometry) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`source PDF returned ${response.status}`);
   const bytes = new Uint8Array(await response.arrayBuffer());
@@ -82,7 +92,7 @@ async function inspectPdf(url) {
       const context = canvas.getContext('2d');
       await pdfPage.render({ canvasContext: context, viewport }).promise;
       pages.push({
-        ...inspectInkBands(context, width, height),
+        ...inspectInkBands(context, width, height, geometry),
         // Exact PDF-space page size at scale 1, before the raster ceil, so
         // letter-normalized packets can require exactly 612x792 per page.
         width: viewport.width,
@@ -133,12 +143,17 @@ for (const entry of registry) {
       full.documents.some((document) => !document.url)) {
       throw new Error('provider source PDF URLs are incomplete');
     }
+    const geometry = pageGeometryFor(entry);
     const inspections = [];
-    for (const document of full.documents) inspections.push(await inspectPdf(document.url));
+    for (const document of full.documents) inspections.push(await inspectPdf(document.url, geometry));
     const measured = measuredBySlug.get(entry.slug);
     let uuidByFieldId;
     let attestationEntry;
-    const attestationForEntry = entry.legacy ? retainedProviderAttestation : providerAttestation;
+    const attestationForEntry = entry.legacy && entry.version === 3
+      ? retainedProviderAttestation
+      : entry.legacy && entry.version === 4
+        ? retainedGenDProviderAttestation
+        : providerAttestation;
     if (entry.orderedSourceAttachments) {
       const reflowPath = new URL(`../brand/reflow/${entry.slug}.reflow.html`, import.meta.url);
       if (!existsSync(reflowPath)) throw new Error('post-create UUID-stamped reflow artifact is missing');
@@ -163,7 +178,7 @@ for (const entry of registry) {
     for (let index = 0; index < pages.length; index++) {
       const result = pages[index];
       if (!result.full.ink) throw new Error(`global page ${index + 1} has no ink`);
-      if (index === 0) validateFirstPageBodyInk(result);
+      if (index === 0) validateFirstPageBodyInk(result, geometry);
     }
     console.log(`  ok  ${String(template.id).padStart(3)}  ${entry.title.padEnd(48)} ${topology.totalPages}p ${full.documents.length}d ${fields.length}f`);
   } catch (error) {

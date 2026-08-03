@@ -3,16 +3,25 @@ import { canonicalProviderPdfName } from './packet-topology.mjs';
 import { validateProviderAttestation } from './provider-attestation.mjs';
 export { PDFJS_NODE_ASSETS } from './pdfjs-assets.mjs';
 
-export const BODY_BAND = Object.freeze({
-  topRatio: PAGE.mt / PAGE.h,
-  bottomRatio: 1 - (PAGE.mb / PAGE.h),
+// Geometry-aware: authored pages exist in two committed measures now — the
+// legacy 1.5in/1.25in-margin documents (templates 351-364, retained v3/v4
+// packets) and the fullWidthLayout 0.75in measure (v5+ packets). Expected ink
+// bands must follow the geometry the entry was built at; the PAGE-derived
+// constants remain the legacy defaults.
+export const bodyBandFor = (geometry = PAGE) => ({
+  topRatio: geometry.mt / geometry.h,
+  bottomRatio: 1 - (geometry.mb / geometry.h),
 });
 
-export const EXPECTED_BODY_BOUNDS = Object.freeze({
-  leftRatio: PAGE.ml / PAGE.w,
-  rightRatio: 1 - (PAGE.mr / PAGE.w),
+export const expectedBodyBoundsFor = (geometry = PAGE) => ({
+  leftRatio: geometry.ml / geometry.w,
+  rightRatio: 1 - (geometry.mr / geometry.w),
   toleranceRatio: 0.03,
 });
+
+export const BODY_BAND = Object.freeze(bodyBandFor(PAGE));
+
+export const EXPECTED_BODY_BOUNDS = Object.freeze(expectedBodyBoundsFor(PAGE));
 
 export function inkBox(context, width, height, { top = 0, bottom = height } = {}) {
   const data = context.getImageData(0, 0, width, height).data;
@@ -34,23 +43,25 @@ export function inkBox(context, width, height, { top = 0, bottom = height } = {}
   return { width, height, minX, maxX, ink };
 }
 
-export function inspectInkBands(context, width, height) {
+export function inspectInkBands(context, width, height, geometry = PAGE) {
+  const band = bodyBandFor(geometry);
   return {
     full: inkBox(context, width, height),
     body: inkBox(context, width, height, {
-      top: height * BODY_BAND.topRatio,
-      bottom: height * BODY_BAND.bottomRatio,
+      top: height * band.topRatio,
+      bottom: height * band.bottomRatio,
     }),
   };
 }
 
-export function validateFirstPageBodyInk(result) {
+export function validateFirstPageBodyInk(result, geometry = PAGE) {
   if (!result?.body?.ink) throw new Error('first page has no body ink');
   const minRatio = result.body.minX / result.body.width;
   const maxRatio = result.body.maxX / result.body.width;
-  const expectedLeft = EXPECTED_BODY_BOUNDS.leftRatio;
-  const expectedRight = EXPECTED_BODY_BOUNDS.rightRatio;
-  const tolerance = EXPECTED_BODY_BOUNDS.toleranceRatio;
+  const bounds = expectedBodyBoundsFor(geometry);
+  const expectedLeft = bounds.leftRatio;
+  const expectedRight = bounds.rightRatio;
+  const tolerance = bounds.toleranceRatio;
   if (Math.abs(minRatio - expectedLeft) > tolerance || Math.abs(maxRatio - expectedRight) > tolerance) {
     throw new Error(
       `first-page body ink bounds ${(minRatio * 100).toFixed(0)}%-${(maxRatio * 100).toFixed(0)}% do not match expected ` +
@@ -82,19 +93,19 @@ export function parseVerifierArgs(argv) {
 }
 
 const W2_RELEASE_SLUGS = new Set([
-  'w2-initial-packet-v4',
-  'w2-initial-packet-es-v4',
+  'w2-initial-packet-v5',
+  'w2-initial-packet-es-v5',
   'safety-training-roster',
   'safety-training-roster-es',
 ]);
 
-// v4 cutover proves the release set together with the retained v3 generation it
-// supersedes. The flattened v2 templates are two generations back and remain
-// covered only by all-live.
+// v5 cutover proves the release set together with the retained v4 generation it
+// supersedes. The v3 and flattened v2 templates are two-plus generations back
+// and remain covered only by all-live.
 const W2_CUTOVER_SLUGS = new Set([
   ...W2_RELEASE_SLUGS,
-  'w2-initial-packet-v3',
-  'w2-initial-packet-es-v3',
+  'w2-initial-packet-v4',
+  'w2-initial-packet-es-v4',
 ]);
 
 export function stampedReflowUuidMap(html, measuredFields) {

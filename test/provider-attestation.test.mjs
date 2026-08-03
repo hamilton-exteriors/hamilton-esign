@@ -15,6 +15,10 @@ const retainedV2 = JSON.parse(readFileSync(
   new URL('../brand/reflow/provider-attestations-v2.json', import.meta.url),
   'utf8',
 ));
+const retainedV3 = JSON.parse(readFileSync(
+  new URL('../brand/reflow/provider-attestations-v3.json', import.meta.url),
+  'utf8',
+));
 const current = JSON.parse(readFileSync(
   new URL('../brand/reflow/provider-attestations.json', import.meta.url),
   'utf8',
@@ -37,6 +41,15 @@ const RETAINED_V2_AGGREGATE_SHA256 = 'd43df547a3d815e54678bb72fcef65f39b3271cfa9
 const RETAINED_V2_ENTRY_SHA256 = {
   'w2-initial-packet-v3': '54bf6eabc157ea7e2c948a2d2e00588df70329cb12b6405d9ca4a0265fb1f208',
   'w2-initial-packet-es-v3': 'c3ba4158c721607f4f98170901505bfff75cbb3d3112f8cf571d136f649819b8',
+};
+
+// The v3 file is the immutable gen-D attestation for retained templates 382/383.
+// Retained schema-v5 plans and retained v4 live verification bind these exact
+// digests after the v5 capture replaced provider-attestations.json.
+const RETAINED_V3_AGGREGATE_SHA256 = '03676a00d46e2dd70d392679b6c87b984bc27c6af0f4ab3cfbf0fcabd94d9279';
+const RETAINED_V3_ENTRY_SHA256 = {
+  'w2-initial-packet-v4': '5db7760ab75e4a5f7700a83a1619d16f781e1049a4151ff765cd7e7c8d9f5f60',
+  'w2-initial-packet-es-v4': '33125cab6e2d70b7c3a981d4ade56021140d197a1b3d64c62cb0a7533d1e45cf',
 };
 
 test('retained v1 attestation matches its pinned immutable identity', () => {
@@ -65,25 +78,39 @@ test('retained v2 attestation matches its pinned immutable gen-C identity', () =
   }
 });
 
+test('retained v3 attestation matches its pinned immutable gen-D identity', () => {
+  validateProviderAttestation(retainedV3);
+  assert.equal(retainedV3.schemaVersion, 2);
+  assert.equal(retainedV3.attestationSha256, RETAINED_V3_AGGREGATE_SHA256);
+  assert.deepEqual(
+    retainedV3.entries.map((entry) => [entry.slug, entry.entrySha256, entry.templateId, entry.registryVersion]),
+    [
+      ['w2-initial-packet-v4', RETAINED_V3_ENTRY_SHA256['w2-initial-packet-v4'], '382', 4],
+      ['w2-initial-packet-es-v4', RETAINED_V3_ENTRY_SHA256['w2-initial-packet-es-v4'], '383', 4],
+    ],
+  );
+  assert.throws(() => validateLegacyProviderAttestation(retainedV3), /legacy provider attestation/);
+  for (const entry of retainedV3.entries) {
+    assert.ok(!Object.values(RETAINED_V2_ENTRY_SHA256).includes(entry.entrySha256));
+    assert.ok(!Object.values(LEGACY_ENTRY_SHA256).includes(entry.entrySha256));
+  }
+});
+
 test('current attestation validates under the current schema and binds one exact generation', () => {
   validateProviderAttestation(current);
   assert.equal(current.schemaVersion, 2);
   assert.notEqual(current.attestationSha256, legacy.attestationSha256);
+  // Released v5 state: the live file holds the gen-E (v5, templates 384/385)
+  // generation and must not reuse any retained generation's digest.
   const slugs = current.entries.map((entry) => entry.slug).sort();
-  if (slugs.includes('w2-initial-packet-v4')) {
-    // Post-capture release state: the live file holds the v4 generation and
-    // must not reuse any retained digest.
-    assert.deepEqual(slugs, ['w2-initial-packet-es-v4', 'w2-initial-packet-v4']);
-    assert.notEqual(current.attestationSha256, RETAINED_V2_AGGREGATE_SHA256);
-    for (const entry of current.entries) {
-      assert.equal(entry.registryVersion, 4);
-      assert.ok(!Object.values(RETAINED_V2_ENTRY_SHA256).includes(entry.entrySha256));
-      assert.ok(!Object.values(LEGACY_ENTRY_SHA256).includes(entry.entrySha256));
-    }
-  } else {
-    // Pre-capture state: the live file is still the retained gen-C content and
-    // must stay byte-equivalent to the immutable v2 retention copy.
-    assert.deepEqual(current, retainedV2);
+  assert.deepEqual(slugs, ['w2-initial-packet-es-v5', 'w2-initial-packet-v5']);
+  assert.notEqual(current.attestationSha256, RETAINED_V2_AGGREGATE_SHA256);
+  assert.notEqual(current.attestationSha256, RETAINED_V3_AGGREGATE_SHA256);
+  for (const entry of current.entries) {
+    assert.equal(entry.registryVersion, 5);
+    assert.ok(!Object.values(RETAINED_V3_ENTRY_SHA256).includes(entry.entrySha256));
+    assert.ok(!Object.values(RETAINED_V2_ENTRY_SHA256).includes(entry.entrySha256));
+    assert.ok(!Object.values(LEGACY_ENTRY_SHA256).includes(entry.entrySha256));
   }
 });
 

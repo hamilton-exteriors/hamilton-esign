@@ -205,10 +205,10 @@ const args = process.argv.slice(2);
 const apply = args.includes('--apply');
 if (args.some((arg) => arg !== '--apply')) throw new Error('usage: node pipeline/build-templates.mjs [--apply]');
 const generated = JSON.parse(readFileSync(`${DIR}/fields.json`, 'utf8'));
-const docs = generated.filter((document) => TEMPLATE_BY_SLUG.get(document.slug)?.version === 4);
-if (docs.length !== 2 || !docs.some((document) => document.slug === 'w2-initial-packet-v4') ||
-  !docs.some((document) => document.slug === 'w2-initial-packet-es-v4')) {
-  throw new Error('build-templates requires exactly the two versioned W-2 v4 source-attachment artifacts');
+const docs = generated.filter((document) => TEMPLATE_BY_SLUG.get(document.slug)?.version === 5);
+if (docs.length !== 2 || !docs.some((document) => document.slug === 'w2-initial-packet-v5') ||
+  !docs.some((document) => document.slug === 'w2-initial-packet-es-v5')) {
+  throw new Error('build-templates requires exactly the two versioned W-2 v5 source-attachment artifacts');
 }
 for (const document of docs) {
   const entry = TEMPLATE_BY_SLUG.get(document.slug);

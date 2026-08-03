@@ -31,11 +31,11 @@ export const WORKER_TYPES = {
     // ids change on every pipeline rebuild.
     packet: {
       en: [
-        { key: 'initial-packet', title: 'W-2 Initial Employment Packet v4' },
+        { key: 'initial-packet', title: 'W-2 Initial Employment Packet v5' },
         { key: 'safety-roster', title: 'Safety Training Roster' },
       ],
       es: [
-        { key: 'initial-packet', title: 'Paquete Inicial de Empleo W-2 v4' },
+        { key: 'initial-packet', title: 'Paquete Inicial de Empleo W-2 v5' },
         { key: 'safety-roster', title: 'Registro de Capacitación en Seguridad' },
       ],
     },

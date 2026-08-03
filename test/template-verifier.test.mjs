@@ -59,8 +59,8 @@ test('provider raw digest is captured before PDF.js can take ownership of respon
 test('verifier scope targets the explicit four-template W-2 release', () => {
   const current = [
     { slug: 'standalone' },
-    { slug: 'w2-initial-packet-v4', sources: [{ slug: 'a' }, { slug: 'b' }] },
-    { slug: 'w2-initial-packet-es-v4', sources: [{ slug: 'a-es' }, { slug: 'b-es' }] },
+    { slug: 'w2-initial-packet-v5', sources: [{ slug: 'a' }, { slug: 'b' }] },
+    { slug: 'w2-initial-packet-es-v5', sources: [{ slug: 'a-es' }, { slug: 'b-es' }] },
     { slug: 'safety-training-roster' },
     { slug: 'safety-training-roster-es' },
   ];
@@ -70,23 +70,25 @@ test('verifier scope targets the explicit four-template W-2 release', () => {
   assert.deepEqual(parseVerifierArgs(['--scope=all-live']), { scope: 'all-live' });
   assert.deepEqual(
     entriesForScope({ current, retainedLegacy: [{ slug: 'legacy' }] }, 'w2-release').map((entry) => entry.slug),
-    ['w2-initial-packet-v4', 'w2-initial-packet-es-v4', 'safety-training-roster', 'safety-training-roster-es'],
+    ['w2-initial-packet-v5', 'w2-initial-packet-es-v5', 'safety-training-roster', 'safety-training-roster-es'],
   );
-  // Cutover proves the v4 release together with the retained v3 generation it
-  // supersedes; the two-generations-back v2 templates stay under all-live only.
+  // Cutover proves the v5 release together with the retained v4 generation it
+  // supersedes; the older v3 and v2 templates stay under all-live only.
   const retainedLegacy = [
     { slug: 'w2-initial-packet-v2' },
     { slug: 'w2-initial-packet-es-v2' },
     { slug: 'w2-initial-packet-v3' },
     { slug: 'w2-initial-packet-es-v3' },
+    { slug: 'w2-initial-packet-v4' },
+    { slug: 'w2-initial-packet-es-v4' },
     { slug: 'legacy' },
   ];
   assert.deepEqual(
     entriesForScope({ current, retainedLegacy }, 'w2-cutover').map((entry) => entry.slug),
     [
-      'w2-initial-packet-v4', 'w2-initial-packet-es-v4',
+      'w2-initial-packet-v5', 'w2-initial-packet-es-v5',
       'safety-training-roster', 'safety-training-roster-es',
-      'w2-initial-packet-v3', 'w2-initial-packet-es-v3',
+      'w2-initial-packet-v4', 'w2-initial-packet-es-v4',
     ],
   );
   assert.deepEqual(
@@ -95,7 +97,30 @@ test('verifier scope targets the explicit four-template W-2 release', () => {
   );
   assert.ok(entriesForScope({ current, retainedLegacy }, 'all-live')
     .some((entry) => entry.slug === 'w2-initial-packet-v2'));
+  assert.ok(entriesForScope({ current, retainedLegacy }, 'all-live')
+    .some((entry) => entry.slug === 'w2-initial-packet-v3'));
   assert.throws(() => parseVerifierArgs(['--scope', 'composites']), /current, w2-release, w2-cutover, or all-live/);
+});
+
+test('body-ink expectations follow the geometry a packet generation was measured at', () => {
+  const wide = { w: 816, h: 1056, mt: 72, mb: 72, ml: 72, mr: 72 };
+  const width = 816;
+  const height = 1056;
+  const render = (bodyX, bodyWidth, geometry) => {
+    const canvas = createCanvas(width, height);
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, width, height);
+    context.fillStyle = '#000';
+    context.fillRect(bodyX, 180, bodyWidth, 20);
+    return inspectInkBands(context, width, height, geometry);
+  };
+  // The full-width measure: 72px margins, 672px column.
+  assert.doesNotThrow(() => validateFirstPageBodyInk(render(72, 672, wide), wide));
+  // The legacy column measured against the wide expectation is too narrow...
+  assert.throws(() => validateFirstPageBodyInk(render(144, 552, wide), wide), /body ink bounds/);
+  // ...and the wide column against the legacy expectation overflows both edges.
+  assert.throws(() => validateFirstPageBodyInk(render(72, 672)), /body ink bounds/);
 });
 
 test('letter-normalized live verification requires exactly 612x792 on every provider page', () => {

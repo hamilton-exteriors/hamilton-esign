@@ -38,16 +38,39 @@ mkdirSync(OUT, { recursive: true });
 // of a Labor Commissioner. It has to be a document first.
 export const PAGE = { w: 816, h: 1056, mt: 120, mb: 96, ml: 144, mr: 120 };
 
-// @page MUST agree with PAGE. It said `size: Letter` while the pages were 420px
-// wide, so Chromium laid the document out for an 816px sheet and page.pdf() then
-// scaled the result down to fit 420px. The PDF ended up with the whole document
-// shrunk into the top-left ~38% x 45% of each page, while the coordinates were
-// measured against the unscaled DOM, so every field area sat high and left of
-// the rule it belonged to. The comment at the top of measure.mjs describes this
-// exact failure as already fixed; it was fixed in one of the two places.
+// The v5 full-width measure. The owner reviewed the executed v4 packet and
+// rejected the authored pages as "very narrow": the legacy margins above put the
+// text column at 552px = 67.6% of the sheet with a 1.25in dead band above the
+// letterhead. This measure uses uniform 0.75in (72px) margins, so the column is
+// 672px = 82.4% of the sheet and the letterhead starts at the top margin. The
+// bottom 72px reserves exactly the running-footer zone (the packet's stamped
+// footer white-out band is 50pt = 66.7px, so body text always clears it). The
+// type scale is deliberately unchanged: at 14px body type the 672px measure is
+// ~85 characters per line, still inside comfortable reading range.
+//
+// Legacy PAGE stays exactly as it was: the retained v3/v4 packet builds and the
+// standalone live templates (351-364) must keep reproducing their committed
+// geometry byte-for-byte, so geometry is selected per registry entry.
+export const PAGE_WIDE = { w: 816, h: 1056, mt: 72, mb: 72, ml: 72, mr: 72 };
+
+/** The print geometry for one registry entry. Only fullWidthLayout (v5+) packets
+ *  use the wide measure; every other document keeps the legacy geometry its
+ *  committed build artifacts and live templates were measured at. */
+export function pageGeometryFor(entry) {
+  return entry?.fullWidthLayout ? PAGE_WIDE : PAGE;
+}
+
+// @page MUST agree with the page geometry. It said `size: Letter` while the
+// pages were 420px wide, so Chromium laid the document out for an 816px sheet
+// and page.pdf() then scaled the result down to fit 420px. The PDF ended up with
+// the whole document shrunk into the top-left ~38% x 45% of each page, while the
+// coordinates were measured against the unscaled DOM, so every field area sat
+// high and left of the rule it belonged to. The comment at the top of
+// measure.mjs describes this exact failure as already fixed; it was fixed in one
+// of the two places.
 //
 // measure.mjs passes preferCSSPageSize, so this rule is what decides the paper.
-const CSS = `
+const cssFor = (PAGE) => `
 @page { size: ${PAGE.w * 0.75}pt ${PAGE.h * 0.75}pt; margin: 0; }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -528,9 +551,9 @@ function reflow(bodyHtml) {
 }
 
 /** Split flowed content into fixed-size .page divs is done in-browser; here we wrap once. */
-function wrap(title, bodyHtml, firstSourceSlug) {
+function wrap(title, bodyHtml, firstSourceSlug, geometry) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
-<style>${CSS}</style></head><body><div class="flow" data-source-slug="${firstSourceSlug}">${letterhead()}${bodyHtml}</div></body></html>`;
+<style>${cssFor(geometry)}</style></head><body><div class="flow" data-source-slug="${firstSourceSlug}">${letterhead()}${bodyHtml}</div></body></html>`;
 }
 
 // Company safety programs are signed once by Hamilton, not by a worker.
@@ -577,7 +600,7 @@ export async function buildOne(slug) {
     `${index ? `<hr class="hx-source-break" data-next-source="${part.slug}">\n` : ''}${part.html}`,
   ).join('\n');
   const reflowHtml = reflowParts.join('\n<hr class="hx-source-break">\n');
-  writeFileSync(`${OUT}/${slug}.html`, wrap(entry.title, printHtml, printParts[0].slug));
+  writeFileSync(`${OUT}/${slug}.html`, wrap(entry.title, printHtml, printParts[0].slug, pageGeometryFor(entry)));
   writeFileSync(`${OUT}/${slug}.reflow.html`, reflow(reflowHtml));
   return { ...sourceManifest(entry, SRC, statutoryArtifacts), fields };
 }

@@ -79,10 +79,11 @@ export const TEMPLATE_REGISTRY = [
     legacy: true,
     retainedBuildable: true,
   },
-  // Current v4 generation: identical ordered sources and 1:1 page mapping, but every
-  // statutory page is normalized to exactly US Letter portrait (612x792pt) during
-  // composition — uniform fit for portrait sources, rotate-then-fit for landscape
-  // spreads — so the executed packet no longer mixes five paper sizes.
+  // Retained v4 generation: live templates 382/383 stay active and verifiable, and the
+  // build remains reproducible (retainedBuildable) so the committed gen-D provider
+  // attestation and retained schema-5 execution plans stay checkable byte-for-byte.
+  // The v4 composition path fits every statutory page (uncropped) onto Letter and keeps
+  // the phone-era 1.5in/1.25in authored margins; do not change it.
   {
     title: 'W-2 Initial Employment Packet v4',
     slug: 'w2-initial-packet-v4',
@@ -94,6 +95,8 @@ export const TEMPLATE_REGISTRY = [
     pageCount: 82,
     orderedSourceAttachments: true,
     letterNormalized: true,
+    legacy: true,
+    retainedBuildable: true,
   },
   {
     title: 'Paquete Inicial de Empleo W-2 v4',
@@ -106,6 +109,43 @@ export const TEMPLATE_REGISTRY = [
     pageCount: 87,
     orderedSourceAttachments: true,
     letterNormalized: true,
+    legacy: true,
+    retainedBuildable: true,
+  },
+  // Current v5 generation: same ordered sources, but the executed packet now fills the
+  // sheet. Authored (markdown) pages use the full-width Letter measure (0.75in margins,
+  // fullWidthLayout) instead of the phone-era 1.5in/1.25in margins, so pagination and
+  // field coordinates differ from v4 by design; field identities, ownership, and source
+  // order are pinned identical. Statutory pages are ink-bbox cropped (8pt pad, nothing
+  // ever clipped) before the same fit-and-center placement, so government artwork spans
+  // the content box instead of carrying its own paper margins. Landscape spreads still
+  // rotate 90 degrees; nothing is panel-split (the folded EDD sheets are full-bleed and
+  // their ink crosses every fold line). Every page remains exactly 612x792pt.
+  {
+    title: 'W-2 Initial Employment Packet v5',
+    slug: 'w2-initial-packet-v5',
+    version: 5,
+    fields: 62,
+    owners: { worker: 41, hamilton: 21 },
+    sources: w2PacketSources('en'),
+    providerDocuments: 15,
+    pageCount: 73,
+    orderedSourceAttachments: true,
+    letterNormalized: true,
+    fullWidthLayout: true,
+  },
+  {
+    title: 'Paquete Inicial de Empleo W-2 v5',
+    slug: 'w2-initial-packet-es-v5',
+    version: 5,
+    fields: 61,
+    owners: { worker: 41, hamilton: 20 },
+    sources: w2PacketSources('es'),
+    providerDocuments: 15,
+    pageCount: 79,
+    orderedSourceAttachments: true,
+    letterNormalized: true,
+    fullWidthLayout: true,
   },
   { title: 'Safety Training Roster', slug: 'safety-training-roster', fields: 65, owners: { worker: 54, hamilton: 11 } },
   { title: 'Registro de Capacitación en Seguridad', slug: 'safety-training-roster-es', fields: 65, owners: { worker: 54, hamilton: 11 } },

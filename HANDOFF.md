@@ -1,15 +1,15 @@
-# Handoff — Hamilton e-Sign, 2026-07-27/31
+# Handoff — Hamilton e-Sign, 2026-07-27 / 2026-08-03
 
 For the next agent. Written to be reviewed and continued, not admired. Where I am
 unsure I say so. Where I broke something, I say that too.
 
 **Repo:** `hamilton-exteriors/hamilton-esign` (PUBLIC, AGPL-3.0)
 **Baseline before remediation:** `c922c07`
-**Current release:** `fc4eb04` on `origin/master` (W-2 packet v3 + immutable v1
-attestation retention); Railway deployment `85a024ed-40bf-410f-b9c3-d49b79406248`
-succeeded on 2026-07-31 via `railway up` from the committed worktree, both hosts
-200, live `/reflow/index.json` and `/reflow/provider-attestations.json`
-byte-identical to the commit. Prior signer release `f14e3ed` / Railway
+**Current release:** W-2 packet v5 (full-width, templates 384/385) on
+`origin/master` — see §"W-2 packet v5" for commit/deployment ids and the gen-E
+attestation digests. Prior releases: v4 `cbe085e` / Railway `cf7c847b`
+(2026-08-01); v3 `fc4eb04` / Railway
+`85a024ed-40bf-410f-b9c3-d49b79406248` (2026-07-31); signer `f14e3ed` / Railway
 `0be07a92-8d07-470a-b696-f0af74822a16` (2026-07-29).
 **Live:** <https://sign.hamilton-exteriors.com> and
 <https://docuseal-production-7617.up.railway.app>, same service, both 200.
@@ -138,6 +138,52 @@ source space before the transform; text extraction is proven intact.
   does not deploy), verify live `/reflow/` artifacts byte-match, Platform schema-5 binding
   + synthetic no-send plan, authorized disposable v4 E2E, then archive 380/381 only after
   submission inventory proves no dependency (same policy that still defers 378/379).
+
+### W-2 packet v5 — Full-width release (2026-08-02/03, this release)
+
+The owner reviewed the executed v4 packet and rejected the narrow phone-era text
+columns on Hamilton-authored pages (~69% of the sheet). v5 rebuilds the same
+15-document packet with authored (markdown) pages on the full-width Letter measure
+(0.75in margins, `fullWidthLayout` — 82.4% printable width) and statutory pages
+ink-bbox cropped (8pt pad, nothing clipped) before the same fit-and-center
+placement, so government artwork spans the content box. Landscape spreads still
+rotate 90° CCW; nothing is panel-split. Every page remains exactly 612x792pt.
+Pagination and field coordinates differ from v4 by design (73p EN / 79p ES);
+field identities, counts (62f EN 41/21, 61f ES 41/20), ownership, and source
+order are pinned identical.
+
+- **Live templates 384 (EN) / 385 (ES)** created 2026-08-02 via the guarded
+  journaled `build-templates.mjs --apply` with exact readback from this worktree
+  build ("go" given by the owner 2026-08-02; the signed example came from these
+  exact templates). Templates 351-364 and 378-383 retained, none mutated or
+  archived. Registry identities `w2-initial-packet-v5` / `-es-v5`, version 5;
+  the v4 entries are now `legacy: true, retainedBuildable: true`.
+- **Attestation generations now:** current `provider-attestations.json` = gen-E
+  for 384/385, aggregate
+  `c5b5ceebe1d9f4c4089cff62282b606b174e123458b99d426f196b5095ab75fa`
+  (EN entry `65180db78aa709ac3e2d225b878d4df64fdeede838fa96d3fcc0acfae9b58868`,
+  ES entry `f0aed350250edeb2440d8296b3eda8fc64f7bddae32cca25c1feb07c67f33f30`).
+  The read-only post-create capture (`capture-provider-attestation.mjs`) re-ran
+  2026-08-03 against live 384/385 and reproduced the --apply-staged manifest
+  byte-identically (file sha256 `7628be23…`) — all 30 provider sources exact
+  raw-byte matches. The pre-v5 gen-D content is retained byte-identical as
+  immutable `brand/reflow/provider-attestations-v3.json` (aggregate
+  `03676a00…`, entries `5db7760a…`/`33125cab…`, blob sha256 `0ae4a3ba…`),
+  pinned by value in `test/provider-attestation.test.mjs`. gen-A/gen-C retention
+  files unchanged.
+- **Plan schemas:** 6 is current (binds v5 slugs to the live gen-E file);
+  5 retained (v4 slugs bound to the immutable v3 retention file); 4 retained
+  (v3 slugs, gen-C v2 file); 3 retained (v3 slugs, gen-A v1 file); 1/2
+  legacy-read. Platform must move from schema 5 to schema 6 + v5/384/385
+  binding (vendoring gen-E as current and gen-D as `provider-attestations-v3.json`).
+- **Verify scopes:** `w2-release` = v5 packets + rosters; `w2-cutover` = release
+  + retained v4 (v4 checked against the v3 retention file); retained v3 stays
+  against the v2 retention file; v2 flattened templates remain `all-live` only.
+- **Validation:** 216/216 tests; read-only `stamp-reflow.mjs` verified 10/10
+  current reading views incl. v5 62/62 and 61/61 anchors against live 384/385;
+  the committed UUID-stamped v5 reflow files match the attested `reflowSha256`
+  exactly. The v5 measured build double-built byte-identical before creation
+  (see the v4 section's method; same gates).
 
 **Aggregate request deadlines are Platform-owned.** The production timeout defect class
 from the rollback is fixed in `hamilton-platform`'s `docuseal-execution-client`
@@ -291,7 +337,7 @@ production.
 
 ## 3. Live state, verified at handoff
 
-**18 active templates, ids 351–364 and 378–381, read-only verified 2026-07-31.**
+**22 active templates, ids 351–364 and 378–385, read-only verified 2026-08-03.**
 Rebuilding renumbers them. **Resolve by name.** IDs 365–377 are not active dependencies.
 
 ```
@@ -304,12 +350,14 @@ Rebuilding renumbers them. **Resolve by name.** IDs 365–377 are not active dep
 357 Acuse de Recibo de Políticas     33f   364 Code of Safe Practices         2f
 378 W-2 Initial Employment Packet v2 62f   379 Paquete Inicial W-2 v2         61f
 380 W-2 Initial Employment Packet v3 62f   381 Paquete Inicial W-2 v3         61f
+382 W-2 Initial Employment Packet v4 62f   383 Paquete Inicial W-2 v4         61f
+384 W-2 Initial Employment Packet v5 62f   385 Paquete Inicial W-2 v5         61f
 ```
 
-Templates 380/381 are the created 15-document v3 targets and pass committed
-provider-byte attestation plus full read-only cutover verification. Templates 378/379
-remain the confirmed one-attachment topology and are retained only for safe cutover;
-they are not valid v3 release targets and were not mutated or archived.
+Templates 384/385 are the created 15-document v5 release targets and pass committed
+provider-byte attestation (gen-E). 382/383 (v4), 380/381 (v3), and 378/379 (v2)
+are retained legacy; none was mutated or archived. Archival of any retained
+generation stays deferred until submission inventory proves no dependency.
 
 **All 5 safety-program submissions were signed on 2026-07-29 and API-verified
 completed.** The links sent

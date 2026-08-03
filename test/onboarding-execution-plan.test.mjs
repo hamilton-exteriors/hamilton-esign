@@ -15,6 +15,10 @@ const providerAttestation = JSON.parse(readFileSync(
   new URL('../brand/reflow/provider-attestations.json', import.meta.url),
   'utf8',
 ));
+const retainedV3ProviderAttestation = JSON.parse(readFileSync(
+  new URL('../brand/reflow/provider-attestations-v3.json', import.meta.url),
+  'utf8',
+));
 const retainedV2ProviderAttestation = JSON.parse(readFileSync(
   new URL('../brand/reflow/provider-attestations-v2.json', import.meta.url),
   'utf8',
@@ -24,15 +28,17 @@ const legacyProviderAttestation = JSON.parse(readFileSync(
   'utf8',
 ));
 const currentEntryBySlug = new Map(providerAttestation.entries.map((entry) => [entry.slug, entry]));
+const retainedV3EntryBySlug = new Map(retainedV3ProviderAttestation.entries.map((entry) => [entry.slug, entry]));
 const retainedV2BindingBySlug = new Map(retainedV2ProviderAttestation.entries.map((entry) => [entry.slug, entry.entrySha256]));
 const legacyProviderBindingBySlug = new Map(legacyProviderAttestation.entries.map((entry) => [entry.slug, entry.entrySha256]));
-// Before the v4 provider capture lands, the live attestation file still holds the
-// v3 generation and every schema-5 initial-packet plan must fail closed. The
-// committed release state holds the v4 entries, so at HEAD the full positive
-// battery below runs.
-const v4EnEntry = currentEntryBySlug.get('w2-initial-packet-v4') || null;
-const v4EsEntry = currentEntryBySlug.get('w2-initial-packet-es-v4') || null;
-const v4Captured = Boolean(v4EnEntry && v4EsEntry);
+// Released v5 state: the live attestation file holds the gen-E (v5, templates
+// 384/385) capture, and the gen-D (v4, templates 382/383) generation is
+// retained byte-identical as the immutable provider-attestations-v3.json that
+// retained schema-5 plans bind.
+const v4EnEntry = retainedV3EntryBySlug.get('w2-initial-packet-v4');
+const v4EsEntry = retainedV3EntryBySlug.get('w2-initial-packet-es-v4');
+const v5EnEntry = currentEntryBySlug.get('w2-initial-packet-v5');
+const v5EsEntry = currentEntryBySlug.get('w2-initial-packet-es-v5');
 
 function doc(key, name, id, filingDestination, registry = null) {
   return {
@@ -57,8 +63,11 @@ function doc(key, name, id, filingDestination, registry = null) {
 }
 
 function assertCurrentInitialPlanState(plan) {
-  if (v4Captured) assert.doesNotThrow(() => validateOnboardingExecutionPlan(plan));
-  else assert.throws(() => validateOnboardingExecutionPlan(plan), /no unique entry for w2-initial-packet(?:-es)?-v4/);
+  assert.doesNotThrow(() => validateOnboardingExecutionPlan(plan));
+}
+
+function assertRetainedGenDPlanState(plan) {
+  assert.doesNotThrow(() => validateOnboardingExecutionPlan(plan));
 }
 
 function overseasPlan() {
@@ -94,7 +103,7 @@ function overseasPlan() {
 
 function w2InitialPlan() {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     classification: 'w2_local',
     stage: 'initial',
     language: 'en',
@@ -103,10 +112,10 @@ function w2InitialPlan() {
     documents: [
       doc(
         'initial-packet',
-        'W-2 Initial Employment Packet v4',
-        v4EnEntry ? Number(v4EnEntry.templateId) : 999,
+        'W-2 Initial Employment Packet v5',
+        Number(v5EnEntry.templateId),
         'Personnel',
-        { slug: 'w2-initial-packet-v4', version: 4, binding: v4EnEntry?.entrySha256 ?? C },
+        { slug: 'w2-initial-packet-v5', version: 5, binding: v5EnEntry.entrySha256 },
       ),
     ],
     outboundWhatsApp: [{
@@ -115,6 +124,19 @@ function w2InitialPlan() {
     }],
     trainingEvidenceRequired: true,
   };
+}
+
+// Retained schema 5: the v4 packet bound to its gen-D digests in the
+// immutable provider-attestations-v3.json retention file.
+function retainedGenDW2InitialPlan() {
+  const plan = w2InitialPlan();
+  plan.schemaVersion = 5;
+  plan.documents[0].template.id = Number(v4EnEntry.templateId);
+  plan.documents[0].template.name = 'W-2 Initial Employment Packet v4';
+  plan.documents[0].template.registrySlug = 'w2-initial-packet-v4';
+  plan.documents[0].template.registryVersion = 4;
+  plan.documents[0].template.providerBindingSha256 = v4EnEntry.entrySha256;
+  return plan;
 }
 
 // Retained schema 4: the v3 packet bound to the immutable gen-C retention file.
@@ -198,6 +220,7 @@ test('canonical JSON sorts object keys, preserves ordered messages, and hashes U
 
 test('classification and stage enforce deferred W-2 training and exact document sets', () => {
   assertCurrentInitialPlanState(w2InitialPlan());
+  assertRetainedGenDPlanState(retainedGenDW2InitialPlan());
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(retainedGenCW2InitialPlan()));
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(retainedW2InitialPlan()));
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(legacyW2InitialPlan()));
@@ -222,44 +245,48 @@ test('classification and stage enforce deferred W-2 training and exact document 
   );
 });
 
-test('schema v5 binds classification, stage, language, document key, and provider bytes to the exact v4 registry template', () => {
+test('schema v6 binds classification, stage, language, document key, and provider bytes to the exact v5 registry template', () => {
   const spanish = mutate(w2InitialPlan(), (copy) => {
     copy.language = 'es';
-    copy.documents[0].template.id = v4EsEntry ? Number(v4EsEntry.templateId) : 998;
-    copy.documents[0].template.name = 'Paquete Inicial de Empleo W-2 v4';
-    copy.documents[0].template.registrySlug = 'w2-initial-packet-es-v4';
-    copy.documents[0].template.providerBindingSha256 = v4EsEntry?.entrySha256 ?? C;
+    copy.documents[0].template.id = Number(v5EsEntry.templateId);
+    copy.documents[0].template.name = 'Paquete Inicial de Empleo W-2 v5';
+    copy.documents[0].template.registrySlug = 'w2-initial-packet-es-v5';
+    copy.documents[0].template.providerBindingSha256 = v5EsEntry.entrySha256;
   });
   assertCurrentInitialPlanState(spanish);
 
-  // These reject before any attestation lookup, so they hold in both the
-  // pre-capture and released states.
+  // These reject before any attestation lookup.
   const failures = [
-    [mutate(w2InitialPlan(), (copy) => { copy.language = 'es'; }), /registrySlug must equal w2-initial-packet-es-v4/],
-    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.name = 'Paquete Inicial de Empleo W-2 v3'; }), /must equal registry title/],
+    [mutate(w2InitialPlan(), (copy) => { copy.language = 'es'; }), /registrySlug must equal w2-initial-packet-es-v5/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.name = 'W-2 Initial Employment Packet v4'; }), /must equal registry title/],
     [mutate(w2InitialPlan(), (copy) => { copy.documents[0].key = 'safety-roster'; }), /ordered w2_local initial document set/],
-    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registrySlug = 'safety-training-roster'; }), /registrySlug must equal w2-initial-packet-v4/],
-    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registrySlug = 'w2-initial-packet-v3'; }), /registrySlug must equal w2-initial-packet-v4/],
-    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registryVersion = 3; }), /registryVersion must equal 4/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registrySlug = 'safety-training-roster'; }), /registrySlug must equal w2-initial-packet-v5/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registrySlug = 'w2-initial-packet-v4'; }), /registrySlug must equal w2-initial-packet-v5/],
+    [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.registryVersion = 4; }), /registryVersion must equal 5/],
     [mutate(w2InitialPlan(), (copy) => { delete copy.documents[0].template.registryVersion; }), /missing keys: registryVersion/],
   ];
   for (const [input, expected] of failures) assert.throws(() => validateOnboardingExecutionPlan(input), expected);
 
-  // Exact provider binding is only checkable once the v4 attestation is
-  // captured; before that the same plans fail closed at the entry lookup.
   const bindingFailures = [
     [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.id = 999999; }), /must equal attested provider template \d+/],
     [mutate(w2InitialPlan(), (copy) => { copy.documents[0].template.providerBindingSha256 = C; }), /committed provider-byte attestation/],
   ];
   for (const [input, expected] of bindingFailures) {
-    assert.throws(
-      () => validateOnboardingExecutionPlan(input),
-      v4Captured ? expected : /no unique entry for w2-initial-packet-v4/,
-    );
+    assert.throws(() => validateOnboardingExecutionPlan(input), expected);
+  }
+
+  // Retained schema 5 keeps binding the exact v4 generation via its immutable
+  // gen-D retention file.
+  const bindingFailuresGenD = [
+    [mutate(retainedGenDW2InitialPlan(), (copy) => { copy.documents[0].template.id = 999999; }), /must equal attested provider template \d+/],
+    [mutate(retainedGenDW2InitialPlan(), (copy) => { copy.documents[0].template.providerBindingSha256 = C; }), /committed provider-byte attestation/],
+  ];
+  for (const [input, expected] of bindingFailuresGenD) {
+    assert.throws(() => validateOnboardingExecutionPlan(input), expected);
   }
 });
 
-test('schema v1, v2, and retained v3/v4 compatibility is explicit and does not weaken schema v5', () => {
+test('schema v1, v2, and retained v3/v4/v5 compatibility is explicit and does not weaken schema v6', () => {
   const legacy = legacyW2InitialPlan();
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(legacy));
   const legacyV2 = w2InitialPlan();
@@ -268,12 +295,15 @@ test('schema v1, v2, and retained v3/v4 compatibility is explicit and does not w
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(legacyV2));
 
   // Retained schema 3 binds gen-A (v1 file); retained schema 4 binds gen-C
-  // (immutable v2 retention file). Neither accepts the other generation's
-  // digests, and both keep resolving the legacy v3 registry identity.
+  // (immutable v2 retention file); retained schema 5 binds gen-D (immutable
+  // v3 retention file). None accepts another generation's digests, and each
+  // keeps resolving its own legacy registry identity.
   const retained = retainedW2InitialPlan();
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(retained));
   const retainedGenC = retainedGenCW2InitialPlan();
   assert.doesNotThrow(() => validateOnboardingExecutionPlan(retainedGenC));
+  const retainedGenD = retainedGenDW2InitialPlan();
+  assertRetainedGenDPlanState(retainedGenD);
   assert.throws(() => validateOnboardingExecutionPlan(mutate(retained, (copy) => {
     copy.documents[0].template.providerBindingSha256 = retainedV2BindingBySlug.get('w2-initial-packet-v3');
   })), /committed provider-byte attestation/);
@@ -283,22 +313,30 @@ test('schema v1, v2, and retained v3/v4 compatibility is explicit and does not w
   assert.throws(() => validateOnboardingExecutionPlan(mutate(retainedGenC, (copy) => {
     copy.documents[0].template.providerBindingSha256 = C;
   })), /committed provider-byte attestation/);
-  // A retained schema must not reach forward to the v4 identity, and the
-  // current schema must not reach back to v3.
+  assert.throws(() => validateOnboardingExecutionPlan(mutate(retainedGenD, (copy) => {
+    copy.documents[0].template.providerBindingSha256 = retainedV2BindingBySlug.get('w2-initial-packet-v3');
+  })), /committed provider-byte attestation/);
+  // A retained schema must not reach forward or backward across generations,
+  // and the current schema must not reach back at all.
   assert.throws(() => validateOnboardingExecutionPlan(mutate(retainedGenC, (copy) => {
     copy.documents[0].template.registrySlug = 'w2-initial-packet-v4';
     copy.documents[0].template.registryVersion = 4;
   })), /registrySlug must equal w2-initial-packet-v3/);
-  assert.throws(() => validateOnboardingExecutionPlan(mutate(w2InitialPlan(), (copy) => {
+  assert.throws(() => validateOnboardingExecutionPlan(mutate(retainedGenD, (copy) => {
+    copy.documents[0].template.registrySlug = 'w2-initial-packet-v5';
+    copy.documents[0].template.registryVersion = 5;
+  })), /registrySlug must equal w2-initial-packet-v4/);
+  assert.throws(() => validateOnboardingExecutionPlan(mutate(retainedGenD, (copy) => {
     copy.documents[0].template.registrySlug = 'w2-initial-packet-v3';
     copy.documents[0].template.registryVersion = 3;
   })), /registrySlug must equal w2-initial-packet-v4/);
-  assert.throws(
-    () => validateOnboardingExecutionPlan(mutate(w2InitialPlan(), (copy) => {
-      copy.documents[0].template.providerBindingSha256 = legacyProviderBindingBySlug.get('w2-initial-packet-v3');
-    })),
-    v4Captured ? /committed provider-byte attestation/ : /no unique entry for w2-initial-packet-v4/,
-  );
+  assert.throws(() => validateOnboardingExecutionPlan(mutate(w2InitialPlan(), (copy) => {
+    copy.documents[0].template.registrySlug = 'w2-initial-packet-v4';
+    copy.documents[0].template.registryVersion = 4;
+  })), /registrySlug must equal w2-initial-packet-v5/);
+  assert.throws(() => validateOnboardingExecutionPlan(mutate(w2InitialPlan(), (copy) => {
+    copy.documents[0].template.providerBindingSha256 = legacyProviderBindingBySlug.get('w2-initial-packet-v3');
+  })), /committed provider-byte attestation/);
   assert.throws(
     () => validateOnboardingExecutionPlan(mutate(legacy, (copy) => {
       copy.documents[0].template.registrySlug = 'employment-agreement';

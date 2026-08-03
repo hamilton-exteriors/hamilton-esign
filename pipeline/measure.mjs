@@ -14,13 +14,18 @@ const DIR = BUILD_DIR;
 // was phone-sized content crammed into the top-left ~45% x 65% of a Letter
 // canvas, and every "we fixed legibility" claim was false at the last mile.
 // Two constants for one fact is the bug; there is now one.
-import { PAGE } from './build-docs.mjs';
+import { PAGE, pageGeometryFor } from './build-docs.mjs';
 import { validateGeneratedGeometry } from './field-geometry.mjs';
 import { measuredLayoutDigest, sha256 } from './build-manifest.mjs';
 import { deterministicPdfBytes, packetFooterDescriptors } from './pdf-determinism.mjs';
 import { fingerprintPdf } from './pdf-fingerprint.mjs';
 import { locateStatutoryFooterMasks } from './statutory-assets.mjs';
-import { LETTER_PAGE, appendLetterNormalizedStatutoryPages } from './letter-normalize.mjs';
+import {
+  LETTER_PAGE,
+  appendInkFitStatutoryPages,
+  appendLetterNormalizedStatutoryPages,
+  measureInkBoundingBoxes,
+} from './letter-normalize.mjs';
 import {
   attachmentFilenameForSource,
   mapFieldsToSourceAttachments,
@@ -453,6 +458,7 @@ async function composeOrderedPdf(manifestEntry, measured, basePdfPath, outputPat
   const output = await PDFDocument.create({ updateMetadata: false });
   const pageMap = new Map();
   const generatedOutputPages = new Set();
+  const statutoryCoverage = [];
   const sources = manifestEntry.sources.map((source) => ({ ...source }));
   for (const definition of orderedSources(entry)) {
     const source = sources.find((candidate) => candidate.slug === definition.slug);
@@ -470,6 +476,40 @@ async function composeOrderedPdf(manifestEntry, measured, basePdfPath, outputPat
         output.addPage(page);
       });
       source.pageCount = indices.length;
+    } else if (entry.fullWidthLayout) {
+      // v5+: statutory pages are ink-bbox cropped (8pt pad, conservative
+      // threshold, nothing clipped) before the same Letter fit-and-center
+      // placement, so government artwork spans the content box instead of
+      // importing its own paper margins. One source page stays one output
+      // page; nothing splits or reorders.
+      const bytes = readFileSync(`${DIR}/${source.filename}`);
+      const footerMasks = await locateStatutoryFooterMasks(bytes);
+      const before = output.getPageCount();
+      const placements = await appendInkFitStatutoryPages({
+        output,
+        statutoryBytes: bytes,
+        footerMasks,
+        expectedPageCount: source.pageCount,
+        label: `${entry.slug}: ${definition.slug}`,
+      });
+      if (output.getPageCount() - before !== source.pageCount) {
+        throw new Error(`${entry.slug}: ink-fit normalization changed ${definition.slug} page count`);
+      }
+      placements.forEach((placement, index) => {
+        statutoryCoverage.push({
+          page: before + index + 1,
+          sourceSlug: definition.slug,
+          kind: 'statutory',
+          treatment: `crop[${placement.crop.left.toFixed(1)},${placement.crop.bottom.toFixed(1)},` +
+            `${placement.crop.right.toFixed(1)},${placement.crop.top.toFixed(1)}]` +
+            `${placement.rotateDegrees ? ' rotate90' : ''} scale=${placement.scale.toFixed(4)}`,
+          placedInkWidth: placement.coverage.placedInkWidth,
+          placedInkHeight: placement.coverage.placedInkHeight,
+          pctContentBoxWidth: placement.coverage.pctContentBoxWidth,
+          pctContentBoxHeight: placement.coverage.pctContentBoxHeight,
+          pctPageWidth: Number((100 * placement.coverage.placedInkWidth / LETTER_PAGE.width).toFixed(1)),
+        });
+      });
     } else if (entry.letterNormalized) {
       // v4+: every statutory page lands on a Letter portrait sheet as vector
       // content (uniform fit + center; landscape sources rotate 90 degrees
@@ -587,22 +627,84 @@ async function composeOrderedPdf(manifestEntry, measured, basePdfPath, outputPat
       }
     });
   }
+  let coverage = null;
+  if (entry.fullWidthLayout) {
+    // Numeric page-fill gates for the v5 layout, measured off the serialized
+    // composite. The stamped running footer (bottom 24pt) is excluded so the
+    // measurement reflects each page's body, not the packet chrome.
+    const geometry = pageGeometryFor(entry);
+    const contentBoxWidth = LETTER_PAGE.width - 2 * 28;
+    const bodyWidthTargetPt = 0.80 * LETTER_PAGE.width;
+    const contentHeightPt = (geometry.h - geometry.mt - geometry.mb) * 0.75;
+    const generatedPageNumbers = [...generatedOutputPages].sort((a, b) => a - b).map((index) => index + 1);
+    const bySlugRange = (pageNumber) => sources.find((source) =>
+      pageNumber - 1 >= source.outputStartPage && pageNumber - 1 < source.outputStartPage + source.pageCount)?.slug || '';
+    const boxes = await measureInkBoundingBoxes(serialized, {
+      scale: 1,
+      pageNumbers: generatedPageNumbers,
+      excludeBottomPt: 24,
+    });
+    const generatedCoverage = generatedPageNumbers.map((pageNumber, index) => {
+      const box = boxes[index];
+      if (!box) throw new Error(`${entry.slug}: generated page ${pageNumber} rendered no body ink`);
+      const inkWidth = box.right - box.left;
+      const inkHeight = box.top - box.bottom;
+      // A page whose body ink fills less than half the content height is a
+      // short terminal/signature page; it keeps the uniform margins but is
+      // exempt from the full-width rule.
+      const fullText = inkHeight >= contentHeightPt / 2;
+      return {
+        page: pageNumber,
+        sourceSlug: bySlugRange(pageNumber),
+        kind: 'generated',
+        treatment: 'full-width measure',
+        inkLeft: Number(box.left.toFixed(1)),
+        inkRight: Number(box.right.toFixed(1)),
+        placedInkWidth: Number(inkWidth.toFixed(2)),
+        placedInkHeight: Number(inkHeight.toFixed(2)),
+        pctPageWidth: Number((100 * inkWidth / LETTER_PAGE.width).toFixed(1)),
+        pctContentBoxWidth: Number((100 * inkWidth / contentBoxWidth).toFixed(1)),
+        fullText,
+      };
+    });
+    const narrowBody = generatedCoverage.filter((page) => page.fullText && page.placedInkWidth < bodyWidthTargetPt);
+    if (narrowBody.length) {
+      throw new Error(`${entry.slug}: full-text authored pages under 80% body width: ` +
+        narrowBody.map((page) => `p${page.page}=${page.pctPageWidth}%`).join(' '));
+    }
+    // Statutory pages must clear the 60% split threshold; below it the sheet
+    // would have to be panel-split, which this generation deliberately avoids.
+    const narrowStatutory = statutoryCoverage.filter((page) => page.pctContentBoxWidth < 60);
+    if (narrowStatutory.length) {
+      throw new Error(`${entry.slug}: statutory pages under the 60% width floor: ` +
+        narrowStatutory.map((page) => `p${page.page}=${page.pctContentBoxWidth}%`).join(' '));
+    }
+    coverage = [...statutoryCoverage, ...generatedCoverage].sort((left, right) => left.page - right.page);
+  }
   const attachments = await emitSourceAttachments(entry, serialized, sources, fields);
   return {
     fields: attachments.fields,
     sources: attachments.sources,
     pageCount: verified.getPageCount(),
     footers: finalFooters,
+    coverage,
   };
 }
 
 const browser = await chromium.launch();
 const results = [];
 const failures = [];
+const coverageBySlug = {};
 for (const m of manifest) {
-  const page = await browser.newPage({ viewport: { width: PAGE.w, height: PAGE.h } });
+  // Geometry is per registry entry: fullWidthLayout (v5+) packets use the wide
+  // measure; every retained/legacy document keeps the geometry its committed
+  // artifacts were measured at. The sheet size is identical either way — only
+  // margins differ — but pass one geometry object everywhere so the DOM
+  // measurement, the coordinate denominators, and page.pdf can never disagree.
+  const GEO = pageGeometryFor(TEMPLATE_BY_SLUG.get(m.slug)) || PAGE;
+  const page = await browser.newPage({ viewport: { width: GEO.w, height: GEO.h } });
   await page.goto('file:///' + `${DIR}/${m.slug}.html`);
-  const res = await page.evaluate(SCRIPT, PAGE);
+  const res = await page.evaluate(SCRIPT, GEO);
   // preferCSSPageSize makes the @page rule in build-docs decide the paper, so
   // the print layout is the same width the DOM was measured at. Without it
   // Chromium lays out for its own default sheet and scales the result to fit,
@@ -610,7 +712,7 @@ for (const m of manifest) {
   const basePdfPath = `${DIR}/${m.slug}.generated.pdf`;
   await page.pdf({
     path: basePdfPath,
-    width: `${PAGE.w}px`, height: `${PAGE.h}px`,
+    width: `${GEO.w}px`, height: `${GEO.h}px`,
     preferCSSPageSize: true,
     printBackground: true, margin: { top: 0, bottom: 0, left: 0, right: 0 },
   });
@@ -622,10 +724,11 @@ for (const m of manifest) {
   // Verify the generated PDF before composing authoritative statutory PDFs into
   // their ordered source positions, then remap every signable field page.
   const basePdfPages = (readFileSync(basePdfPath).toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
-  const baseGeometryProblems = validateGeneratedGeometry({ pageCount: res.pageCount, fields: res.fields });
+  const baseGeometryProblems = validateGeneratedGeometry({ pageCount: res.pageCount, fields: res.fields }, GEO);
   const outputPath = `${DIR}/${m.slug}.pdf`;
   const composed = await composeOrderedPdf(m, res, basePdfPath, outputPath);
-  const geometryProblems = validateGeneratedGeometry({ pageCount: composed.pageCount, fields: composed.fields });
+  const geometryProblems = validateGeneratedGeometry({ pageCount: composed.pageCount, fields: composed.fields }, GEO);
+  if (composed.coverage) coverageBySlug[m.slug] = composed.coverage;
   const pdfPages = composed.pageCount;
   const ok = basePdfPages === res.pageCount && res.overflow.length === 0 &&
     res.footerProblems.length === 0 && baseGeometryProblems.length === 0 &&
@@ -691,5 +794,46 @@ for (const [normalizedSlug, retainedSlug] of NORMALIZED_IDENTITY_PAIRS) {
     throw new Error(`${normalizedSlug}: measured field geometry differs from retained ${retainedSlug}; normalization must not move any field`);
   }
 }
+// v5 full-width layout REPAGINATES the authored documents, so page counts and
+// field coordinates legitimately differ from the retained v4 build. What must
+// NOT change is document identity: the ordered sources, every field's id, name,
+// section, type, presentation, owner, and owning source — pinned here against
+// the retained v4 build measured in the same run, so a layout change can never
+// silently move a field between owners or documents (the §6.2 trap).
+const FULL_WIDTH_IDENTITY_PAIRS = [
+  ['w2-initial-packet-v5', 'w2-initial-packet-v4'],
+  ['w2-initial-packet-es-v5', 'w2-initial-packet-es-v4'],
+];
+const identityFields = (document) => document.fields.map(({ id, name, section, type, presentation, owner, sourceSlug }) =>
+  ({ id, name, section, type, presentation, owner, sourceSlug }));
+const ownerTotals = (document) => document.fields.reduce((counts, field) => {
+  counts[field.owner] = (counts[field.owner] || 0) + 1;
+  return counts;
+}, {});
+for (const [wideSlug, retainedSlug] of FULL_WIDTH_IDENTITY_PAIRS) {
+  const wide = resultBySlug.get(wideSlug);
+  const retained = resultBySlug.get(retainedSlug);
+  if (!wide || !retained) continue;
+  const wideSources = wide.sources.map(({ slug, kind, pageCount }) => ({ slug, kind, ...(kind === 'pdf' ? { pageCount } : {}) }));
+  const retainedSources = retained.sources.map(({ slug, kind, pageCount }) => ({ slug, kind, ...(kind === 'pdf' ? { pageCount } : {}) }));
+  if (JSON.stringify(wideSources) !== JSON.stringify(retainedSources)) {
+    throw new Error(`${wideSlug}: ordered sources or statutory page counts differ from retained ${retainedSlug}`);
+  }
+  if (JSON.stringify(ownerTotals(wide)) !== JSON.stringify(ownerTotals(retained))) {
+    throw new Error(`${wideSlug}: field ownership totals differ from retained ${retainedSlug}: ` +
+      `${JSON.stringify(ownerTotals(wide))} vs ${JSON.stringify(ownerTotals(retained))}`);
+  }
+  const wideIdentity = identityFields(wide);
+  const retainedIdentity = identityFields(retained);
+  if (JSON.stringify(wideIdentity) !== JSON.stringify(retainedIdentity)) {
+    const diffs = wideIdentity
+      .map((field, index) => [field, retainedIdentity[index], index])
+      .filter(([left, right]) => JSON.stringify(left) !== JSON.stringify(right))
+      .slice(0, 6)
+      .map(([left, right, index]) => `#${index}: ${JSON.stringify(left)} vs ${JSON.stringify(right)}`);
+    throw new Error(`${wideSlug}: field identity differs from retained ${retainedSlug}:\n${diffs.join('\n')}`);
+  }
+}
 writeFileSync(`${DIR}/fields.json`, JSON.stringify(results, null, 2));
-console.log('\nwrote build/fields.json');
+writeFileSync(`${DIR}/letter-coverage.json`, JSON.stringify(coverageBySlug, null, 2));
+console.log('\nwrote build/fields.json and build/letter-coverage.json');
