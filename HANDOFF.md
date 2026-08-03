@@ -141,6 +141,13 @@ source space before the transform; text extraction is proven intact.
 
 ### W-2 packet v5 — Full-width release (2026-08-02/03, this release)
 
+**Released:** commit `a7ba1bc` on `origin/master`; Railway deployment
+`09a3feac-1ca5-457a-8a6a-c13e60824416` SUCCESS 2026-08-03 via `railway up`
+from the committed worktree. Both hosts 200; live `/reflow/index.json`, both
+attestation files, and both v5 stamped reflow views byte-identical to the
+commit. Read-only `--scope w2-release` 4/4 and `--scope w2-cutover` 6/6 passed
+against production after deploy.
+
 The owner reviewed the executed v4 packet and rejected the narrow phone-era text
 columns on Hamilton-authored pages (~69% of the sheet). v5 rebuilds the same
 15-document packet with authored (markdown) pages on the full-width Letter measure
