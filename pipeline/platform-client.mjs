@@ -72,6 +72,7 @@ export class PlatformOnboardingClient {
         ...(body ? { 'content-type': 'application/json' } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
+      signal: AbortSignal.timeout(30_000),
     });
     const json = await response.json().catch(() => ({}));
     assertSanitized(json);

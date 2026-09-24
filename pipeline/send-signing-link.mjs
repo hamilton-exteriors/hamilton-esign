@@ -373,6 +373,7 @@ async function sendDocument(to, link, filename, caption, rwPath) {
     method: 'POST',
     headers: { Authorization: `Bearer ${V.PLATFORM_INTERNAL_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ to, link, filename, caption }),
+    signal: AbortSignal.timeout(30_000),
   });
   const responseBody = (await r.text()).slice(0, 200);
   if (!r.ok) throw new Error(`WhatsApp document delivery failed (${r.status})${responseBody ? `: ${responseBody}` : ''}`);

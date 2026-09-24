@@ -3,6 +3,7 @@ export async function postWhatsApp(rw, path, body) {
     method: 'POST',
     headers: { Authorization: `Bearer ${rw.PLATFORM_INTERNAL_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30_000),
   });
   const responseBody = (await response.text()).slice(0, 200);
   if (!response.ok) {

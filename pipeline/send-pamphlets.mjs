@@ -28,6 +28,7 @@ export async function verifyAll(lang = 'en') {
       const response = await fetch(pamphlet.url, {
         redirect: 'follow',
         headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(30_000),
       });
       const contentType = response.headers.get('content-type') || '';
       out.push({ ...pamphlet, ok: response.status === 200 && /pdf/i.test(contentType), status: response.status });

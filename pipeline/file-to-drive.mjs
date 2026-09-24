@@ -125,7 +125,7 @@ export async function fileSubmission(submissionId) {
     }
 
     const filename = `${safeName(templateName, 'Document')} - ${person} - ${date} - S${submissionId}-D${document.id}.pdf`;
-    const response = await fetch(document.url);
+    const response = await fetch(document.url, { signal: AbortSignal.timeout(30_000) });
     if (!response.ok) throw new Error(`signed PDF ${document.id} returned ${response.status}`);
     const bytes = Buffer.from(await response.arrayBuffer());
     if (!bytes.length) throw new Error(`signed PDF ${document.id} was empty`);
