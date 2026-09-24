@@ -13,6 +13,7 @@ export function createDocusealClient(secrets = loadDocusealSecrets(), fetchImpl 
       response = await fetchImpl(`${secrets.url}${path}`, {
         ...init,
         headers: { ...headers, ...(init.headers || {}) },
+        signal: init.signal ?? AbortSignal.timeout(120_000),
       });
     } catch (error) {
       throw new Error(`network error reaching ${what}: ${error.message}`);
