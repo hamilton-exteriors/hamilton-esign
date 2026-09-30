@@ -248,7 +248,6 @@ test('routes contractor agreement and W-8BEN to contractor buckets while W-2 rec
 });
 
 test('source invariants keep signing links private and classification plans cross-path-free', () => {
-  const root = new URL('..', import.meta.url);
   const signingSource = readFileSync(new URL('../pipeline/send-signing-link.mjs', import.meta.url), 'utf8');
   const onboardingSource = readFileSync(new URL('../pipeline/onboarding.mjs', import.meta.url), 'utf8');
   const packetSource = readFileSync(new URL('../pipeline/run-packet.mjs', import.meta.url), 'utf8');
@@ -259,7 +258,6 @@ test('source invariants keep signing links private and classification plans cros
   assert.match(onboardingSource, /\['I-9', 'W-4', 'DE 4', 'DE 34', 'California pamphlets', 'workers compensation', 'payroll'\]/);
   assert.match(packetSource, /const NEEDS_HANDOUTS = new Set\(\['acknowledgment'\]\)/);
   assert.doesNotMatch(onboardingSource, /pamphletCopy|programCopy/);
-  assert.equal(root.protocol, 'file:');
 });
 
 
