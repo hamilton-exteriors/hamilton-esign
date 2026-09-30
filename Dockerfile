@@ -127,6 +127,8 @@ COPY brand/icons/favicon-96.png    /app/public/favicon-96x96.png
 COPY brand/icons/favicon-180.png   /app/public/apple-icon-180x180.png
 COPY brand/icons/favicon-180.png   /app/public/apple-touch-icon.png
 COPY brand/icons/favicon-180.png   /app/public/apple-touch-icon-precomposed.png
+# Link-preview card for WhatsApp/iMessage unfurls (og:image in _meta).
+COPY brand/icons/og-image.png      /app/public/og-image.png
 
 COPY --from=webpack /src/lib/submissions/generate_audit_trail.rb /app/lib/submissions/generate_audit_trail.rb
 RUN ruby -c /app/lib/submissions/generate_audit_trail.rb

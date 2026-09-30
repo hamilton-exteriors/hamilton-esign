@@ -1,6 +1,6 @@
 <%# Hamilton meta. Signing links are private records: keep them out of search
-    indexes entirely, drop the upstream social handles and marketing blurb, and
-    suppress link previews so a document name never leaks into a chat unfurl. %>
+    indexes entirely and drop the upstream social handles and marketing blurb.
+    Chat unfurls (WhatsApp) show the document title plus a branded card image. %>
 <meta name="robots" content="noindex, nofollow, noarchive">
 <% title = content_for(:html_title) || 'Hamilton Signing' %>
 <% description = content_for(:html_description) || 'Secure document signing for Hamilton Exteriors.' %>
@@ -9,7 +9,12 @@
 <meta property="og:description" content="<%= description %>">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Hamilton Signing">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://sign.hamilton-exteriors.com/og-image.png?v=1">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Hamilton Exteriors secure document signing">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://sign.hamilton-exteriors.com/og-image.png?v=1">
 <meta name="twitter:title" content="<%= title %>">
 <meta name="twitter:description" content="<%= description %>">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png?v=3">
